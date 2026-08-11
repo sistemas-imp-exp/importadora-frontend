@@ -1,0 +1,21 @@
+/* Cifras (montos, folios) con ancho fijo por dígito para que columnas
+   de números alineen verticalmente, como en un libro de caja real. */
+.font-tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+/* En monitores muy anchos, el área de contenido (dentro del sidebar) deja de
+   estirarse a partir de 1600px y queda centrada. Por debajo de ese ancho no
+   tiene efecto: el area de contenido ya mide menos que el max-width. */
+.content-max-width {
+    max-width: 1600px;
+    margin-inline: auto;
+}
+
+/* AdminLTE trunca .info-box-text con ellipsis, pero .info-box-content es un
+   hijo flex sin min-width, así que nunca se encoge lo suficiente para que el
+   truncado entre en acción — el texto largo (p. ej. "Dólar estadounidense")
+   se desborda de la tarjeta en vez de cortarse con "...". */
+.info-box-content {
+    min-width: 0;
+}
