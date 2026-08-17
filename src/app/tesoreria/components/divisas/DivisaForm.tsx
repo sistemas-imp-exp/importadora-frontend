@@ -11,6 +11,7 @@ interface DivisaFormProps {
 function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
 
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
 
     const [form, setForm] = useState({
@@ -46,10 +47,24 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
         }
     }, [divisa]);
 
+    function validarFormulario(): string | null {
+        if (!form.codigo.trim()) return "El código es obligatorio.";
+        if (!form.nombre.trim()) return "El nombre es obligatorio.";
+        if (!form.simbolo.trim()) return "El símbolo es obligatorio.";
+        return null;
+    }
+
     async function guardar(e: React.FormEvent) {
         e.preventDefault();
-        setIsLoading(true);
+        setError(null);
 
+        const mensajeError = validarFormulario();
+        if (mensajeError) {
+            setError(mensajeError);
+            return;
+        }
+
+        setIsLoading(true);
         try {
             await onGuardar(form);
             setForm({
@@ -66,9 +81,9 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
 
     return (
         <form onSubmit={guardar}>
-            <div className="row">
-                <div className="col-md-6 col-sm-12">
-                    <label className="form-label">Código</label>
+            <div className="row g-3">
+                <div className="col-md-4 col-sm-12">
+                    <label className="form-label">Código <span className="text-danger">*</span></label>
                     <input
                         ref={codigoInputRef}
                         className="form-control"
@@ -79,8 +94,8 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
                     />
                 </div>
 
-                <div className="col-md-6 col-sm-12">
-                    <label className="form-label">Nombre</label>
+                <div className="col-md-4 col-sm-12">
+                    <label className="form-label">Nombre <span className="text-danger">*</span></label>
                     <input
                         className="form-control"
                         value={form.nombre}
@@ -90,8 +105,8 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
                     />
                 </div>
 
-                <div className="col-md-6 col-sm-12">
-                    <label className="form-label">Símbolo</label>
+                <div className="col-md-4 col-sm-12">
+                    <label className="form-label">Símbolo <span className="text-danger">*</span></label>
                     <input
                         className="form-control"
                         value={form.simbolo}
@@ -100,29 +115,35 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
                         }
                     />
                 </div>
-
-                <div className="col-md-2 d-flex align-items-end">
-                    <div className="form-check mt-3">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={form.activa}
-                            onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    activa: e.target.checked
-                                })
-                            }
-                        />
-
-                        <label className="form-check-label">
-                            Activa
-                        </label>
-                    </div>
-                </div>
             </div>
-            <div className="row mt-4">
-                <div className="col-12 d-flex justify-content-between">
+
+            {error && (
+                <div className="alert alert-danger py-2 small mt-3 mb-0" role="alert">
+                    <i className="bi bi-exclamation-circle-fill me-1"></i>
+                    {error}
+                </div>
+            )}
+
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-3 mt-4 border-top">
+                <div className="form-check">
+                    <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="divisa-activa"
+                        checked={form.activa}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                activa: e.target.checked
+                            })
+                        }
+                    />
+                    <label className="form-check-label" htmlFor="divisa-activa">
+                        Activa
+                    </label>
+                </div>
+
+                <div className="d-flex gap-2">
                     <button
                         type="button"
                         className="btn btn-outline-secondary"
@@ -137,12 +158,10 @@ function DivisaForm({ onGuardar, onCancelar, divisa }: DivisaFormProps) {
                             onClick={() => { }}
                         />
                     ) : (
-                        <>
-                            <button type="submit" className="btn btn-primary">
-                                <i className="bi bi-plus-lg me-1"></i>
-                                {form.id === 0 ? "Registrar divisa" : "Guardar cambios"}
-                            </button>
-                        </>
+                        <button type="submit" className="btn btn-primary">
+                            <i className="bi bi-plus-lg me-1"></i>
+                            {form.id === 0 ? "Registrar divisa" : "Guardar cambios"}
+                        </button>
                     )}
                 </div>
             </div>

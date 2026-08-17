@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import type { SidebarMenuItem as MenuItem } from "../../shared/interfaces/SidebarMenu";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 function isItemActive(item: MenuItem, pathname: string): boolean {
     if (item.to) {
@@ -25,14 +25,22 @@ export default function SidebarMenuItem({
 }: Props) {
     const location = useLocation();
 
-    const [manualOpen, setManualOpen] = useState(false);
-
     const active = isItemActive(item, location.pathname);
-    const open = active || manualOpen;
+    const [open, setOpen] = useState(active);
 
-    useEffect(() => {
-        setManualOpen(false);
-    }, [location.pathname]);
+    // Al navegar: si el destino cae dentro de esta rama, se expande (para que
+    // el usuario vea dónde está); si no, se colapsa. Ajustado durante el
+    // render (no en un efecto) siguiendo el patrón de React para "resetear
+    // estado cuando cambia una prop" — un clic para colapsar/expandir
+    // mientras se sigue en la misma página no dispara este ajuste, así que
+    // el toggle manual siempre funciona, incluso en la rama activa (antes
+    // "open" se forzaba a true mientras active fuera true, y el clic no
+    // tenía efecto alguno).
+    const [rutaPrevia, setRutaPrevia] = useState(location.pathname);
+    if (location.pathname !== rutaPrevia) {
+        setRutaPrevia(location.pathname);
+        setOpen(active);
+    }
 
     if (!item.children?.length) {
         return (
@@ -58,7 +66,7 @@ export default function SidebarMenuItem({
                 className={`nav-link ${active ? "active" : ""}`}
                 onClick={(e) => {
                     e.preventDefault();
-                    setManualOpen(!open);
+                    setOpen(!open);
                 }}
             >
                 <i className={`nav-icon ${item.icon ?? "bi bi-folder"}`} />

@@ -1,0 +1,80 @@
+// ============================================================
+// Sistema visual — variables de marca
+// Ver docs/superpowers/specs/2026-08-12-sistema-visual-design.md
+//
+// Debe compilarse ANTES que las reglas de admin-lte/bootstrap:
+// estas asignaciones ganan sobre los valores `!default` del framework
+// porque SASS solo aplica `!default` si la variable no está ya asignada.
+// ============================================================
+
+// Color de marca (logo: camarón dorado sobre anillo verde oscuro apagado)
+$primary:   #8A6A24; // dorado del logo, oscurecido para contraste de texto blanco en botones
+$success:   #2F7D5A; // más saturado que $ink para no confundirse con él
+$warning:   #B5651D; // naranja quemado a propósito, no ámbar/dorado (chocaría con $primary)
+$danger:    #B23A3A;
+$secondary: #7A7367; // gris cálido — armoniza con el fondo nuevo, sigue siendo "neutro/inactivo"
+
+// NOTA IMPORTANTE: $secondary se queda gris (solo tibio) a propósito.
+// El verde del anillo del logo se expone aparte como $ink (bloque de abajo),
+// NO como $secondary: remapear $secondary lo habría vuelto verde en los badges
+// "Cancelado"/"Cerrado" que hoy usan bg-secondary/card-secondary con significado
+// de "neutro/inactivo" en varias pantallas ya construidas (MovimientosTable,
+// HistorialCortesTable, HistorialCorteDetalleView).
+$ink: #343a40; // verde del anillo del logo — uso deliberado vía .text-ink/.bg-ink/card-ink
+
+// Fondo y texto — la app aplica bg-body-tertiary al <body> (ver MainLayout.tsx),
+// así que el fondo realmente visible es $body-tertiary-bg, no $body-bg.
+$body-tertiary-bg: #F6F4F0;
+$body-color: #231F1B;
+$body-secondary-color: #6B6459;
+
+// Superficie
+$border-radius:    .5rem;
+$border-radius-sm: .375rem;
+$border-radius-lg: .5rem;
+$box-shadow:    0 1px 2px rgba(28, 34, 43, .06), 0 2px 8px rgba(28, 34, 43, .06);
+$box-shadow-sm: 0 1px 2px rgba(28, 34, 43, .06);
+
+// Tipografía
+$font-family-sans-serif: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$font-family-monospace:  "IBM Plex Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+@import "admin-lte/src/scss/adminlte";
+
+// ============================================================
+// Utilidades propias de marca (después del import: ganan por orden de cascada)
+// ============================================================
+
+:root {
+  --ink: #{$ink};
+}
+
+.text-ink { color: $ink !important; }
+.bg-ink { background-color: $ink !important; }
+.border-ink { border-color: $ink !important; }
+.card-outline.card-ink { border-top-color: $ink; }
+
+// Ítem activo del sidebar en el acento de marca (dorado) en vez del overlay
+// gris translúcido por defecto de AdminLTE. El sidebar corre en
+// data-bs-theme="dark" (ver Sidebar.tsx), así que el selector debe igualar
+// la especificidad de la regla dark de AdminLTE ([data-bs-theme=dark].app-sidebar)
+// — un simple ".app-sidebar" pierde contra ella y el dorado nunca se aplicaba.
+// El texto activo usa una versión aclarada del dorado ($primary es oscuro,
+// pensado para contraste sobre fondo claro, no para leerse sobre el verde oscuro).
+[data-bs-theme=dark].app-sidebar,
+.app-sidebar[data-bs-theme=dark] {
+  --lte-sidebar-menu-active-bg: #{rgba($primary, .18)};
+  --lte-sidebar-menu-active-color: #{tint-color($primary, 55%)};
+  --lte-sidebar-submenu-active-bg: #{rgba($primary, .18)};
+  --lte-sidebar-submenu-active-color: #{tint-color($primary, 55%)};
+}
+
+// Sangría más generosa + línea guía vertical en los submenús, para que se
+// distinga a qué padre pertenece cada ítem incluso con 3 niveles de anidado
+// (Tesorería > Nómina > Catálogos > Ranchos). nav-indent por sí solo (.5rem,
+// sin guía visual) no bastaba.
+.nav-indent .nav-treeview {
+  padding-left: .9rem;
+  margin-left: .65rem;
+  border-left: 1px solid rgba(255, 255, 255, .14);
+}

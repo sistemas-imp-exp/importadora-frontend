@@ -1,9 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import 'bootstrap/dist/css/bootstrap.min.css'
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-sans/600.css'
+import '@fontsource/ibm-plex-sans/700.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/ibm-plex-mono/600.css'
+import '@fontsource/ibm-plex-mono/700.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
-import 'admin-lte/dist/css/adminlte.min.css'
+import './styles/theme.scss'
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 // import 'admin-lte/dist/js/adminlte.js'

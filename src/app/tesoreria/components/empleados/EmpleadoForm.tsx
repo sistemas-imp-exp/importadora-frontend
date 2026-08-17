@@ -16,6 +16,7 @@ interface EmpleadoFormProps {
 
 function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, bancos }: EmpleadoFormProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [form, setForm] = useState<EmpleadoRequest>({
         id: 0,
@@ -63,12 +64,40 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [empleado]);
 
+    function validarFormulario(): string | null {
+        if (!form.nombre.trim()) return "El nombre es obligatorio.";
+        if (!form.rancho_id) return "Selecciona un rancho.";
+        if (!form.puesto_id) return "Selecciona un puesto.";
+        // El salario base es opcional: se puede dejar en 0 o vacío y definirse
+        // después, por semana, en Nómina semanal.
+        if (form.salario_diario.trim()) {
+            const salario = Number(form.salario_diario);
+            if (Number.isNaN(salario) || salario < 0) {
+                return "El salario diario no puede ser negativo.";
+            }
+        }
+        return null;
+    }
+
     async function guardar(e: React.FormEvent) {
         e.preventDefault();
-        setIsLoading(true);
+        setError(null);
 
+        const mensajeError = validarFormulario();
+        if (mensajeError) {
+            setError(mensajeError);
+            return;
+        }
+
+        setIsLoading(true);
         try {
-            await onGuardar(form);
+            // salario_diario es un DecimalField obligatorio en el backend (sin
+            // default): acepta 0, pero no una cadena vacía. Si se deja en
+            // blanco, se manda "0" explícito para que la API no lo rechace.
+            await onGuardar({
+                ...form,
+                salario_diario: form.salario_diario.trim() || "0",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -76,9 +105,13 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
 
     return (
         <form onSubmit={guardar}>
-            <div className="row g-3">
+            <div className="d-flex align-items-baseline justify-content-between">
+                <div className="form-section-label">Datos del empleado</div>
+                <p className="text-muted small mb-2">* Campos obligatorios</p>
+            </div>
+            <div className="row g-3 mb-4">
                 <div className="col-md-6 col-sm-12">
-                    <label className="form-label">Nombre</label>
+                    <label className="form-label">Nombre <span className="text-danger">*</span></label>
                     <input
                         ref={nombreInputRef}
                         className="form-control"
@@ -88,7 +121,7 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
                 </div>
 
                 <div className="col-md-3 col-sm-12">
-                    <label className="form-label">Rancho</label>
+                    <label className="form-label">Rancho <span className="text-danger">*</span></label>
                     <select
                         className="form-select"
                         value={form.rancho_id}
@@ -103,7 +136,7 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
                 </div>
 
                 <div className="col-md-3 col-sm-12">
-                    <label className="form-label">Puesto</label>
+                    <label className="form-label">Puesto <span className="text-danger">*</span></label>
                     <select
                         className="form-select"
                         value={form.puesto_id}
@@ -128,8 +161,11 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
                         onChange={(e) => setForm({ ...form, salario_diario: e.target.value })}
                     />
                 </div>
+            </div>
 
-                <div className="col-md-3 col-sm-12">
+            <div className="form-section-label">Datos bancarios</div>
+            <div className="row g-3 mb-4">
+                <div className="col-md-4 col-sm-12">
                     <label className="form-label">Número de cuenta</label>
                     <input
                         className="form-control"
@@ -138,7 +174,7 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
                     />
                 </div>
 
-                <div className="col-md-3 col-sm-12">
+                <div className="col-md-4 col-sm-12">
                     <label className="form-label">Banco</label>
                     <select
                         className="form-select"
@@ -162,21 +198,28 @@ function EmpleadoForm({ onGuardar, onCancelar, empleado, ranchos, puestos, banco
                         onChange={(e) => setForm({ ...form, nombre_cuenta: e.target.value })}
                     />
                 </div>
-
-                <div className="col-md-2 d-flex align-items-end">
-                    <div className="form-check mt-3">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={form.activo}
-                            onChange={(e) => setForm({ ...form, activo: e.target.checked })}
-                        />
-                        <label className="form-check-label">Activo</label>
-                    </div>
-                </div>
             </div>
-            <div className="row mt-4">
-                <div className="col-12 d-flex justify-content-between">
+
+            {error && (
+                <div className="alert alert-danger py-2 small mb-3" role="alert">
+                    <i className="bi bi-exclamation-circle-fill me-1"></i>
+                    {error}
+                </div>
+            )}
+
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-3 border-top">
+                <div className="form-check">
+                    <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="empleado-activo"
+                        checked={form.activo}
+                        onChange={(e) => setForm({ ...form, activo: e.target.checked })}
+                    />
+                    <label className="form-check-label" htmlFor="empleado-activo">Activo</label>
+                </div>
+
+                <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={onCancelar}>
                         Cancelar
                     </button>

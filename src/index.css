@@ -1,7 +1,10 @@
 /* Cifras (montos, folios) con ancho fijo por dígito para que columnas
-   de números alineen verticalmente, como en un libro de caja real. */
+   de números alineen verticalmente, como en un libro de caja real.
+   Usa la fuente de datos de marca (IBM Plex Mono, ver theme.scss)
+   en vez de depender de una característica OpenType del sans. */
 .font-tabular-nums {
     font-variant-numeric: tabular-nums;
+    font-family: var(--bs-font-monospace);
 }
 
 /* En monitores muy anchos, el área de contenido (dentro del sidebar) deja de
@@ -18,4 +21,16 @@
    se desborda de la tarjeta en vez de cortarse con "...". */
 .info-box-content {
     min-width: 0;
+}
+
+/* Etiqueta de sección dentro de un formulario (p. ej. "Datos bancarios"),
+   para agrupar campos relacionados en formularios largos dentro de modales
+   en vez de una sola cuadrícula plana sin ninguna división. */
+.form-section-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--bs-secondary-color);
+    margin-bottom: .75rem;
 }

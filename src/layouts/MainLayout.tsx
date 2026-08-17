@@ -12,7 +12,8 @@ function MainLayout() {
         document.body.classList.add(
             "layout-fixed",
             "sidebar-expand-lg",
-            "bg-body-tertiary"
+            "bg-body-tertiary",
+            "nav-indent"
         );
         const resize = () => {
             if (window.innerWidth >= 992) {
@@ -25,7 +26,8 @@ function MainLayout() {
             document.body.classList.remove(
                 "layout-fixed",
                 "sidebar-expand-lg",
-                "bg-body-tertiary"
+                "bg-body-tertiary",
+                "nav-indent"
             );
             window.removeEventListener("resize", resize);
         };

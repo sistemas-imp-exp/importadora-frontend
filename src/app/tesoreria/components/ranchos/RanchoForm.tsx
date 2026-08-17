@@ -10,6 +10,7 @@ interface RanchoFormProps {
 
 function RanchoForm({ onGuardar, onCancelar, rancho }: RanchoFormProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [form, setForm] = useState({
         id: 0,
@@ -38,10 +39,22 @@ function RanchoForm({ onGuardar, onCancelar, rancho }: RanchoFormProps) {
         }
     }, [rancho]);
 
+    function validarFormulario(): string | null {
+        if (!form.nombre.trim()) return "El nombre es obligatorio.";
+        return null;
+    }
+
     async function guardar(e: React.FormEvent) {
         e.preventDefault();
-        setIsLoading(true);
+        setError(null);
 
+        const mensajeError = validarFormulario();
+        if (mensajeError) {
+            setError(mensajeError);
+            return;
+        }
+
+        setIsLoading(true);
         try {
             await onGuardar(form);
             setForm({ id: 0, nombre: "", activo: true });
@@ -52,9 +65,9 @@ function RanchoForm({ onGuardar, onCancelar, rancho }: RanchoFormProps) {
 
     return (
         <form onSubmit={guardar}>
-            <div className="row">
-                <div className="col-md-8 col-sm-12">
-                    <label className="form-label">Nombre</label>
+            <div className="row g-3">
+                <div className="col-12">
+                    <label className="form-label">Nombre <span className="text-danger">*</span></label>
                     <input
                         ref={nombreInputRef}
                         className="form-control"
@@ -62,21 +75,28 @@ function RanchoForm({ onGuardar, onCancelar, rancho }: RanchoFormProps) {
                         onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                     />
                 </div>
-
-                <div className="col-md-4 d-flex align-items-end">
-                    <div className="form-check mt-3">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={form.activo}
-                            onChange={(e) => setForm({ ...form, activo: e.target.checked })}
-                        />
-                        <label className="form-check-label">Activo</label>
-                    </div>
-                </div>
             </div>
-            <div className="row mt-4">
-                <div className="col-12 d-flex justify-content-between">
+
+            {error && (
+                <div className="alert alert-danger py-2 small mt-3 mb-0" role="alert">
+                    <i className="bi bi-exclamation-circle-fill me-1"></i>
+                    {error}
+                </div>
+            )}
+
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-3 mt-4 border-top">
+                <div className="form-check">
+                    <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="rancho-activo"
+                        checked={form.activo}
+                        onChange={(e) => setForm({ ...form, activo: e.target.checked })}
+                    />
+                    <label className="form-check-label" htmlFor="rancho-activo">Activo</label>
+                </div>
+
+                <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={onCancelar}>
                         Cancelar
                     </button>
