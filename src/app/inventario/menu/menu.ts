@@ -14,6 +14,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                         label: "Empresas",
                         to: "/inventario/empresas",
                         icon: "bi bi-building"
+                    },
+                    {
+                        label: "Cámaras",
+                        to: "/inventario/camaras",
+                        icon: "bi bi-snow2"
                     }
                 ]
             }
