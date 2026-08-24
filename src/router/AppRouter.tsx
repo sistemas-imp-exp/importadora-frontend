@@ -8,6 +8,7 @@ import { dashboardRoutes } from "../app/dashboard/routes";
 import { tesoreriaRoutes } from "../app/tesoreria/routes";
 import { perfilRoutes } from "../app/perfil/routes";
 import { usuariosRoutes } from "../app/usuarios/routes";
+import { inventarioRoutes } from "../app/inventario/routes";
 
 import PrivateRoute from "./PrivateRoute";
 
@@ -28,6 +29,9 @@ function AppRouter() {
                         </Route>
                         <Route element={<PrivateRoute area="ADMIN" />}>
                             {usuariosRoutes}
+                        </Route>
+                        <Route element={<PrivateRoute area="INV" />}>
+                            {inventarioRoutes}
                         </Route>
                     </Route>
                 </Route>
