@@ -29,6 +29,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                         label: "Clientes",
                         to: "/inventario/clientes",
                         icon: "bi bi-people"
+                    },
+                    {
+                        label: "Productos",
+                        to: "/inventario/productos",
+                        icon: "bi bi-box"
                     }
                 ]
             }
