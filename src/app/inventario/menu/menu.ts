@@ -36,6 +36,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                         icon: "bi bi-box"
                     }
                 ]
+            },
+            {
+                label: "Entradas",
+                to: "/inventario/entradas",
+                icon: "bi bi-box-arrow-in-down"
             }
         ]
     }
