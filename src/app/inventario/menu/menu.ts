@@ -41,6 +41,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                 label: "Entradas",
                 to: "/inventario/entradas",
                 icon: "bi bi-box-arrow-in-down"
+            },
+            {
+                label: "Salidas",
+                to: "/inventario/salidas",
+                icon: "bi bi-box-arrow-up"
             }
         ]
     }
