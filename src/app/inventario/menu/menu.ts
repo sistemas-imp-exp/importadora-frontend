@@ -9,7 +9,13 @@ export const inventarioMenu: SidebarMenuItem[] = [
             {
                 label: "Catálogos",
                 icon: "bi bi-collection",
-                children: []
+                children: [
+                    {
+                        label: "Empresas",
+                        to: "/inventario/empresas",
+                        icon: "bi bi-building"
+                    }
+                ]
             }
         ]
     }
