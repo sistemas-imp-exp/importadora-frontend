@@ -2,15 +2,28 @@ import type { SidebarMenuItem } from "../../../shared/interfaces/SidebarMenu";
 
 export const usuariosMenu: SidebarMenuItem[] = [
     {
-        label: "Usuarios",
-        icon: "bi bi-person-gear",
-        to: "/usuarios",
+        label: "Administrador",
+        icon: "bi bi-power",
         area: "ADMIN",
-    },
-    {
-        label: "Roles",
-        icon: "bi bi-shield-check",
-        to: "/usuarios/roles",
-        area: "ADMIN",
+        children: [
+            {
+                label: "Admin backend",
+                icon: "bi bi-server",
+                to: "/admin/",
+                area: "ADMIN",
+            },
+            {
+                label: "Usuarios",
+                icon: "bi bi-person-gear",
+                to: "/usuarios",
+                area: "ADMIN",
+            },
+            {
+                label: "Roles",
+                icon: "bi bi-shield-check",
+                to: "/usuarios/roles",
+                area: "ADMIN",
+            },
+        ]
     },
 ];

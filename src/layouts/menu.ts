@@ -3,7 +3,7 @@ import { usuariosMenu } from "../app/usuarios/menu/menu";
 import { inventarioMenu } from "../app/inventario/menu/menu";
 
 export const sidebarMenu = [
-    ...tesoreriaMenu,
     ...usuariosMenu,
     ...inventarioMenu,
+    ...tesoreriaMenu,
 ];

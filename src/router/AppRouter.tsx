@@ -27,11 +27,11 @@ function AppRouter() {
                         <Route element={<PrivateRoute area="TES" />}>
                             {tesoreriaRoutes}
                         </Route>
-                        <Route element={<PrivateRoute area="ADMIN" />}>
-                            {usuariosRoutes}
-                        </Route>
                         <Route element={<PrivateRoute area="INV" />}>
                             {inventarioRoutes}
+                        </Route>
+                        <Route element={<PrivateRoute area="ADMIN" />}>
+                            {usuariosRoutes}
                         </Route>
                     </Route>
                 </Route>

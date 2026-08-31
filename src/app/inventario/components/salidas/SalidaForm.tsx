@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
-import type { CrearSalidaLineaRequest, CrearSalidaRequest } from "../../interfaces/salidas/Salida";
+import SearchableSelect from "../../../../shared/components/SearchableSelect";
+import type { CrearSalidaLineaRequest, CrearSalidaRequest, SalidaApi } from "../../interfaces/salidas/Salida";
 import type { EntradaApi } from "../../interfaces/entradas/Entrada";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
 import type { Camara } from "../../interfaces/camaras/Camara";
@@ -10,7 +11,10 @@ interface LoteDisponible {
     entradaDetalleId: number;
     producto: Producto;
     loteProveedor: string;
-    cajasOriginales: number;
+    cajasDisponibles: number;
+    precioVentaPlaneado: string | null;
+    proveedorNombre: string;
+    factura: string;
 }
 
 interface SalidaFormProps {
@@ -18,28 +22,29 @@ interface SalidaFormProps {
     camaras: Camara[];
     productos: Producto[];
     entradas: EntradaApi[];
+    salida?: SalidaApi | null;
     onGuardar: (salida: CrearSalidaRequest) => Promise<void>;
+    onCancelar?: () => void;
 }
 
 interface LineaForm {
+    id?: number;
     entrada_detalle: number | "";
     producto_id: number;
     camara: number | "";
     cajas: string;
     total_kilos: string;
-    factura_proveedor: string;
     precio_x_kilo: string;
     total_venta: string;
 }
 
-function lineaVacia(productos: Producto[]): LineaForm {
+function lineaVacia(): LineaForm {
     return {
         entrada_detalle: "",
-        producto_id: productos[0]?.id ?? 0,
+        producto_id: 0,
         camara: "",
         cajas: "",
         total_kilos: "",
-        factura_proveedor: "",
         precio_x_kilo: "",
         total_venta: "",
     };
@@ -49,20 +54,67 @@ function cabeceraVacia() {
     return { folio_de_salida: "", cliente_id: 0, fecha: "", notas: "" };
 }
 
-function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: SalidaFormProps) {
+function lineasDesdeSalida(salida: SalidaApi): LineaForm[] {
+    return salida.detalles.map((d) => ({
+        id: d.id,
+        entrada_detalle: d.entrada_detalle,
+        producto_id: d.producto.id,
+        camara: d.camara ?? "",
+        cajas: String(d.cajas),
+        total_kilos: d.total_kilos,
+        precio_x_kilo: d.precio_x_kilo ?? "",
+        total_venta: d.total_venta ?? "",
+    }));
+}
+
+function SalidaForm({ clientes, camaras, productos, entradas, salida, onGuardar, onCancelar }: SalidaFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [cabecera, setCabecera] = useState(cabeceraVacia());
-    const [lineas, setLineas] = useState<LineaForm[]>([lineaVacia(productos)]);
+    const [lineas, setLineas] = useState<LineaForm[]>([lineaVacia()]);
 
-    const lotesDisponibles: LoteDisponible[] = entradas.flatMap((entrada) =>
-        entrada.detalles.map((detalle) => ({
-            entradaDetalleId: detalle.id,
-            producto: detalle.producto,
-            loteProveedor: detalle.lote_proveedor,
-            cajasOriginales: detalle.cajas,
-        }))
-    );
+    useEffect(() => {
+        if (salida) {
+            setCabecera({
+                folio_de_salida: salida.folio_de_salida,
+                cliente_id: salida.cliente?.id ?? 0,
+                fecha: salida.fecha,
+                notas: salida.notas,
+            });
+            setLineas(lineasDesdeSalida(salida));
+        } else {
+            setCabecera(cabeceraVacia());
+            setLineas([lineaVacia()]);
+        }
+        setError(null);
+    }, [salida]);
+
+    // Al editar, esta misma salida ya tenía reservadas ciertas cajas de sus lotes —
+    // se le suman de vuelta a lo "disponible" que se muestra, igual que el backend
+    // hace en su validate(), porque al guardar se van a reemplazar, no a sumar encima.
+    const yaReservadoPorEstaSalida: Record<number, number> = {};
+    if (salida) {
+        for (const d of salida.detalles) {
+            yaReservadoPorEstaSalida[d.entrada_detalle] = (yaReservadoPorEstaSalida[d.entrada_detalle] ?? 0) + d.cajas;
+        }
+    }
+
+    const lotesDisponibles: LoteDisponible[] = entradas
+        .flatMap((entrada) =>
+            entrada.detalles.map((detalle) => ({
+                entradaDetalleId: detalle.id,
+                producto: detalle.producto,
+                loteProveedor: detalle.lote_proveedor,
+                cajasDisponibles: detalle.cajas_disponibles + (yaReservadoPorEstaSalida[detalle.id] ?? 0),
+                precioVentaPlaneado: detalle.precio_venta_planeado,
+                proveedorNombre: entrada.proveedor?.nombre ?? "—",
+                factura: entrada.factura || "—",
+            }))
+        )
+        .filter((lote) => lote.cajasDisponibles > 0);
+
+    const loteDeLinea = (index: number) =>
+        lotesDisponibles.find((l) => l.entradaDetalleId === lineas[index].entrada_detalle) ?? null;
 
     function nombreCamara(id: number | ""): string {
         if (id === "") return "";
@@ -70,11 +122,24 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
     }
 
     function actualizarLinea(index: number, cambios: Partial<LineaForm>) {
-        setLineas((actual) => actual.map((linea, i) => (i === index ? { ...linea, ...cambios } : linea)));
+        setLineas((actual) =>
+            actual.map((linea, i) => {
+                if (i !== index) return linea;
+                const nueva = { ...linea, ...cambios };
+                if ("total_kilos" in cambios || "precio_x_kilo" in cambios) {
+                    const kilos = Number(nueva.total_kilos);
+                    const precio = Number(nueva.precio_x_kilo);
+                    if (kilos > 0 && precio > 0) {
+                        nueva.total_venta = (kilos * precio).toFixed(2);
+                    }
+                }
+                return nueva;
+            })
+        );
     }
 
     function agregarLinea() {
-        setLineas((actual) => [...actual, lineaVacia(productos)]);
+        setLineas((actual) => [...actual, lineaVacia()]);
     }
 
     function quitarLinea(index: number) {
@@ -111,12 +176,12 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
             fecha: cabecera.fecha,
             notas: cabecera.notas.trim(),
             detalles: lineas.map((linea): CrearSalidaLineaRequest => ({
+                ...(linea.id ? { id: linea.id } : {}),
                 producto_id: linea.producto_id,
                 entrada_detalle: Number(linea.entrada_detalle),
                 camara: linea.camara === "" ? null : Number(linea.camara),
                 cajas: Number(linea.cajas),
                 total_kilos: Number(linea.total_kilos),
-                factura_proveedor: linea.factura_proveedor.trim(),
                 precio_x_kilo: linea.precio_x_kilo === "" ? null : Number(linea.precio_x_kilo),
                 total_venta: linea.total_venta === "" ? null : Number(linea.total_venta),
             })),
@@ -125,8 +190,10 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
         setIsLoading(true);
         try {
             await onGuardar(payload);
-            setCabecera(cabeceraVacia());
-            setLineas([lineaVacia(productos)]);
+            if (!salida) {
+                setCabecera(cabeceraVacia());
+                setLineas([lineaVacia()]);
+            }
         } catch {
             // El error ya se muestra vía toast en la vista; el formulario conserva los datos para corregir.
         } finally {
@@ -135,15 +202,22 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
     }
 
     return (
-        <div className="card card-outline card-primary mb-3">
-            <div className="card-header">
-                <h3 className="card-title fs-6 fw-bold m-0">Registrar salida</h3>
+        <div className={`card card-outline mb-3 ${salida ? "card-warning" : "card-primary"}`}>
+            <div className="card-header d-flex justify-content-between align-items-center">
+                <h3 className="card-title fs-6 fw-bold m-0">
+                    {salida ? `Editando salida ${salida.folio_de_salida}` : "Registrar salida"}
+                </h3>
+                {salida && onCancelar && (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={onCancelar}>
+                        Cancelar edición
+                    </button>
+                )}
             </div>
 
             <form onSubmit={guardar}>
                 <div className="card-body">
                     <div className="row g-2 mb-3">
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Folio de salida <span className="text-danger">*</span></label>
                             <input
                                 className="form-control form-control-sm"
@@ -151,7 +225,7 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                 onChange={(e) => setCabecera({ ...cabecera, folio_de_salida: e.target.value })}
                             />
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Cliente <span className="text-danger">*</span></label>
                             <select
                                 className="form-select form-select-sm"
@@ -164,7 +238,7 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Fecha <span className="text-danger">*</span></label>
                             <input
                                 type="date"
@@ -173,7 +247,7 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                 onChange={(e) => setCabecera({ ...cabecera, fecha: e.target.value })}
                             />
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Notas (folio interno)</label>
                             <input
                                 className="form-control form-control-sm"
@@ -189,10 +263,11 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                 <tr>
                                     <th>Lote de origen</th>
                                     <th>Producto</th>
+                                    <th>Proveedor</th>
+                                    <th>Factura</th>
                                     <th>Cámara</th>
                                     <th>Cajas</th>
                                     <th>Total kilos</th>
-                                    <th>Factura proveedor</th>
                                     <th>Precio/kg</th>
                                     <th>Total venta</th>
                                     <th></th>
@@ -202,31 +277,33 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                 {lineas.map((linea, index) => (
                                     <tr key={index}>
                                         <td style={{ minWidth: "220px" }}>
-                                            <select
-                                                className="form-select form-select-sm"
+                                            <SearchableSelect
+                                                placeholder="Buscar lote..."
+                                                options={lotesDisponibles.map((lote) => ({
+                                                    value: lote.entradaDetalleId,
+                                                    label: `${lote.producto.talla} ${lote.producto.tipo} — lote ${lote.loteProveedor} (${lote.cajasDisponibles} cajas disponibles)`,
+                                                }))}
                                                 value={linea.entrada_detalle}
-                                                onChange={(e) => {
-                                                    const id = e.target.value === "" ? "" : Number(e.target.value);
+                                                onChange={(id) => {
                                                     const lote = lotesDisponibles.find((l) => l.entradaDetalleId === id);
                                                     actualizarLinea(index, {
                                                         entrada_detalle: id,
                                                         producto_id: lote ? lote.producto.id : linea.producto_id,
+                                                        precio_x_kilo:
+                                                            lote?.precioVentaPlaneado && !linea.precio_x_kilo
+                                                                ? lote.precioVentaPlaneado
+                                                                : linea.precio_x_kilo,
                                                     });
                                                 }}
-                                            >
-                                                <option value="">Selecciona un lote...</option>
-                                                {lotesDisponibles.map((lote) => (
-                                                    <option key={lote.entradaDetalleId} value={lote.entradaDetalleId}>
-                                                        {lote.producto.talla} {lote.producto.tipo} — lote {lote.loteProveedor} ({lote.cajasOriginales} cajas originales)
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                         </td>
                                         <td className="text-wrap small">
                                             {productos.find((p) => p.id === linea.producto_id)
                                                 ? `${productos.find((p) => p.id === linea.producto_id)!.talla} ${productos.find((p) => p.id === linea.producto_id)!.tipo}`
                                                 : "—"}
                                         </td>
+                                        <td className="text-wrap small">{loteDeLinea(index)?.proveedorNombre ?? "—"}</td>
+                                        <td className="text-wrap small">{loteDeLinea(index)?.factura ?? "—"}</td>
                                         <td style={{ minWidth: "150px" }}>
                                             <select
                                                 className="form-select form-select-sm"
@@ -252,13 +329,6 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                                                 type="number" min="0" step="0.01" className="form-control form-control-sm"
                                                 value={linea.total_kilos}
                                                 onChange={(e) => actualizarLinea(index, { total_kilos: e.target.value })}
-                                            />
-                                        </td>
-                                        <td style={{ minWidth: "120px" }}>
-                                            <input
-                                                className="form-control form-control-sm"
-                                                value={linea.factura_proveedor}
-                                                onChange={(e) => actualizarLinea(index, { factura_proveedor: e.target.value })}
                                             />
                                         </td>
                                         <td style={{ width: "100px" }}>
@@ -308,7 +378,7 @@ function SalidaForm({ clientes, camaras, productos, entradas, onGuardar }: Salid
                         <LoadingButton isLoading={isLoading} text="Guardando..." onClick={() => Promise.resolve()} />
                     ) : (
                         <button type="submit" className="btn btn-primary">
-                            <i className="bi bi-save me-1"></i> Registrar salida
+                            <i className="bi bi-save me-1"></i> {salida ? "Guardar cambios" : "Registrar salida"}
                         </button>
                     )}
                 </div>

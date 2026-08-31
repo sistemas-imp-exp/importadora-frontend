@@ -12,3 +12,12 @@ export async function crearEntrada(entrada: CrearEntradaRequest): Promise<Entrad
     const { data } = await api.post<EntradaApi>(URL, entrada);
     return data;
 }
+
+export async function actualizarEntrada(id: number, entrada: CrearEntradaRequest): Promise<EntradaApi> {
+    const { data } = await api.put<EntradaApi>(`${URL}${id}/`, entrada);
+    return data;
+}
+
+export async function eliminarEntrada(id: number): Promise<void> {
+    await api.delete(`${URL}${id}/`);
+}

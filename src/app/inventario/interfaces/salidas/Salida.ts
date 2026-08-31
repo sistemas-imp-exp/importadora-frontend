@@ -16,19 +16,25 @@ export interface SalidaDetalleApi {
 export interface SalidaApi {
     id: number;
     folio_de_salida: string;
-    cliente: Cliente;
+    // null cuando la salida es la mitad "salida" de un Movimiento entre cámaras,
+    // no una venta real — ver MovimientoCamaraCrearSerializer en el backend.
+    cliente: Cliente | null;
     fecha: string;
     notas: string;
     detalles: SalidaDetalleApi[];
 }
 
 export interface CrearSalidaLineaRequest {
+    // Presente solo al editar: identifica la línea existente a actualizar.
+    // Ausente = línea nueva.
+    id?: number;
     producto_id: number;
     entrada_detalle: number;
     camara: number | null;
     cajas: number;
     total_kilos: number;
-    factura_proveedor: string;
+    // factura_proveedor NO se envía: el backend la calcula heredándola del
+    // ENTRADA_DETALLE de origen (SalidaSerializer._factura_del_lote).
     precio_x_kilo: number | null;
     total_venta: number | null;
 }

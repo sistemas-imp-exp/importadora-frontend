@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
-import type { CrearEntradaLineaRequest, CrearEntradaRequest } from "../../interfaces/entradas/Entrada";
+import SearchableSelect from "../../../../shared/components/SearchableSelect";
+import type { CrearEntradaLineaRequest, CrearEntradaRequest, EntradaApi } from "../../interfaces/entradas/Entrada";
 import type { Proveedor } from "../../interfaces/proveedores/Proveedor";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Producto } from "../../interfaces/productos/Producto";
@@ -9,10 +10,13 @@ interface EntradaFormProps {
     proveedores: Proveedor[];
     camaras: Camara[];
     productos: Producto[];
+    entrada?: EntradaApi | null;
     onGuardar: (entrada: CrearEntradaRequest) => Promise<void>;
+    onCancelar?: () => void;
 }
 
 interface LineaForm {
+    id?: number;
     producto_id: number;
     lote_proveedor: string;
     camara: number | "";
@@ -24,9 +28,9 @@ interface LineaForm {
     observaciones: string;
 }
 
-function lineaVacia(productos: Producto[]): LineaForm {
+function lineaVacia(): LineaForm {
     return {
-        producto_id: productos[0]?.id ?? 0,
+        producto_id: 0,
         lote_proveedor: "",
         camara: "",
         cajas: "",
@@ -39,21 +43,66 @@ function lineaVacia(productos: Producto[]): LineaForm {
 }
 
 function cabeceraVacia() {
-    return { fecha: "", proveedor_id: 0, factura: "", pedimento: "" };
+    return { fecha: "", proveedor_id: 0, factura: "", pedimento: "", recibo_ingreso: "" };
 }
 
-function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaFormProps) {
+function lineasDesdeEntrada(entrada: EntradaApi): LineaForm[] {
+    return entrada.detalles.map((d) => ({
+        id: d.id,
+        producto_id: d.producto.id,
+        lote_proveedor: d.lote_proveedor,
+        camara: d.camara ?? "",
+        cajas: String(d.cajas),
+        peso_por_caja: d.peso_por_caja ?? "",
+        total_kilos: d.total_kilos,
+        costo_por_kilo: d.costo_por_kilo ?? "",
+        precio_venta_planeado: d.precio_venta_planeado ?? "",
+        observaciones: d.observaciones,
+    }));
+}
+
+function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCancelar }: EntradaFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [cabecera, setCabecera] = useState(cabeceraVacia());
-    const [lineas, setLineas] = useState<LineaForm[]>([lineaVacia(productos)]);
+    const [lineas, setLineas] = useState<LineaForm[]>([lineaVacia()]);
+
+    useEffect(() => {
+        if (entrada) {
+            setCabecera({
+                fecha: entrada.fecha,
+                proveedor_id: entrada.proveedor?.id ?? 0,
+                factura: entrada.factura,
+                pedimento: entrada.pedimento,
+                recibo_ingreso: entrada.recibo_ingreso,
+            });
+            setLineas(lineasDesdeEntrada(entrada));
+        } else {
+            setCabecera(cabeceraVacia());
+            setLineas([lineaVacia()]);
+        }
+        setError(null);
+    }, [entrada]);
 
     function actualizarLinea(index: number, cambios: Partial<LineaForm>) {
-        setLineas((actual) => actual.map((linea, i) => (i === index ? { ...linea, ...cambios } : linea)));
+        setLineas((actual) =>
+            actual.map((linea, i) => {
+                if (i !== index) return linea;
+                const nueva = { ...linea, ...cambios };
+                if ("cajas" in cambios || "peso_por_caja" in cambios) {
+                    const cajas = Number(nueva.cajas);
+                    const peso = Number(nueva.peso_por_caja);
+                    if (cajas > 0 && peso > 0) {
+                        nueva.total_kilos = (cajas * peso).toFixed(2);
+                    }
+                }
+                return nueva;
+            })
+        );
     }
 
     function agregarLinea() {
-        setLineas((actual) => [...actual, lineaVacia(productos)]);
+        setLineas((actual) => [...actual, lineaVacia()]);
     }
 
     function quitarLinea(index: number) {
@@ -89,7 +138,9 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
             proveedor_id: cabecera.proveedor_id,
             factura: cabecera.factura.trim(),
             pedimento: cabecera.pedimento.trim(),
+            recibo_ingreso: cabecera.recibo_ingreso.trim(),
             detalles: lineas.map((linea): CrearEntradaLineaRequest => ({
+                ...(linea.id ? { id: linea.id } : {}),
                 producto_id: linea.producto_id,
                 lote_proveedor: linea.lote_proveedor.trim(),
                 camara: linea.camara === "" ? null : Number(linea.camara),
@@ -105,8 +156,10 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
         setIsLoading(true);
         try {
             await onGuardar(payload);
-            setCabecera(cabeceraVacia());
-            setLineas([lineaVacia(productos)]);
+            if (!entrada) {
+                setCabecera(cabeceraVacia());
+                setLineas([lineaVacia()]);
+            }
         } catch {
             // El error ya se muestra vía toast en la vista; el formulario conserva los datos para corregir.
         } finally {
@@ -115,15 +168,22 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
     }
 
     return (
-        <div className="card card-outline card-primary mb-3">
-            <div className="card-header">
-                <h3 className="card-title fs-6 fw-bold m-0">Registrar entrada</h3>
+        <div className={`card card-outline mb-3 ${entrada ? "card-warning" : "card-primary"}`}>
+            <div className="card-header d-flex justify-content-between align-items-center">
+                <h3 className="card-title fs-6 fw-bold m-0">
+                    {entrada ? `Editando entrada #${entrada.id}` : "Registrar entrada"}
+                </h3>
+                {entrada && onCancelar && (
+                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={onCancelar}>
+                        Cancelar edición
+                    </button>
+                )}
             </div>
 
             <form onSubmit={guardar}>
                 <div className="card-body">
                     <div className="row g-2 mb-3">
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Fecha <span className="text-danger">*</span></label>
                             <input
                                 type="date"
@@ -132,7 +192,7 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                 onChange={(e) => setCabecera({ ...cabecera, fecha: e.target.value })}
                             />
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Proveedor <span className="text-danger">*</span></label>
                             <select
                                 className="form-select form-select-sm"
@@ -145,7 +205,7 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                 ))}
                             </select>
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Factura</label>
                             <input
                                 className="form-control form-control-sm"
@@ -153,13 +213,25 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                 onChange={(e) => setCabecera({ ...cabecera, factura: e.target.value })}
                             />
                         </div>
-                        <div className="col-md-3 col-sm-6">
+                        <div className="col-12 col-sm-6 col-md-3">
                             <label className="form-label small fw-bold">Pedimento</label>
                             <input
                                 className="form-control form-control-sm"
                                 value={cabecera.pedimento}
                                 onChange={(e) => setCabecera({ ...cabecera, pedimento: e.target.value })}
                             />
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                            <label className="form-label small fw-bold">Recibo de ingreso</label>
+                            <input
+                                className="form-control form-control-sm"
+                                placeholder="Ej. IMP1797 (opcional)"
+                                value={cabecera.recibo_ingreso}
+                                onChange={(e) => setCabecera({ ...cabecera, recibo_ingreso: e.target.value })}
+                            />
+                            <div className="form-text">
+                                Si lo llenas, agrupa las líneas que van a resguardo (mismas cámara). Las de venta directa no se ven afectadas.
+                            </div>
                         </div>
                     </div>
 
@@ -175,6 +247,7 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                     <th>Total kilos</th>
                                     <th>Costo/kg</th>
                                     <th>Precio venta planeado</th>
+                                    <th>Observaciones</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -182,16 +255,16 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                 {lineas.map((linea, index) => (
                                     <tr key={index}>
                                         <td style={{ minWidth: "160px" }}>
-                                            <select
-                                                className="form-select form-select-sm"
-                                                value={linea.producto_id}
-                                                onChange={(e) => actualizarLinea(index, { producto_id: Number(e.target.value) })}
-                                            >
-                                                <option value={0}>Selecciona...</option>
-                                                {productos.map((p) => (
-                                                    <option key={p.id} value={p.id} disabled={!p.activo}>{p.talla} {p.tipo}</option>
-                                                ))}
-                                            </select>
+                                            <SearchableSelect
+                                                placeholder="Buscar producto..."
+                                                options={productos.map((p) => ({
+                                                    value: p.id,
+                                                    label: `${p.talla} ${p.tipo}`,
+                                                    disabled: !p.activo,
+                                                }))}
+                                                value={linea.producto_id === 0 ? "" : linea.producto_id}
+                                                onChange={(v) => actualizarLinea(index, { producto_id: v === "" ? 0 : v })}
+                                            />
                                         </td>
                                         <td style={{ minWidth: "120px" }}>
                                             <input
@@ -247,6 +320,13 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                                                 onChange={(e) => actualizarLinea(index, { precio_venta_planeado: e.target.value })}
                                             />
                                         </td>
+                                        <td style={{ minWidth: "140px" }}>
+                                            <input
+                                                className="form-control form-control-sm"
+                                                value={linea.observaciones}
+                                                onChange={(e) => actualizarLinea(index, { observaciones: e.target.value })}
+                                            />
+                                        </td>
                                         <td>
                                             <button
                                                 type="button"
@@ -280,7 +360,7 @@ function EntradaForm({ proveedores, camaras, productos, onGuardar }: EntradaForm
                         <LoadingButton isLoading={isLoading} text="Guardando..." onClick={() => Promise.resolve()} />
                     ) : (
                         <button type="submit" className="btn btn-primary">
-                            <i className="bi bi-save me-1"></i> Registrar entrada
+                            <i className="bi bi-save me-1"></i> {entrada ? "Guardar cambios" : "Registrar entrada"}
                         </button>
                     )}
                 </div>

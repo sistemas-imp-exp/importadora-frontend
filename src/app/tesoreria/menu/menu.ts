@@ -14,7 +14,8 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
             {
                 label: "Divisas",
                 to: "/tesoreria/divisas",
-                icon: "bi bi-currency-exchange"
+                icon: "bi bi-currency-exchange",
+                catalogo: true
             },
             {
                 label: "Caja",
@@ -54,22 +55,26 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                             {
                                 label: "Ranchos",
                                 to: "/tesoreria/nomina/ranchos",
-                                icon: "bi bi-geo-alt"
+                                icon: "bi bi-geo-alt",
+                                catalogo: true
                             },
                             {
                                 label: "Puestos",
                                 to: "/tesoreria/nomina/puestos",
-                                icon: "bi bi-briefcase"
+                                icon: "bi bi-briefcase",
+                                catalogo: true
                             },
                             {
                                 label: "Bancos",
                                 to: "/tesoreria/nomina/bancos",
-                                icon: "bi bi-bank2"
+                                icon: "bi bi-bank2",
+                                catalogo: true
                             },
                             {
                                 label: "Empleados",
                                 to: "/tesoreria/nomina/empleados",
-                                icon: "bi bi-person-badge"
+                                icon: "bi bi-person-badge",
+                                catalogo: true
                             }
                         ]
                     },

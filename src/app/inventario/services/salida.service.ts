@@ -12,3 +12,12 @@ export async function crearSalida(salida: CrearSalidaRequest): Promise<SalidaApi
     const { data } = await api.post<SalidaApi>(URL, salida);
     return data;
 }
+
+export async function actualizarSalida(id: number, salida: CrearSalidaRequest): Promise<SalidaApi> {
+    const { data } = await api.put<SalidaApi>(`${URL}${id}/`, salida);
+    return data;
+}
+
+export async function eliminarSalida(id: number): Promise<void> {
+    await api.delete(`${URL}${id}/`);
+}
