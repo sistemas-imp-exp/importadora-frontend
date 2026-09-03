@@ -32,7 +32,7 @@ function EmpresaForm({ onGuardar, onCancelar, empresa }: EmpresaFormProps) {
 
         setIsLoading(true);
         try {
-            await onGuardar(form);
+            await onGuardar({ ...form, nombre: form.nombre.trim().toUpperCase() });
             setForm({ id: 0, nombre: "" });
         } finally {
             setIsLoading(false);

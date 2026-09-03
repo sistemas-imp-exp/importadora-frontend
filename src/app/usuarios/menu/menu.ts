@@ -24,6 +24,12 @@ export const usuariosMenu: SidebarMenuItem[] = [
                 to: "/usuarios/roles",
                 area: "ADMIN",
             },
+            {
+                label: "Auditoría de entradas",
+                icon: "bi bi-clock-history",
+                to: "/inventario/auditoria-entradas",
+                area: "ADMIN",
+            },
         ]
     },
 ];

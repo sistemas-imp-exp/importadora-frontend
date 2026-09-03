@@ -2,13 +2,12 @@ import { useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import type { CrearMovimientoCamaraRequest } from "../../interfaces/movimientos/MovimientoCamara";
-import type { EntradaApi } from "../../interfaces/entradas/Entrada";
+import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Camara } from "../../interfaces/camaras/Camara";
-import type { Producto } from "../../interfaces/productos/Producto";
 
 interface LoteDisponible {
     entradaDetalleId: number;
-    producto: Producto;
+    productoNombre: string;
     loteProveedor: string;
     camaraOrigen: number | null;
     pesoPorCaja: string | null;
@@ -17,7 +16,7 @@ interface LoteDisponible {
 
 interface MovimientoCamaraFormProps {
     camaras: Camara[];
-    entradas: EntradaApi[];
+    existencias: ExistenciaApi[];
     onGuardar: (movimiento: CrearMovimientoCamaraRequest) => Promise<void>;
 }
 
@@ -25,25 +24,25 @@ function formVacio() {
     return { entrada_detalle_origen: "" as number | "", camara_destino: "" as number | "", fecha: "", cajas: "", total_kilos: "" };
 }
 
-function MovimientoCamaraForm({ camaras, entradas, onGuardar }: MovimientoCamaraFormProps) {
+function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCamaraFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [form, setForm] = useState(formVacio());
 
     // Solo lotes que sí están en una cámara (una línea de "venta directa" no se puede
     // mover) y que todavía tienen cajas disponibles.
-    const lotesDisponibles: LoteDisponible[] = entradas
-        .flatMap((entrada) =>
-            entrada.detalles.map((detalle) => ({
-                entradaDetalleId: detalle.id,
-                producto: detalle.producto,
-                loteProveedor: detalle.lote_proveedor,
-                camaraOrigen: detalle.camara,
-                pesoPorCaja: detalle.peso_por_caja,
-                cajasDisponibles: detalle.cajas_disponibles,
-            }))
-        )
-        .filter((lote) => lote.camaraOrigen !== null && lote.cajasDisponibles > 0);
+    // La foto de existencias ya excluye los lotes agotados; aquí solo se descartan
+    // los de venta directa, que al no estar en una cámara no se pueden trasladar.
+    const lotesDisponibles: LoteDisponible[] = existencias
+        .map((item) => ({
+            entradaDetalleId: item.detalle_id,
+            productoNombre: `${item.talla} ${item.tipo}`,
+            loteProveedor: item.lote_proveedor,
+            camaraOrigen: item.camara_id,
+            pesoPorCaja: item.peso_por_caja,
+            cajasDisponibles: item.cajas_disponibles,
+        }))
+        .filter((lote) => lote.camaraOrigen !== null);
 
     const loteSeleccionado = lotesDisponibles.find((l) => l.entradaDetalleId === form.entrada_detalle_origen) ?? null;
 
@@ -119,7 +118,7 @@ function MovimientoCamaraForm({ camaras, entradas, onGuardar }: MovimientoCamara
                                 placeholder="Buscar lote..."
                                 options={lotesDisponibles.map((lote) => ({
                                     value: lote.entradaDetalleId,
-                                    label: `${lote.producto.talla} ${lote.producto.tipo} — lote ${lote.loteProveedor} (${lote.cajasDisponibles} cajas disponibles)`,
+                                    label: `${lote.productoNombre} — lote ${lote.loteProveedor} (${lote.cajasDisponibles} cajas disponibles)`,
                                 }))}
                                 value={form.entrada_detalle_origen}
                                 onChange={(v) => actualizar({ entrada_detalle_origen: v })}

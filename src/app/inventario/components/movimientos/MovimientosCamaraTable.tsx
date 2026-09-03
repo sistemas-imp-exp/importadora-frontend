@@ -1,24 +1,14 @@
 import type { MovimientoCamaraApi } from "../../interfaces/movimientos/MovimientoCamara";
-import type { EntradaApi } from "../../interfaces/entradas/Entrada";
 import type { Camara } from "../../interfaces/camaras/Camara";
 
 interface MovimientosCamaraTableProps {
     movimientos: MovimientoCamaraApi[];
-    entradas: EntradaApi[];
     camaras: Camara[];
 }
 
-function MovimientosCamaraTable({ movimientos, entradas, camaras }: MovimientosCamaraTableProps) {
+function MovimientosCamaraTable({ movimientos, camaras }: MovimientosCamaraTableProps) {
     function nombreCamara(id: number): string {
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
-    }
-
-    function loteOrigen(entradaDetalleId: number): string {
-        for (const entrada of entradas) {
-            const detalle = entrada.detalles.find((d) => d.id === entradaDetalleId);
-            if (detalle) return `${detalle.producto.talla} ${detalle.producto.tipo} — lote ${detalle.lote_proveedor}`;
-        }
-        return "—";
     }
 
     return (
@@ -44,7 +34,7 @@ function MovimientosCamaraTable({ movimientos, entradas, camaras }: MovimientosC
                         movimientos.map((movimiento) => (
                             <tr key={movimiento.id}>
                                 <td className="text-wrap">{movimiento.fecha}</td>
-                                <td className="text-wrap">{loteOrigen(movimiento.entrada_detalle_origen)}</td>
+                                <td className="text-wrap">{movimiento.lote_origen || "—"}</td>
                                 <td className="text-wrap">{nombreCamara(movimiento.camara_origen)}</td>
                                 <td className="text-wrap">{nombreCamara(movimiento.camara_destino)}</td>
                                 <td className="text-end">{movimiento.cajas}</td>

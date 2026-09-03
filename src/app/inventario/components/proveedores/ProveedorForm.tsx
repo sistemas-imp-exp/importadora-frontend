@@ -34,7 +34,7 @@ function ProveedorForm({ onGuardar, onCancelar, proveedor }: ProveedorFormProps)
 
         setIsLoading(true);
         try {
-            await onGuardar(form);
+            await onGuardar({ ...form, nombre: form.nombre.trim().toUpperCase() });
             setForm(VACIO);
         } finally {
             setIsLoading(false);

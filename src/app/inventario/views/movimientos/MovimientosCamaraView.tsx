@@ -2,10 +2,10 @@ import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
 import { crearMovimiento, obtenerMovimientos } from "../../services/movimientoCamara.service";
 import { obtenerCamaras } from "../../services/camara.service";
-import { obtenerEntradas } from "../../services/entrada.service";
+import { obtenerExistencias } from "../../services/existencia.service";
 import type { MovimientoCamaraApi, CrearMovimientoCamaraRequest } from "../../interfaces/movimientos/MovimientoCamara";
 import type { Camara } from "../../interfaces/camaras/Camara";
-import type { EntradaApi } from "../../interfaces/entradas/Entrada";
+import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import MovimientoCamaraForm from "../../components/movimientos/MovimientoCamaraForm";
 import MovimientosCamaraTable from "../../components/movimientos/MovimientosCamaraTable";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
@@ -15,7 +15,7 @@ import { useToastContext } from "../../../../shared/context/ToastProvider";
 function MovimientosCamaraView() {
     const [movimientos, setMovimientos] = useState<MovimientoCamaraApi[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
-    const [entradas, setEntradas] = useState<EntradaApi[]>([]);
+    const [existencias, setExistencias] = useState<ExistenciaApi[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -27,14 +27,14 @@ function MovimientosCamaraView() {
 
     async function cargar() {
         try {
-            const [datosMovimientos, datosCamaras, datosEntradas] = await Promise.all([
+            const [datosMovimientos, datosCamaras, datosExistencias] = await Promise.all([
                 obtenerMovimientos(),
                 obtenerCamaras(),
-                obtenerEntradas(),
+                obtenerExistencias(),
             ]);
             setMovimientos(datosMovimientos);
             setCamaras(datosCamaras);
-            setEntradas(datosEntradas);
+            setExistencias(datosExistencias);
             setError(null);
         } catch (error) {
             const mensaje = obtenerMensajeError(error);
@@ -75,14 +75,14 @@ function MovimientosCamaraView() {
                     <div className="alert alert-danger" role="alert">{error}</div>
                 ) : (
                     <>
-                        <MovimientoCamaraForm camaras={camaras} entradas={entradas} onGuardar={guardarMovimiento} />
+                        <MovimientoCamaraForm camaras={camaras} existencias={existencias} onGuardar={guardarMovimiento} />
 
                         <div className="card card-outline card-primary">
                             <div className="card-header">
                                 <h3 className="card-title mb-0">Movimientos registrados</h3>
                             </div>
                             <div className="card-body p-0">
-                                <MovimientosCamaraTable movimientos={movimientos} entradas={entradas} camaras={camaras} />
+                                <MovimientosCamaraTable movimientos={movimientos} camaras={camaras} />
                             </div>
                         </div>
                     </>

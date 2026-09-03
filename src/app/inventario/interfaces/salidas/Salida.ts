@@ -11,6 +11,11 @@ export interface SalidaDetalleApi {
     factura_proveedor: string;
     precio_x_kilo: string | null;
     total_venta: string | null;
+    notas: string;
+    // Datos del lote de origen que publica el backend en la propia línea: la
+    // tabla ya no tiene que buscarlos recorriendo todas las entradas.
+    lote_proveedor: string;
+    proveedor_nombre: string;
 }
 
 export interface SalidaApi {
@@ -30,13 +35,14 @@ export interface CrearSalidaLineaRequest {
     id?: number;
     producto_id: number;
     entrada_detalle: number;
-    camara: number | null;
     cajas: number;
     total_kilos: number;
-    // factura_proveedor NO se envía: el backend la calcula heredándola del
-    // ENTRADA_DETALLE de origen (SalidaSerializer._factura_del_lote).
+    // factura_proveedor y camara NO se envían: el backend los calcula heredándolos
+    // del ENTRADA_DETALLE de origen (SalidaSerializer._factura_del_lote). La cámara
+    // de una venta no es editable — solo cambia vía Movimientos entre cámaras.
     precio_x_kilo: number | null;
     total_venta: number | null;
+    notas: string;
 }
 
 export interface CrearSalidaRequest {

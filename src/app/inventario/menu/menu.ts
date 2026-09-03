@@ -48,6 +48,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                 icon: "bi bi-clipboard-data"
             },
             {
+                label: "Alertas de caducidad",
+                to: "/inventario/alertas-caducidad",
+                icon: "bi bi-exclamation-triangle"
+            },
+            {
                 label: "Entradas",
                 to: "/inventario/entradas",
                 icon: "bi bi-box-arrow-in-down"

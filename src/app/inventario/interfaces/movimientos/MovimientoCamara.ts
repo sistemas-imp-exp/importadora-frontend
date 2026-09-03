@@ -7,6 +7,8 @@ export interface MovimientoCamaraApi {
     camara_destino: number;
     fecha: string;
     cajas: number;
+    // Descripción del lote movido, ya resuelta por el backend.
+    lote_origen: string;
 }
 
 export interface CrearMovimientoCamaraRequest {

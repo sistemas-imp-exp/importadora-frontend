@@ -36,7 +36,7 @@ function CamaraForm({ onGuardar, onCancelar, camara, empresas }: CamaraFormProps
 
         setIsLoading(true);
         try {
-            await onGuardar(form);
+            await onGuardar({ ...form, nombre: form.nombre.trim().toUpperCase(), ubicacion: form.ubicacion.trim().toUpperCase() });
             setForm(VACIO);
         } finally {
             setIsLoading(false);

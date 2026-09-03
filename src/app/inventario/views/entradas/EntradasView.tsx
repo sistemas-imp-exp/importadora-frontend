@@ -12,6 +12,9 @@ import EntradaForm from "../../components/entradas/EntradaForm";
 import EntradasTable from "../../components/entradas/EntradasTable";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import ConfirmModal from "../../../../shared/components/ConfirmModal";
+import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
+import Paginacion from "../../../../shared/components/Paginacion";
+import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 
@@ -20,6 +23,10 @@ function EntradasView() {
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [productos, setProductos] = useState<Producto[]>([]);
+    const [total, setTotal] = useState(0);
+    const [busqueda, setBusqueda] = useState("");
+    const [pagina, setPagina] = useState(1);
+    const [porPagina, setPorPagina] = useState(25);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -29,22 +36,21 @@ function EntradasView() {
 
     const { mostrarToast } = useToastContext();
 
+    // El listado se pagina en el servidor; los catálogos se cargan una vez.
     useEffect(() => {
-        cargar();
+        const id = setTimeout(() => { cargarListado(); }, busqueda ? 300 : 0);
+        return () => clearTimeout(id);
+    }, [pagina, porPagina, busqueda]);
+
+    useEffect(() => {
+        cargarCatalogos();
     }, []);
 
-    async function cargar() {
+    async function cargarListado() {
         try {
-            const [datosEntradas, datosProveedores, datosCamaras, datosProductos] = await Promise.all([
-                obtenerEntradas(),
-                obtenerProveedores(),
-                obtenerCamaras(),
-                obtenerProductos(),
-            ]);
-            setEntradas(datosEntradas);
-            setProveedores(datosProveedores);
-            setCamaras(datosCamaras);
-            setProductos(datosProductos);
+            const datos = await obtenerEntradas({ pagina, porPagina, busqueda });
+            setEntradas(datos.results);
+            setTotal(datos.count);
             setError(null);
         } catch (error) {
             const mensaje = obtenerMensajeError(error);
@@ -53,6 +59,30 @@ function EntradasView() {
         } finally {
             setLoading(false);
         }
+    }
+
+    async function cargarCatalogos() {
+        try {
+            const [datosProveedores, datosCamaras, datosProductos] = await Promise.all([
+                obtenerProveedores(),
+                obtenerCamaras(),
+                obtenerProductos(),
+            ]);
+            setProveedores(datosProveedores);
+            setCamaras(datosCamaras);
+            setProductos(datosProductos);
+        } catch (error) {
+            mostrarToast("Error al cargar", obtenerMensajeError(error), "danger");
+        }
+    }
+
+    async function cargar() {
+        await cargarListado();
+    }
+
+    function buscar(texto: string) {
+        setBusqueda(texto);
+        setPagina(1);
     }
 
     async function guardarEntrada(entrada: CrearEntradaRequest) {
@@ -116,8 +146,14 @@ function EntradasView() {
                         />
 
                         <div className="card card-outline card-primary">
-                            <div className="card-header">
-                                <h3 className="card-title mb-0">Entradas registradas</h3>
+                            <div className="card-header d-flex flex-wrap gap-2 align-items-center">
+                                <h3 className="card-title mb-0 me-auto">Entradas registradas</h3>
+                                <BuscadorTabla
+                                    valor={busqueda}
+                                    onChange={buscar}
+                                    placeholder="Buscar por factura, pedimento, proveedor, recibo, lote..."
+                                />
+                                <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
                             </div>
                             <div className="card-body p-0">
                                 <EntradasTable
@@ -127,6 +163,19 @@ function EntradasView() {
                                     onEliminar={setEntradaEliminar}
                                 />
                             </div>
+
+                            {total > 0 && (
+                                <div className="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <small className="text-muted">
+                                        Mostrando {(pagina - 1) * porPagina + 1}-{Math.min(pagina * porPagina, total)} de {total}
+                                    </small>
+                                    <Paginacion
+                                        pagina={pagina}
+                                        totalPaginas={Math.max(1, Math.ceil(total / porPagina))}
+                                        onCambiar={setPagina}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </>
                 )}

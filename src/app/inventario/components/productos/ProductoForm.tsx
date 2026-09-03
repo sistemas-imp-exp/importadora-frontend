@@ -38,7 +38,12 @@ function ProductoForm({ onGuardar, onCancelar, producto }: ProductoFormProps) {
 
         setIsLoading(true);
         try {
-            await onGuardar(form);
+            await onGuardar({
+                ...form,
+                talla: form.talla.trim().toUpperCase(),
+                tipo: form.tipo.trim().toUpperCase(),
+                categoria: form.categoria.trim().toUpperCase(),
+            });
             setForm(VACIO);
         } finally {
             setIsLoading(false);
