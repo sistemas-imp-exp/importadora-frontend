@@ -1,7 +1,10 @@
 import axios from "axios";
 import { authStorage } from "../services/authStorage.service";
 
-const BASE_URL = "http://192.168.1.21:8000/api/";
+// Loopback por defecto: trabajando en la propia máquina el tráfico nunca sale
+// del equipo. Para probar desde otro dispositivo de la red, define VITE_API_URL
+// en un .env.local con la IP del servidor (ver .env.example).
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/";
 
 const api = axios.create({
     baseURL: BASE_URL,

@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Sin esto Vite solo escucha en localhost y el `dev` no es alcanzable desde
+  // otros equipos de la red (hoy había que acordarse de pasar --host).
+  server: {
+    host: true,
+  },
   css: {
     preprocessorOptions: {
       scss: {
