@@ -73,8 +73,12 @@ function AvatarUploader({ foto, inicial, onSubir, onEliminar }: AvatarUploaderPr
                         onClick={eliminarFoto}
                         disabled={eliminando}
                     >
-                        <i className="bi bi-trash me-1"></i>
-                        Quitar
+                        {eliminando ? (
+                            <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        ) : (
+                            <i className="bi bi-trash me-1"></i>
+                        )}
+                        {eliminando ? "Quitando..." : "Quitar"}
                     </button>
                 )}
             </div>

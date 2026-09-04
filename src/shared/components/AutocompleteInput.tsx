@@ -20,6 +20,7 @@ function AutocompleteInput({
     const [sugerencias, setSugerencias] = useState<string[]>([]);
     const [abierto, setAbierto] = useState(false);
     const [resaltado, setResaltado] = useState(-1);
+    const [cargando, setCargando] = useState(false);
     const contenedorRef = useRef<HTMLDivElement | null>(null);
     const idPeticion = useRef(0);
 
@@ -28,6 +29,7 @@ function AutocompleteInput({
 
         const espera = setTimeout(async () => {
             const idActual = ++idPeticion.current;
+            setCargando(true);
             try {
                 const resultado = await obtenerSugerencias(value);
                 if (idActual === idPeticion.current) {
@@ -36,6 +38,10 @@ function AutocompleteInput({
             } catch {
                 if (idActual === idPeticion.current) {
                     setSugerencias([]);
+                }
+            } finally {
+                if (idActual === idPeticion.current) {
+                    setCargando(false);
                 }
             }
         }, 250);
@@ -82,6 +88,7 @@ function AutocompleteInput({
             <input
                 id={id}
                 className={className}
+                style={cargando ? { paddingRight: "1.75rem" } : undefined}
                 placeholder={placeholder}
                 value={value}
                 autoComplete="off"
@@ -93,6 +100,13 @@ function AutocompleteInput({
                 onFocus={() => setAbierto(true)}
                 onKeyDown={manejarTeclado}
             />
+            {cargando && (
+                <span
+                    className="spinner-border spinner-border-sm text-secondary position-absolute top-50 end-0 translate-middle-y me-2"
+                    role="status"
+                    aria-hidden="true"
+                ></span>
+            )}
             {abierto && sugerencias.length > 0 && (
                 <ul
                     className="list-group position-absolute w-100 shadow-sm"

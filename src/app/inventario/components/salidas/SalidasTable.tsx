@@ -1,6 +1,7 @@
 import type { SalidaApi } from "../../interfaces/salidas/Salida";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface SalidasTableProps {
     salidas: SalidaApi[];
@@ -20,7 +21,7 @@ function SalidasTable({ salidas, camaras, onEditar, onEliminar }: SalidasTablePr
     const reales = salidas.filter((s) => s.cliente !== null);
 
     return (
-        <div className="table-responsive">
+        <TablaResponsive>
             <table className="table table-striped table-sm mb-0">
                 <thead>
                     <tr>
@@ -104,7 +105,7 @@ function SalidasTable({ salidas, camaras, onEditar, onEliminar }: SalidasTablePr
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

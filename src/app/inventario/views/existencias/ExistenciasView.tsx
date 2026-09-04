@@ -123,6 +123,15 @@ function ExistenciasView() {
 
                     {!colapsado && (
                         <>
+                            {listo && filtradas.length > 0 && (
+                                <div className="card-footer border-top-0 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <small className="text-muted">
+                                        Mostrando {inicio + 1}-{Math.min(fin, filtradas.length)} de {filtradas.length}
+                                    </small>
+                                    <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiar={setPagina} />
+                                </div>
+                            )}
+
                             <div className="card-body p-0">
                                 {error ? (
                                     <div className="alert alert-danger m-3" role="alert">{error}</div>

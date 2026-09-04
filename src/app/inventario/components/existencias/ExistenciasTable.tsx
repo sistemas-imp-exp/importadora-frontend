@@ -1,6 +1,7 @@
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import { CLASE_FILA_NIVEL, ETIQUETA_NIVEL } from "../../utils/caducidad";
 import { formatearDinero, type FilaExistencia, type TotalesExistencias } from "../../utils/existencias";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface ExistenciasTableProps {
     filas: FilaExistencia[];
@@ -10,8 +11,8 @@ interface ExistenciasTableProps {
 
 function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps) {
     return (
-        <div className="table-responsive">
-            <table className="table table-striped table-sm mb-0">
+        <TablaResponsive>
+            <table className="table table-striped table-bordered table-sm mb-0">
                 <thead>
                     <tr>
                         <th className="text-wrap">Fecha</th>
@@ -87,7 +88,7 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                     </tfoot>
                 )}
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

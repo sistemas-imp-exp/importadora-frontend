@@ -2,6 +2,7 @@ import type { EntradaApi } from "../../interfaces/entradas/Entrada";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import { clasificarNivelCaducidad, diasRestantesHasta, CLASE_FILA_NIVEL, ETIQUETA_NIVEL } from "../../utils/caducidad";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface EntradasTableProps {
     entradas: EntradaApi[];
@@ -29,7 +30,7 @@ function EntradasTable({ entradas, camaras, onEditar, onEliminar }: EntradasTabl
     }
 
     return (
-        <div className="table-responsive">
+        <TablaResponsive>
             <table className="table table-striped table-sm mb-0">
                 <thead>
                     <tr>
@@ -159,7 +160,7 @@ function EntradasTable({ entradas, camaras, onEditar, onEliminar }: EntradasTabl
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

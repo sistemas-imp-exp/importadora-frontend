@@ -34,3 +34,17 @@
     color: var(--bs-secondary-color);
     margin-bottom: .75rem;
 }
+
+/* AdminLTE le agrega un ::after de clearfix (content: "") a .card-header/
+   .card-body/.card-footer para su layout clásico flotante. Al combinarlos con
+   d-flex de Bootstrap (patrón usado en casi todos los card-header de la app),
+   ese pseudo-elemento vacío pasa a ser un ítem de flex más: justify-content-
+   between/around reparte el espacio contando con él y el contenido real ya
+   no llega hasta el borde derecho (visto en el switch Nacional/Importación
+   de EntradaForm). Se anula solo cuando conviven con d-flex; el resto de
+   AdminLTE sigue usando el clearfix normalmente. */
+.card-header.d-flex::after,
+.card-body.d-flex::after,
+.card-footer.d-flex::after {
+    display: none;
+}
