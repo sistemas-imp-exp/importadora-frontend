@@ -165,6 +165,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         if (!cabecera.folio_de_salida.trim()) return "El folio de salida es obligatorio.";
         if (!cabecera.cliente_id) return "Seleccione un cliente.";
         if (!cabecera.fecha) return "La fecha es obligatoria.";
+        if (!cabecera.notas.trim()) return "La nota de salida es obligatoria.";
         if (lineas.length === 0) return "Agrega al menos un producto con el buscador de facturas o recibos.";
 
         for (const linea of lineas) {
@@ -279,9 +280,12 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                 />
                             </div>
                             <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>Notas (folio interno)</label>
+                                <label className={CLASE_ETIQUETA}>
+                                    Nota de salida <span className="text-danger">*</span>
+                                </label>
                                 <input
                                     className="form-control form-control-sm"
+                                    placeholder="Folio del documento físico"
                                     value={cabecera.notas}
                                     onChange={(e) => setCabecera({ ...cabecera, notas: e.target.value })}
                                 />
