@@ -10,7 +10,7 @@ export interface LoteDisponible {
     loteProveedor: string;
     camaraOrigen: number | null;
     camaraNombre: string;
-    pesoPorCaja: string | null;
+    pesoPorCaja: string;
     cajasDisponibles: number;
     kilosDisponibles: string;
     precioVentaPlaneado: string | null;
@@ -20,36 +20,47 @@ export interface LoteDisponible {
     fechaCaducidad: string | null;
 }
 
+/** Lo que la salida en edición ya tenía tomado de un lote. */
+export interface Reservado {
+    cajas: number;
+    kilos: number;
+}
+
 /**
  * Construye los lotes elegibles a partir de la foto de existencias.
  *
- * `yaReservado` suma de vuelta las cajas que la salida en edición ya tenía
- * tomadas de un lote: al guardar se reemplazan, no se suman encima — el backend
- * hace el mismo ajuste en su validate(). Esos lotes vienen incluidos porque la
- * petición usa `?salida=<id>`, así que aparecen aunque hayan quedado en cero.
+ * `yaReservado` suma de vuelta las cajas y los kilos que la salida en edición
+ * ya tenía tomados de un lote: al guardar se reemplazan, no se suman encima — el
+ * backend hace el mismo ajuste en su validate(). Esos lotes vienen incluidos
+ * porque la petición usa `?salida=<id>`, así que aparecen aunque hayan quedado en cero.
  */
 export function construirLotesDisponibles(
     existencias: ExistenciaApi[],
-    yaReservado: Record<number, number> = {}
+    yaReservado: Record<number, Reservado> = {}
 ): LoteDisponible[] {
-    return existencias.map((item) => ({
-        entradaDetalleId: item.detalle_id,
-        productoId: item.producto_id,
-        productoNombre: `${item.talla} ${item.tipo}`,
-        talla: item.talla,
-        tipo: item.tipo,
-        loteProveedor: item.lote_proveedor,
-        camaraOrigen: item.camara_id,
-        camaraNombre: item.camara_nombre,
-        pesoPorCaja: item.peso_por_caja,
-        cajasDisponibles: item.cajas_disponibles + (yaReservado[item.detalle_id] ?? 0),
-        kilosDisponibles: item.kilos_disponibles,
-        precioVentaPlaneado: item.precio_venta_planeado,
-        proveedorNombre: item.proveedor_nombre,
-        factura: item.factura === "—" ? "" : item.factura,
-        recibo: item.recibo_ingreso === "—" ? "" : item.recibo_ingreso,
-        fechaCaducidad: item.fecha_caducidad,
-    }));
+    return existencias.map((item) => {
+        const reservado = yaReservado[item.detalle_id];
+        return {
+            entradaDetalleId: item.detalle_id,
+            productoId: item.producto_id,
+            productoNombre: `${item.talla} ${item.tipo}`,
+            talla: item.talla,
+            tipo: item.tipo,
+            loteProveedor: item.lote_proveedor,
+            camaraOrigen: item.camara_id,
+            camaraNombre: item.camara_nombre,
+            pesoPorCaja: item.peso_por_caja,
+            cajasDisponibles: item.cajas_disponibles + (reservado?.cajas ?? 0),
+            kilosDisponibles: reservado
+                ? (Number(item.kilos_disponibles) + reservado.kilos).toFixed(2)
+                : item.kilos_disponibles,
+            precioVentaPlaneado: item.precio_venta_planeado,
+            proveedorNombre: item.proveedor_nombre,
+            factura: item.factura === "—" ? "" : item.factura,
+            recibo: item.recibo_ingreso === "—" ? "" : item.recibo_ingreso,
+            fechaCaducidad: item.fecha_caducidad,
+        };
+    });
 }
 
 /** Coincidencia por documento (factura/recibo) y también por producto o lote. */

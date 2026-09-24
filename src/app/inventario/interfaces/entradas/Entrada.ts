@@ -9,7 +9,7 @@ export interface EntradaDetalleApi {
     lote_proveedor: string;
     camara: number | null;
     cajas: number;
-    peso_por_caja: string | null;
+    peso_por_caja: string;
     total_kilos: string;
     costo_por_kilo: string | null;
     precio_venta_planeado: string | null;
@@ -54,7 +54,7 @@ export interface CrearEntradaLineaRequest {
     lote_proveedor: string;
     camara: number | null;
     cajas: number;
-    peso_por_caja: number | null;
+    peso_por_caja: number;
     total_kilos: number;
     costo_por_kilo: number | null;
     precio_venta_planeado: number | null;

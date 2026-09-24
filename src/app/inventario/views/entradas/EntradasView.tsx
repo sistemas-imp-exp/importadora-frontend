@@ -137,6 +137,7 @@ function EntradasView() {
                 ) : (
                     <>
                         <EntradaForm
+                            key={entradaEditando?.id ?? "nueva"}
                             proveedores={proveedores}
                             camaras={camaras}
                             productos={productos}

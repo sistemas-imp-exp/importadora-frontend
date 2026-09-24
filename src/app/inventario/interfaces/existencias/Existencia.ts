@@ -15,7 +15,7 @@ export interface ExistenciaApi {
     lote_proveedor: string;
     recibo_ingreso: string;
     factura: string;
-    peso_por_caja: string | null;
+    peso_por_caja: string;
     cajas_disponibles: number;
     total_kilos: string;
     kilos_vendidos: string;

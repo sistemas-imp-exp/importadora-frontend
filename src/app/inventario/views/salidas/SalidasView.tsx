@@ -140,6 +140,7 @@ function SalidasView() {
                 ) : (
                     <>
                         <SalidaForm
+                            key={salidaEditando?.id ?? "nueva"}
                             clientes={clientes}
                             existencias={existencias}
                             salida={salidaEditando}

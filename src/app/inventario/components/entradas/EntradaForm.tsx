@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
@@ -66,6 +66,44 @@ function cabeceraVacia() {
     return { fecha: "", proveedor_id: 0, es_internacional: false, factura: "", pedimento: "", recibo_ingreso: "" };
 }
 
+type Cabecera = ReturnType<typeof cabeceraVacia>;
+
+/** Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta. */
+function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecera, string>> {
+    const errores: Partial<Record<keyof Cabecera, string>> = {};
+    if (!cabecera.fecha) errores.fecha = "La fecha es obligatoria.";
+    if (!cabecera.proveedor_id) errores.proveedor_id = "Selecciona un proveedor.";
+    if (!cabecera.factura.trim()) errores.factura = "La factura es obligatoria.";
+    if (cabecera.es_internacional && !cabecera.pedimento.trim()) {
+        errores.pedimento = "El pedimento es obligatorio en una entrada internacional.";
+    }
+    return errores;
+}
+
+function validarLineaCampos(linea: LineaForm): Partial<Record<keyof LineaForm, string>> {
+    const errores: Partial<Record<keyof LineaForm, string>> = {};
+    if (!linea.producto_id) errores.producto_id = "Selecciona el producto.";
+    if (!linea.lote_proveedor.trim()) errores.lote_proveedor = "El lote es obligatorio.";
+    if (!linea.cajas || Number(linea.cajas) <= 0) errores.cajas = "Ingresa las cajas.";
+    // Obligatorio: es lo que permite calcular cajas disponibles en Salidas a
+    // partir de los kilos que queden del lote (ver Existencias/Salidas).
+    if (!linea.peso_por_caja || Number(linea.peso_por_caja) <= 0) errores.peso_por_caja = "Ingresa el peso por caja.";
+    if (!linea.total_kilos || Number(linea.total_kilos) <= 0) errores.total_kilos = "Ingresa el total de kilos.";
+    return errores;
+}
+
+function cabeceraDesdeEntrada(entrada?: EntradaApi | null): Cabecera {
+    if (!entrada) return cabeceraVacia();
+    return {
+        fecha: entrada.fecha,
+        proveedor_id: entrada.proveedor?.id ?? 0,
+        es_internacional: entrada.es_internacional,
+        factura: entrada.factura,
+        pedimento: entrada.pedimento,
+        recibo_ingreso: entrada.recibo_ingreso,
+    };
+}
+
 function lineasDesdeEntrada(entrada: EntradaApi): LineaForm[] {
     return entrada.detalles.map((d) => ({
         uid: siguienteUid(),
@@ -74,21 +112,13 @@ function lineasDesdeEntrada(entrada: EntradaApi): LineaForm[] {
         lote_proveedor: d.lote_proveedor,
         camara: d.camara ?? "",
         cajas: String(d.cajas),
-        peso_por_caja: d.peso_por_caja ?? "",
+        peso_por_caja: d.peso_por_caja,
         total_kilos: d.total_kilos,
         costo_por_kilo: d.costo_por_kilo ?? "",
         precio_venta_planeado: d.precio_venta_planeado ?? "",
         fecha_caducidad: d.fecha_caducidad ?? "",
         observaciones: d.observaciones,
     }));
-}
-
-function validarLinea(linea: LineaForm): string | null {
-    if (!linea.producto_id) return "Selecciona el producto de la línea.";
-    if (!linea.lote_proveedor.trim()) return "El lote de proveedor es obligatorio.";
-    if (!linea.cajas || Number(linea.cajas) <= 0) return "Ingresa las cajas de la línea.";
-    if (!linea.total_kilos || Number(linea.total_kilos) <= 0) return "Ingresa el total de kilos de la línea.";
-    return null;
 }
 
 /** ¿El formulario de captura tiene algo escrito sin agregar todavía? */
@@ -108,30 +138,14 @@ function borradorTieneDatos(linea: LineaForm): boolean {
 function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCancelar }: EntradaFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [cabecera, setCabecera] = useState(cabeceraVacia());
-    const [lineas, setLineas] = useState<LineaForm[]>([]);
+    // El estado arranca desde `entrada`; para cambiar de registro el padre
+    // remonta el formulario con otra `key` (ver EntradasView).
+    const [cabecera, setCabecera] = useState(() => cabeceraDesdeEntrada(entrada));
+    const [lineas, setLineas] = useState<LineaForm[]>(() => (entrada ? lineasDesdeEntrada(entrada) : []));
     const [borrador, setBorrador] = useState<LineaForm>(lineaVacia);
     const [editandoUid, setEditandoUid] = useState<number | null>(null);
-
-    useEffect(() => {
-        if (entrada) {
-            setCabecera({
-                fecha: entrada.fecha,
-                proveedor_id: entrada.proveedor?.id ?? 0,
-                es_internacional: entrada.es_internacional,
-                factura: entrada.factura,
-                pedimento: entrada.pedimento,
-                recibo_ingreso: entrada.recibo_ingreso,
-            });
-            setLineas(lineasDesdeEntrada(entrada));
-        } else {
-            setCabecera(cabeceraVacia());
-            setLineas([]);
-        }
-        setBorrador(lineaVacia());
-        setEditandoUid(null);
-        setError(null);
-    }, [entrada]);
+    const [erroresCabecera, setErroresCabecera] = useState<Partial<Record<keyof Cabecera, string>>>({});
+    const [erroresLinea, setErroresLinea] = useState<Partial<Record<keyof LineaForm, string>>>({});
 
     const opcionesProducto = useMemo(
         () => productos.map((p) => ({ value: p.id, label: `${p.talla} ${p.tipo}`, disabled: !p.activo })),
@@ -169,6 +183,24 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
             }
             return nueva;
         });
+        // Quita el marcado en rojo del campo apenas el usuario lo corrige, sin
+        // esperar a que vuelva a presionar "Agregar línea".
+        setErroresLinea((actual) => {
+            if (Object.keys(actual).length === 0) return actual;
+            const copia = { ...actual };
+            for (const campo of Object.keys(cambios)) delete copia[campo as keyof LineaForm];
+            return copia;
+        });
+    }
+
+    function actualizarCabecera(cambios: Partial<Cabecera>) {
+        setCabecera((actual) => ({ ...actual, ...cambios }));
+        setErroresCabecera((actual) => {
+            if (Object.keys(actual).length === 0) return actual;
+            const copia = { ...actual };
+            for (const campo of Object.keys(cambios)) delete copia[campo as keyof Cabecera];
+            return copia;
+        });
     }
 
     function enfocarProducto() {
@@ -176,9 +208,10 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     }
 
     function confirmarLinea() {
-        const mensaje = validarLinea(borrador);
-        if (mensaje) {
-            setError(mensaje);
+        const errores = validarLineaCampos(borrador);
+        setErroresLinea(errores);
+        if (Object.keys(errores).length > 0) {
+            setError("Revisa los campos marcados en rojo antes de agregar la línea.");
             return;
         }
         setError(null);
@@ -202,13 +235,16 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
         setBorrador(linea);
         setEditandoUid(uid);
         setError(null);
+        setErroresLinea({});
         enfocarProducto();
     }
 
+    /** Limpia la sección de captura: cancela una edición en curso o solo borra lo escrito. */
     function cancelarEdicionLinea() {
         setBorrador(lineaVacia());
         setEditandoUid(null);
         setError(null);
+        setErroresLinea({});
     }
 
     /** Copia la línea al formulario como una nueva (sin `id`) para capturar otra parecida. */
@@ -220,6 +256,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
         setBorrador(copia);
         setEditandoUid(null);
         setError(null);
+        setErroresLinea({});
         enfocarProducto();
     }
 
@@ -239,11 +276,10 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     }
 
     function validar(): string | null {
-        if (!cabecera.fecha) return "La fecha es obligatoria.";
-        if (!cabecera.proveedor_id) return "Seleccione un proveedor.";
-        if (!cabecera.factura.trim()) return "La factura es obligatoria.";
-        if (cabecera.es_internacional && !cabecera.pedimento.trim()) {
-            return "El pedimento es obligatorio en una entrada internacional.";
+        const erroresCab = validarCabeceraCampos(cabecera);
+        setErroresCabecera(erroresCab);
+        if (Object.keys(erroresCab).length > 0) {
+            return "Revisa los campos marcados en rojo en la información de recepción.";
         }
         if (editandoUid !== null) return "Termina de editar la línea abierta (Actualizar o Cancelar) antes de guardar.";
         if (borradorTieneDatos(borrador)) {
@@ -276,7 +312,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                 lote_proveedor: linea.lote_proveedor.trim().toUpperCase(),
                 camara: linea.camara === "" ? null : Number(linea.camara),
                 cajas: Number(linea.cajas),
-                peso_por_caja: linea.peso_por_caja === "" ? null : Number(linea.peso_por_caja),
+                peso_por_caja: Number(linea.peso_por_caja),
                 total_kilos: Number(linea.total_kilos),
                 costo_por_kilo: linea.costo_por_kilo === "" ? null : Number(linea.costo_por_kilo),
                 precio_venta_planeado: linea.precio_venta_planeado === "" ? null : Number(linea.precio_venta_planeado),
@@ -293,6 +329,8 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                 setLineas([]);
                 setBorrador(lineaVacia());
                 setEditandoUid(null);
+                setErroresCabecera({});
+                setErroresLinea({});
             }
         } catch {
             // El error ya se muestra vía toast en la vista; el formulario conserva los datos para corregir.
@@ -313,14 +351,14 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                     <button
                         type="button"
                         className={`btn ${cabecera.es_internacional ? "btn-outline-secondary" : "btn-primary"}`}
-                        onClick={() => setCabecera({ ...cabecera, es_internacional: false, pedimento: "" })}
+                        onClick={() => actualizarCabecera({ es_internacional: false, pedimento: "" })}
                     >
                         Nacional
                     </button>
                     <button
                         type="button"
                         className={`btn ${cabecera.es_internacional ? "btn-primary" : "btn-outline-secondary"}`}
-                        onClick={() => setCabecera({ ...cabecera, es_internacional: true })}
+                        onClick={() => actualizarCabecera({ es_internacional: true })}
                     >
                         Importación
                     </button>
@@ -343,36 +381,39 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                 </label>
                                 <input
                                     type="date"
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${erroresCabecera.fecha ? "is-invalid" : ""}`}
                                     value={cabecera.fecha}
-                                    onChange={(e) => setCabecera({ ...cabecera, fecha: e.target.value })}
+                                    onChange={(e) => actualizarCabecera({ fecha: e.target.value })}
                                 />
+                                {erroresCabecera.fecha && <div className="invalid-feedback d-block">{erroresCabecera.fecha}</div>}
                             </div>
                             <div className="col-12 col-sm-6 col-lg-3">
                                 <label className={CLASE_ETIQUETA}>
                                     Proveedor <span className="text-danger">*</span>
                                 </label>
                                 <select
-                                    className="form-select form-select-sm"
+                                    className={`form-select form-select-sm ${erroresCabecera.proveedor_id ? "is-invalid" : ""}`}
                                     value={cabecera.proveedor_id}
-                                    onChange={(e) => setCabecera({ ...cabecera, proveedor_id: Number(e.target.value) })}
+                                    onChange={(e) => actualizarCabecera({ proveedor_id: Number(e.target.value) })}
                                 >
                                     <option value={0}>Seleccione proveedor...</option>
                                     {proveedores.map((p) => (
                                         <option key={p.id} value={p.id} disabled={!p.activo}>{p.nombre}</option>
                                     ))}
                                 </select>
+                                {erroresCabecera.proveedor_id && <div className="invalid-feedback d-block">{erroresCabecera.proveedor_id}</div>}
                             </div>
                             <div className="col-12 col-sm-6 col-lg-3">
                                 <label className={CLASE_ETIQUETA}>
                                     N° factura / remisión <span className="text-danger">*</span>
                                 </label>
                                 <input
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${erroresCabecera.factura ? "is-invalid" : ""}`}
                                     placeholder="Ej. FAC-2026-0891"
                                     value={cabecera.factura}
-                                    onChange={(e) => setCabecera({ ...cabecera, factura: e.target.value })}
+                                    onChange={(e) => actualizarCabecera({ factura: e.target.value })}
                                 />
+                                {erroresCabecera.factura && <div className="invalid-feedback d-block">{erroresCabecera.factura}</div>}
                             </div>
                             {cabecera.es_internacional && (
                                 <div className="col-12 col-sm-6 col-lg-3">
@@ -380,10 +421,11 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                         Pedimento <span className="text-danger">*</span>
                                     </label>
                                     <input
-                                        className="form-control form-control-sm"
+                                        className={`form-control form-control-sm ${erroresCabecera.pedimento ? "is-invalid" : ""}`}
                                         value={cabecera.pedimento}
-                                        onChange={(e) => setCabecera({ ...cabecera, pedimento: e.target.value })}
+                                        onChange={(e) => actualizarCabecera({ pedimento: e.target.value })}
                                     />
+                                    {erroresCabecera.pedimento && <div className="invalid-feedback d-block">{erroresCabecera.pedimento}</div>}
                                 </div>
                             )}
                             <div className="col-12 col-sm-6 col-lg-3">
@@ -399,7 +441,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                     className="form-control form-control-sm"
                                     placeholder="Ej. IMP1797 (opcional)"
                                     value={cabecera.recibo_ingreso}
-                                    onChange={(e) => setCabecera({ ...cabecera, recibo_ingreso: e.target.value })}
+                                    onChange={(e) => actualizarCabecera({ recibo_ingreso: e.target.value })}
                                 />
                             </div>
                         </div>
@@ -413,8 +455,20 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                         <h6 className="d-flex align-items-center gap-2 fw-bold border-bottom pb-2 mb-3">
                             <i className="bi bi-box-seam text-body-secondary" aria-hidden="true"></i>
                             {editando ? `Editando línea ${indiceEditando + 1}` : "Agregar producto"}
-                            {editando && <span className="badge text-bg-warning">En edición</span>}
                         </h6>
+
+                        {editando && (
+                            <div className="alert alert-warning d-flex flex-wrap gap-2 justify-content-between align-items-center py-2" role="alert">
+                                <span>
+                                    <i className="bi bi-pencil-square me-2" aria-hidden="true"></i>
+                                    Estás editando la línea {indiceEditando + 1} de la lista. Presiona <strong>Actualizar línea</strong> para
+                                    guardar el cambio o <strong>Cancelar edición</strong> para dejarla como estaba.
+                                </span>
+                                <button type="button" className="btn btn-sm btn-warning" onClick={cancelarEdicionLinea}>
+                                    Cancelar edición
+                                </button>
+                            </div>
+                        )}
 
                         <div className="row g-3">
                             <div className="col-12 col-md-5">
@@ -423,23 +477,25 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                 </label>
                                 <SearchableSelect
                                     id={ID_PRODUCTO}
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${erroresLinea.producto_id ? "is-invalid" : ""}`}
                                     placeholder="Buscar producto..."
                                     options={opcionesProducto}
                                     value={borrador.producto_id === 0 ? "" : borrador.producto_id}
                                     onChange={(v) => actualizarBorrador({ producto_id: v === "" ? 0 : v })}
                                 />
+                                {erroresLinea.producto_id && <div className="invalid-feedback d-block">{erroresLinea.producto_id}</div>}
                             </div>
                             <div className="col-6 col-md-3">
                                 <label className={CLASE_ETIQUETA}>
                                     Lote <span className="text-danger">*</span>
                                 </label>
                                 <input
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${erroresLinea.lote_proveedor ? "is-invalid" : ""}`}
                                     placeholder="Ej. L-0982-A"
                                     value={borrador.lote_proveedor}
                                     onChange={(e) => actualizarBorrador({ lote_proveedor: e.target.value })}
                                 />
+                                {erroresLinea.lote_proveedor && <div className="invalid-feedback d-block">{erroresLinea.lote_proveedor}</div>}
                             </div>
                             <div className="col-6 col-md-4">
                                 <label className={CLASE_ETIQUETA} htmlFor={ID_CAMARA}>Cámara</label>
@@ -458,18 +514,26 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                     Cajas <span className="text-danger">*</span>
                                 </label>
                                 <input
-                                    type="number" min="0" className="form-control form-control-sm text-end"
+                                    type="number" min="0"
+                                    className={`form-control form-control-sm text-end ${erroresLinea.cajas ? "is-invalid" : ""}`}
                                     value={borrador.cajas}
                                     onChange={(e) => actualizarBorrador({ cajas: e.target.value })}
                                 />
+                                {erroresLinea.cajas && <div className="invalid-feedback d-block">{erroresLinea.cajas}</div>}
                             </div>
                             <div className="col-4 col-md-2">
-                                <label className={CLASE_ETIQUETA}>Kg / caja</label>
+                                <label className={CLASE_ETIQUETA}>
+                                    Kg / caja <span className="text-danger">*</span>
+                                </label>
                                 <input
-                                    type="number" min="0" step="0.01" className="form-control form-control-sm text-end"
+                                    type="number" min="0" step="0.01"
+                                    className={`form-control form-control-sm text-end ${erroresLinea.peso_por_caja ? "is-invalid" : ""}`}
                                     value={borrador.peso_por_caja}
                                     onChange={(e) => actualizarBorrador({ peso_por_caja: e.target.value })}
                                 />
+                                {erroresLinea.peso_por_caja && (
+                                    <div className="invalid-feedback d-block">{erroresLinea.peso_por_caja}</div>
+                                )}
                             </div>
                             <div className="col-4 col-md-2">
                                 <label className={CLASE_ETIQUETA}>
@@ -477,10 +541,11 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                 </label>
                                 <input
                                     type="number" min="0" step="0.01"
-                                    className="form-control form-control-sm text-end fw-bold"
+                                    className={`form-control form-control-sm text-end fw-bold ${erroresLinea.total_kilos ? "is-invalid" : ""}`}
                                     value={borrador.total_kilos}
                                     onChange={(e) => actualizarBorrador({ total_kilos: e.target.value })}
                                 />
+                                {erroresLinea.total_kilos && <div className="invalid-feedback d-block">{erroresLinea.total_kilos}</div>}
                             </div>
                             <div className="col-6 col-md-2">
                                 <label className={CLASE_ETIQUETA}>Costo / kg</label>
@@ -531,9 +596,10 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                 Presiona <kbd>Enter</kbd> para agregar la línea y volver al producto.
                             </span>
                             <div className="d-flex gap-2">
-                                {editando && (
+                                {(editando || borradorTieneDatos(borrador)) && (
                                     <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelarEdicionLinea}>
-                                        Cancelar
+                                        <i className="bi bi-x-lg me-1" aria-hidden="true"></i>
+                                        {editando ? "Cancelar edición" : "Limpiar"}
                                     </button>
                                 )}
                                 <button
