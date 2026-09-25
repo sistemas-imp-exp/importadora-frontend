@@ -1,10 +1,16 @@
 import axios from "axios";
 import { authStorage } from "../services/authStorage.service";
 
-// Loopback por defecto: trabajando en la propia máquina el tráfico nunca sale
-// del equipo. Para probar desde otro dispositivo de la red, define VITE_API_URL
-// en un .env.local con la IP del servidor (ver .env.example).
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/";
+// Build de producción (npm run build): siempre "/api/" en el mismo origen, porque
+// IIS sirve la SPA y reenvía /api/ a waitress (que solo escucha en 127.0.0.1).
+// Se ignora VITE_API_URL a propósito: Vite carga .env.local también al compilar
+// y colaría la IP de desarrollo en el bundle.
+//
+// En desarrollo: loopback por defecto; para probar desde otro dispositivo de la
+// red, define VITE_API_URL en un .env.local con la IP del servidor.
+const BASE_URL = import.meta.env.PROD
+    ? "/api/"
+    : import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/";
 
 const api = axios.create({
     baseURL: BASE_URL,
