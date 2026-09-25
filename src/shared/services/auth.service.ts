@@ -4,7 +4,6 @@ import type {
     CambiarPasswordRequest,
     LoginRequest,
     LoginResponse,
-    RegistroRequest,
     User,
 } from "../interfaces/auth";
 
@@ -14,17 +13,6 @@ export const login = async (
 ): Promise<LoginResponse> => {
     const response = await client.post<LoginResponse>(
         "/auth/login/",
-        data
-    );
-
-    return response.data;
-};
-
-export const registro = async (
-    data: RegistroRequest
-): Promise<LoginResponse> => {
-    const response = await client.post<LoginResponse>(
-        "/auth/registro/",
         data
     );
 

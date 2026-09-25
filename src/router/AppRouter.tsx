@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
 import Login from "../pages/auth/Login";
-import Registro from "../pages/auth/Registro";
 
 import { dashboardRoutes } from "../app/dashboard/routes";
 import { tesoreriaRoutes } from "../app/tesoreria/routes";
@@ -17,8 +16,8 @@ function AppRouter() {
         <BrowserRouter>
             <Routes>
 
+                {/* Sin registro público: las cuentas las crea un superusuario en Usuarios. */}
                 <Route path="/login" element={<Login />} />
-                <Route path="/registro" element={<Registro />} />
 
                 <Route element={<PrivateRoute />}>
                     <Route element={<MainLayout />}>

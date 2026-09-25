@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { login as loginService } from "../../shared/services/auth.service";
 import { useAuth } from "../../shared/hooks/useAuth";
@@ -126,12 +126,6 @@ export default function Login() {
                             </button>
 
                         </form>
-
-                        <p className="mb-0 mt-3 text-center">
-                            <Link to="/registro">
-                                Crear cuenta
-                            </Link>
-                        </p>
 
                     </div>
 

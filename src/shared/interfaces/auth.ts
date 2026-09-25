@@ -3,14 +3,6 @@ export interface LoginRequest {
     password: string;
 }
 
-export interface RegistroRequest {
-    username: string;
-    password: string;
-    password2: string;
-    first_name?: string;
-    last_name?: string;
-}
-
 export interface ActualizarPerfilRequest {
     first_name: string;
     last_name: string;
