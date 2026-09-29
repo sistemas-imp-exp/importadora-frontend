@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageHeader from "../../../../layouts/components/PageHeader";
 import SkeletonCallout from "../../../../shared/components/SkeletonCallout";
-import { obtenerCorteAbierto } from "../../services/corteCaja.service";
+import { obtenerCajaDia } from "../../services/caja.service";
+import SaldosDelDia from "../../components/caja/SaldosDelDia";
 import { obtenerNominaAbierta } from "../../services/nomina/nominaSemanal.service";
 import { obtenerEmpleados } from "../../services/nomina/empleado.service";
 import { obtenerRanchos } from "../../services/nomina/rancho.service";
@@ -10,11 +11,9 @@ import { obtenerBancos } from "../../services/nomina/banco.service";
 import { obtenerDivisas } from "../../services/divisa.service";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
-import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
-import { getFullName } from "../../../../shared/utils/userUtils";
 import SmallBox from "../../../../shared/components/SmallBox";
 import SkeletonCards from "../../../../shared/components/SkeletonCards";
-import type { CorteCaja } from "../../interfaces/movimientos/CorteCaja";
+import type { CajaDiaApi } from "../../interfaces/caja/Caja";
 import type { NominaSemanal } from "../../interfaces/nomina/NominaSemanal";
 
 function formatearFechaISO(fechaISO: string): string {
@@ -32,15 +31,15 @@ interface AccesoRapido {
 const accesos: AccesoRapido[] = [
     {
         titulo: "Movimientos",
-        descripcion: "Registrar ingresos y egresos del corte abierto.",
+        descripcion: "Registrar ingresos y egresos, también de hojas atrasadas.",
         icono: "bi bi-arrow-left-right",
         to: "/tesoreria/caja/movimientos",
     },
     {
-        titulo: "Corte de caja",
-        descripcion: "Abrir, consultar o cerrar el corte del día.",
-        icono: "bi bi-safe2",
-        to: "/tesoreria/caja/corte",
+        titulo: "Caja diaria",
+        descripcion: "Saldo y movimientos de cualquier día.",
+        icono: "bi bi-calendar3",
+        to: "/tesoreria/caja/diaria",
     },
     {
         titulo: "Arqueo",
@@ -82,7 +81,7 @@ interface Kpis {
 }
 
 function DashboardTesoreria() {
-    const [corte, setCorte] = useState<CorteCaja | null>(null);
+    const [caja, setCaja] = useState<CajaDiaApi | null>(null);
     const [nomina, setNomina] = useState<NominaSemanal | null>(null);
     const [kpis, setKpis] = useState<Kpis | null>(null);
     const [loading, setLoading] = useState(true);
@@ -94,15 +93,15 @@ function DashboardTesoreria() {
 
     async function cargar() {
         try {
-            const [corteActual, nominaActual, empleados, ranchos, bancos, divisas] = await Promise.all([
-                obtenerCorteAbierto(),
+            const [cajaHoy, nominaActual, empleados, ranchos, bancos, divisas] = await Promise.all([
+                obtenerCajaDia(),
                 obtenerNominaAbierta(),
                 obtenerEmpleados(),
                 obtenerRanchos(),
                 obtenerBancos(),
                 obtenerDivisas(),
             ]);
-            setCorte(corteActual);
+            setCaja(cajaHoy);
             setNomina(nominaActual);
             setKpis({
                 empleadosActivos: empleados.filter((e) => e.activo).length,
@@ -149,46 +148,16 @@ function DashboardTesoreria() {
                 )}
 
                 {loading && <SkeletonCallout />}
-
-                {!loading && (
-                    corte ? (
-                        <div className="callout callout-success mb-4 shadow-sm">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h6 className="mb-0 fw-bold">Corte de caja</h6>
-                                <span className="badge bg-success px-2 py-1">Abierto</span>
-                            </div>
-                            <div className="text-muted" style={{ fontSize: "0.9rem" }}>
-                                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                    <div>
-                                        <p className="mb-1">
-                                            <span className="fw-semibold">Fecha:</span> {formatearFechaNumerica(corte.fecha)}
-                                        </p>
-                                        <p className="mb-0">
-                                            <span className="fw-semibold">Responsable:</span> {getFullName(corte.responsable_apertura)}
-                                        </p>
-                                    </div>
-                                    <Link className="btn btn-primary" to="/tesoreria/caja/movimientos">
-                                        <i className="bi bi-box-arrow-up-right me-1"></i>
-                                        Ir a movimientos
-                                    </Link>
-                                </div>
-                            </div>
+                {!loading && caja && (
+                    <div className="mb-4">
+                        <div className="d-flex align-items-center mb-2">
+                            <h6 className="text-uppercase small fw-semibold text-body-secondary mb-0 me-auto">Saldo de caja hoy</h6>
+                            <Link className="btn btn-outline-primary btn-sm" to="/tesoreria/caja/diaria">
+                                <i className="bi bi-calendar3 me-1"></i>Caja diaria
+                            </Link>
                         </div>
-                    ) : (
-                        <div className="callout callout-warning mb-4 shadow-sm">
-                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h6 className="mb-0 fw-bold">Corte de caja</h6>
-                                <span className="badge bg-secondary px-2 py-1">Sin abrir</span>
-                            </div>
-                            <div className="text-muted d-flex flex-wrap justify-content-between align-items-center gap-2" style={{ fontSize: "0.9rem" }}>
-                                <p className="mb-0">Todavía no se abre la caja del día.</p>
-                                <Link className="btn btn-success" to="/tesoreria/caja/corte">
-                                    <i className="bi bi-unlock2-fill me-1"></i>
-                                    Abrir caja
-                                </Link>
-                            </div>
-                        </div>
-                    )
+                        <SaldosDelDia caja={caja} />
+                    </div>
                 )}
 
                 {!loading && (

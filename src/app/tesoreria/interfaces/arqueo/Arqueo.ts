@@ -31,20 +31,15 @@ export interface ArqueoDivisa {
     conteos: ArqueoConteo[];
 }
 
-export interface CorteArqueoResumen {
-    id: number;
-    fecha: string;
-    cerrado: boolean;
-    responsable_apertura: number;
-    responsable_cierre: number | null;
-}
-
 export interface ArqueoCaja {
     id: number;
-    corte: CorteArqueoResumen;
+    // Día arqueado ('YYYY-MM-DD'); puede haber varios arqueos el mismo día.
+    fecha: string;
     hora_inicio: string;
     hora_termino: string;
     usuario: User;
+    editado_por: User | null;
+    editado_en: string | null;
     observaciones: string;
     creado: string;
     modificado: string;
@@ -63,6 +58,7 @@ export interface ArqueoDivisaRequest {
 }
 
 export interface CrearArqueoRequest {
+    fecha: string;
     hora_inicio: string;
     observaciones: string;
     divisas: ArqueoDivisaRequest[];

@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ArqueoDivisaForm from "./ArqueoDivisaForm";
 import type { ArqueoCaja, CrearArqueoRequest, Denominacion } from "../../interfaces/arqueo/Arqueo";
 import type { Divisa } from "../../interfaces/divisas/Divisa";
-import type { SaldoCajaApiResponse } from "../../interfaces/movimientos/CorteCaja";
+import type { SaldoDivisaDia } from "../../interfaces/caja/Caja";
 import { descargarArqueoExcel, descargarArqueoPdf } from "../../services/arqueo.service";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 
 interface ArqueoFormProps {
     divisasActivas: Divisa[];
     denominaciones: Denominacion[];
-    saldos: SaldoCajaApiResponse[];
+    /** Día que se arquea ('YYYY-MM-DD'). */
+    fecha: string;
+    /** Saldos calculados de ese día (Caja diaria): el esperado de un arqueo nuevo. */
+    saldos: SaldoDivisaDia[];
     arqueo?: ArqueoCaja | null;
     onAutoguardar: (payload: CrearArqueoRequest, idExistente: number | null) => Promise<ArqueoCaja>;
     onCancelar?: () => void;
@@ -32,7 +35,7 @@ function construirPiezasIniciales(arqueo: ArqueoCaja | null | undefined): Piezas
     return resultado;
 }
 
-function ArqueoForm({ divisasActivas, denominaciones, saldos, arqueo, onAutoguardar }: ArqueoFormProps) {
+function ArqueoForm({ divisasActivas, denominaciones, fecha, saldos, arqueo, onAutoguardar }: ArqueoFormProps) {
     const [claveAnterior, setClaveAnterior] = useState<number | "nuevo">(arqueo?.id ?? "nuevo");
     const [observaciones, setObservaciones] = useState(arqueo?.observaciones ?? "");
     const [horaInicio, setHoraInicio] = useState(() => arqueo?.hora_inicio ?? new Date().toISOString());
@@ -101,16 +104,22 @@ function ArqueoForm({ divisasActivas, denominaciones, saldos, arqueo, onAutoguar
         return mapa;
     }, [denominaciones]);
 
-    const saldosPorDivisa = useMemo(() => {
-        const mapa: Record<number, SaldoCajaApiResponse> = {};
+    // Un arqueo ya guardado muestra el esperado que se fotografió al contar (no
+    // cambia si después se capturan hojas atrasadas); uno nuevo, el saldo actual del día.
+    const esperadoPorDivisa = useMemo(() => {
+        const mapa: Record<number, { inicial: number; esperado: number }> = {};
         for (const saldo of saldos) {
-            mapa[saldo.divisa.id] = saldo;
+            mapa[saldo.divisa.id] = { inicial: Number(saldo.saldo_inicial), esperado: Number(saldo.saldo_final) };
+        }
+        for (const linea of arqueo?.divisas ?? []) {
+            mapa[linea.divisa.id] = { inicial: Number(linea.saldo_inicial), esperado: Number(linea.resultado_esperado) };
         }
         return mapa;
-    }, [saldos]);
+    }, [saldos, arqueo]);
 
     function construirPayload(): CrearArqueoRequest {
         return {
+            fecha,
             hora_inicio: horaInicioRef.current,
             observaciones: observacionesRef.current,
             divisas: divisasActivas.map((divisa) => ({
@@ -294,8 +303,8 @@ function ArqueoForm({ divisasActivas, denominaciones, saldos, arqueo, onAutoguar
                             denominaciones={denominacionesPorDivisa[divisa.id] ?? []}
                             piezas={piezasPorDivisa[divisa.id] ?? {}}
                             onCambiarPiezas={(denominacionId, piezas) => manejarCambioPiezas(divisa.id, denominacionId, piezas)}
-                            saldoInicial={Number(saldosPorDivisa[divisa.id]?.saldo_inicial ?? 0)}
-                            resultadoEsperado={Number(saldosPorDivisa[divisa.id]?.saldo_final ?? 0)}
+                            saldoInicial={esperadoPorDivisa[divisa.id]?.inicial ?? 0}
+                            resultadoEsperado={esperadoPorDivisa[divisa.id]?.esperado ?? 0}
                         />
                     </div>
                 ))}

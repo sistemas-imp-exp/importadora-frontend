@@ -11,9 +11,6 @@ function construirParams(filtros: FiltrosReporteMovimientos): URLSearchParams {
     if (filtros.beneficiario.trim()) {
         params.set("beneficiario", filtros.beneficiario.trim());
     }
-    if (filtros.corteId) {
-        params.set("corte", String(filtros.corteId));
-    }
     if (filtros.tipo !== "todos") {
         params.set("tipo", filtros.tipo);
     }

@@ -3,10 +3,14 @@ import type { MovimientoApi, CrearMovimientoRequest} from "../interfaces/movimie
 
 const URL = "treasury/movimientos/";
 
-export async function obtenerMovimientos(corteId?: number): Promise<MovimientoApi[]> {
-    const { data } = await client.get<MovimientoApi[]>(URL, {
-        params: corteId ? { corte: corteId } : undefined,
-    });
+export interface FiltroFechasMovimientos {
+    fecha?: string;  // un día exacto
+    desde?: string;
+    hasta?: string;
+}
+
+export async function obtenerMovimientos(filtro: FiltroFechasMovimientos = {}): Promise<MovimientoApi[]> {
+    const { data } = await client.get<MovimientoApi[]>(URL, { params: filtro });
     return data;
 }
 

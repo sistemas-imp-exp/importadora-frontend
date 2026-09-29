@@ -7,12 +7,15 @@ import type {
     CrearMovimientoRequest,
 } from "../../interfaces/movimientos/Movimiento";
 import { obtenerSiguienteFolio, obtenerSugerencias } from "../../services/movimientos.service";
+import { fechaISO, hoyISO } from "../../../../shared/utils/fechas";
 
 interface MovimientoFormProps {
     divisas: Divisa[];
     movimiento?: Movimiento | null;
     onGuardar: (movimiento: CrearMovimientoRequest) => Promise<void>;
     onCancelar?: () => void;
+    /** Fecha de la primera apertura ('YYYY-MM-DD'): no se aceptan movimientos anteriores. */
+    fechaMinima?: string;
 }
 
 interface MovimientoDivisaForm {
@@ -25,6 +28,7 @@ function MovimientoForm({
     movimiento,
     onGuardar,
     onCancelar,
+    fechaMinima,
 }: MovimientoFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -37,6 +41,7 @@ function MovimientoForm({
     });
 
     const [form, setForm] = useState<{
+        fecha: string;
         folio: string;
         tipo: "I" | "E";
         autorizo: string;
@@ -44,6 +49,7 @@ function MovimientoForm({
         concepto: string;
         divisas: MovimientoDivisaForm[];
     }>({
+        fecha: hoyISO(),
         folio: "",
         tipo: "I",
         autorizo: "",
@@ -62,6 +68,7 @@ function MovimientoForm({
     useEffect(() => {
         if (movimiento) {
             setForm({
+                fecha: fechaISO(movimiento.fecha),
                 folio: movimiento.folio,
                 tipo: movimiento.tipo,
                 autorizo: movimiento.autorizo,
@@ -74,14 +81,15 @@ function MovimientoForm({
             });
             setIsCollapsed(false);
         } else {
-            setForm({
+            setForm((actual) => ({
+                fecha: actual.fecha || hoyISO(),
                 folio: "",
                 tipo: "I",
                 autorizo: "",
                 beneficiario: "",
                 concepto: "",
                 divisas: [{ divisa: divisas[0]?.id ?? 0, cantidad: "" }],
-            });
+            }));
         }
     }, [movimiento, divisas]);
 
@@ -139,6 +147,11 @@ function MovimientoForm({
     // }
 
     function validarFormulario(): string | null {
+        if (!form.fecha) return "La fecha es obligatoria.";
+        if (form.fecha > hoyISO()) return "La fecha no puede ser futura.";
+        if (fechaMinima && form.fecha < fechaMinima) {
+            return "La fecha no puede ser anterior a la primera apertura de caja.";
+        }
         if (!form.folio.trim()) return "El folio es obligatorio.";
         if (!form.autorizo.trim()) return "El nombre de quien autoriza es obligatorio.";
         if (!form.beneficiario.trim()) return "El beneficiario es obligatorio.";
@@ -164,6 +177,7 @@ function MovimientoForm({
         }
 
         const payload: CrearMovimientoRequest = {
+            fecha: form.fecha,
             folio: form.folio.trim(),
             tipo: form.tipo,
             autorizo: form.autorizo.trim(),
@@ -186,14 +200,16 @@ function MovimientoForm({
         }
     }
     function limpiarFormulario() {
-        setForm({
+        // La fecha se conserva: al pasar hojas atrasadas se capturan varias del mismo día.
+        setForm((actual) => ({
+            fecha: actual.fecha,
             folio: "",
             tipo: "I", // Valor por defecto
             autorizo: "",
             beneficiario: "",
             concepto: "",
             divisas: [{ divisa: divisas[0]?.id ?? 0, cantidad: "" }],
-        });
+        }));
         setError(null);
         // El tipo siempre vuelve a "I": si ya estaba en "I" (ingresos consecutivos),
         // el useEffect que depende de form.tipo no se dispara de nuevo (mismo valor),
@@ -232,6 +248,29 @@ function MovimientoForm({
                 <form onSubmit={guardar}>
                     <div className="card-body p-3 pt-0">
                         <div className="row g-2 mb-3 align-items-end">
+                            <div className="col-xl-2 col-lg-2 col-md-3 col-sm-4">
+                                <label className="form-label small text-muted mb-1 fw-bold" htmlFor="movimiento-fecha">
+                                    Fecha
+                                    {form.fecha !== hoyISO() && (
+                                        <span
+                                            className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
+                                            title="Se registra con la fecha de la hoja física, no con la de hoy"
+                                        >
+                                            Atrasada
+                                        </span>
+                                    )}
+                                </label>
+                                <input
+                                    id="movimiento-fecha"
+                                    type="date"
+                                    className="form-control form-control-sm"
+                                    value={form.fecha}
+                                    min={fechaMinima}
+                                    max={hoyISO()}
+                                    onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                                    required
+                                />
+                            </div>
                             <div className="col-xl-2 col-lg-2 col-md-3 col-sm-4">
                                 <label className="form-label small text-muted mb-1 fw-bold">Folio</label>
                                 <input

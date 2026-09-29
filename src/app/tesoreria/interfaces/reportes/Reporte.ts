@@ -5,7 +5,6 @@ export interface FiltrosReporteMovimientos {
     fechaInicio: string; // 'yyyy-MM-dd'
     fechaFin: string; // 'yyyy-MM-dd'
     beneficiario: string;
-    corteId: number | null;
     tipo: TipoFiltro;
     estado: EstadoFiltro;
     divisaIds: number[];
@@ -16,7 +15,6 @@ export interface LineaReporteApi {
     movimiento_id: number;
     folio: string;
     fecha: string;
-    corte: number | null;
     tipo: "I" | "E";
     autorizo: string;
     beneficiario: string;

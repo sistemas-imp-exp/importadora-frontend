@@ -6,13 +6,10 @@ import { useToastContext } from "../../../../shared/context/ToastProvider";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import {
     fechaHaceNDiasISO,
-    fechaISO,
-    formatearFechaNumerica,
     hoyISO,
     primerYUltimoDiaDelMesActualISO,
 } from "../../../../shared/utils/fechas";
 import type { Divisa } from "../../interfaces/divisas/Divisa";
-import type { CorteCaja } from "../../interfaces/movimientos/CorteCaja";
 import type {
     EstadoFiltro,
     FiltrosReporteMovimientos,
@@ -20,7 +17,8 @@ import type {
     TipoFiltro,
 } from "../../interfaces/reportes/Reporte";
 import { obtenerDivisas } from "../../services/divisa.service";
-import { obtenerCortes } from "../../services/corteCaja.service";
+import { obtenerAperturas } from "../../services/caja.service";
+import dayjs from "dayjs";
 import {
     descargarReporteMovimientosExcel,
     descargarReporteMovimientosPdf,
@@ -32,7 +30,6 @@ function filtrosPorDefecto(): FiltrosReporteMovimientos {
         fechaInicio: fechaHaceNDiasISO(30),
         fechaFin: hoyISO(),
         beneficiario: "",
-        corteId: null,
         tipo: "todos",
         estado: "todos",
         divisaIds: [],
@@ -48,7 +45,8 @@ function ReporteMovimientosView() {
 
     const [filtros, setFiltros] = useState<FiltrosReporteMovimientos>(filtrosPorDefecto());
     const [divisas, setDivisas] = useState<Divisa[]>([]);
-    const [cortes, setCortes] = useState<CorteCaja[]>([]);
+    // Primera apertura de caja ('YYYY-MM-DD'): antes no puede haber movimientos.
+    const [primeraApertura, setPrimeraApertura] = useState<string | undefined>(undefined);
     const [resumen, setResumen] = useState<ResumenReporteMovimientosApi | null>(null);
     const [cargandoResumen, setCargandoResumen] = useState(true);
     const [generandoExcel, setGenerandoExcel] = useState(false);
@@ -63,23 +61,17 @@ function ReporteMovimientosView() {
     useEffect(() => {
         (async () => {
             try {
-                const [datosDivisas, datosCortes] = await Promise.all([obtenerDivisas(), obtenerCortes()]);
+                const [datosDivisas, aperturas] = await Promise.all([obtenerDivisas(), obtenerAperturas()]);
                 setDivisas(datosDivisas);
-                setCortes(datosCortes);
-
-                if (datosCortes.length > 0) {
-                    // obtenerCortes() viene ordenado del más reciente al más antiguo.
-                    const masReciente = datosCortes[0].fecha;
-                    const masAntiguo = datosCortes[datosCortes.length - 1].fecha;
-                    setFiltros((actual) => ({
-                        ...actual,
-                        fechaInicio: fechaISO(masAntiguo),
-                        fechaFin: fechaISO(masReciente),
-                    }));
-                } else {
-                    const { primerDia, ultimoDia } = primerYUltimoDiaDelMesActualISO();
-                    setFiltros((actual) => ({ ...actual, fechaInicio: primerDia, fechaFin: ultimoDia }));
-                }
+                const primera = aperturas.map((a) => a.fecha).sort()[0];
+                setPrimeraApertura(primera);
+                // Por defecto el mes en curso, sin empezar antes de la primera apertura.
+                const { primerDia, ultimoDia } = primerYUltimoDiaDelMesActualISO();
+                setFiltros((actual) => ({
+                    ...actual,
+                    fechaInicio: primera && primera > primerDia ? primera : primerDia,
+                    fechaFin: ultimoDia > hoyISO() ? hoyISO() : ultimoDia,
+                }));
             } catch (err) {
                 mostrarToast("Error al cargar", obtenerMensajeError(err), "danger");
             }
@@ -116,7 +108,6 @@ function ReporteMovimientosView() {
         filtros.fechaInicio,
         filtros.fechaFin,
         filtros.beneficiario,
-        filtros.corteId,
         filtros.tipo,
         filtros.estado,
         divisaIdsKey,
@@ -146,9 +137,9 @@ function ReporteMovimientosView() {
         }
     }
 
-    // Guardarraíles de los inputs de fecha: no se puede elegir antes del
-    // corte más antiguo, ni después de hoy, ni un rango invertido.
-    const fechaMinimaHistorica = cortes.length > 0 ? fechaISO(cortes[cortes.length - 1].fecha) : undefined;
+    // Guardarraíles de los inputs de fecha: no se puede elegir antes de la
+    // primera apertura de caja, ni después de hoy, ni un rango invertido.
+    const fechaMinimaHistorica = primeraApertura;
     const fechaMaximaHoy = hoyISO();
 
     function alternarDivisa(id: number) {
@@ -215,21 +206,6 @@ function ReporteMovimientosView() {
                                     value={filtros.beneficiario}
                                     onChange={(e) => setFiltros({ ...filtros, beneficiario: e.target.value })}
                                 />
-                            </div>
-                            <div className="col-md-3 col-sm-6">
-                                <label className="form-label small text-muted mb-1 fw-bold">Corte</label>
-                                <select
-                                    className="form-select"
-                                    value={filtros.corteId ?? ""}
-                                    onChange={(e) => setFiltros({ ...filtros, corteId: e.target.value ? Number(e.target.value) : null })}
-                                >
-                                    <option value="">Todos los cortes en el rango</option>
-                                    {cortes.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            #{c.id} — {formatearFechaNumerica(c.fecha)} {c.cerrado ? "" : "(abierto)"}
-                                        </option>
-                                    ))}
-                                </select>
                             </div>
 
                             <div className="col-md-3 col-sm-6">
@@ -370,7 +346,6 @@ function ReporteMovimientosView() {
                                     <tr>
                                         <th>Folio</th>
                                         <th>Fecha</th>
-                                        <th>Corte</th>
                                         <th>Tipo</th>
                                         <th>Autorizó</th>
                                         <th>Beneficiario</th>
@@ -393,7 +368,7 @@ function ReporteMovimientosView() {
                                         ))
                                     ) : !resumen || resumen.muestra.length === 0 ? (
                                         <tr>
-                                            <td colSpan={10} className="text-center text-muted py-4">
+                                            <td colSpan={9} className="text-center text-muted py-4">
                                                 {cargandoResumen ? "Buscando movimientos..." : "Ningún movimiento coincide con estos filtros."}
                                             </td>
                                         </tr>
@@ -409,8 +384,8 @@ function ReporteMovimientosView() {
                                                         <span className="badge bg-warning text-dark ms-2 text-decoration-none">Editado</span>
                                                     )}
                                                 </td>
-                                                <td>{new Date(linea.fecha).toLocaleDateString("es-MX", { timeZone: "America/Mexico_City" })}</td>
-                                                <td>{linea.corte ? `#${linea.corte}` : "-"}</td>
+                                                {/* 'YYYY-MM-DD' con dayjs: new Date() lo leería como UTC y lo mostraría un día antes en México. */}
+                                                <td>{dayjs(linea.fecha).format("DD/MM/YYYY")}</td>
                                                 <td>
                                                     <span className={`badge ${linea.tipo === "I" ? "bg-success" : "bg-danger"}`}>
                                                         {linea.tipo === "I" ? "Ingreso" : "Egreso"}

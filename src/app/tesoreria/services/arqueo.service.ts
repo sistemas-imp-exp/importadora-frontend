@@ -13,10 +13,9 @@ export async function obtenerDenominaciones(): Promise<Denominacion[]> {
     return data;
 }
 
-export async function obtenerArqueos(corteId?: number): Promise<ArqueoCaja[]> {
-    const { data } = await api.get<ArqueoCaja[]>(URL, {
-        params: corteId ? { corte: corteId } : undefined,
-    });
+/** Arqueos, del más reciente al más antiguo; con `fecha` solo los de ese día. */
+export async function obtenerArqueos(fecha?: string): Promise<ArqueoCaja[]> {
+    const { data } = await api.get<ArqueoCaja[]>(URL, { params: fecha ? { fecha } : undefined });
     return data;
 }
 

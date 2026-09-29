@@ -22,10 +22,14 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                 icon: "bi bi-safe2",
                 children: [
                     {
-                        label: "Corte de caja",
-                        to: "/tesoreria/caja/corte",
-                        matchPrefix: true,
-                        icon: "bi bi-door-open"
+                        label: "Caja diaria",
+                        to: "/tesoreria/caja/diaria",
+                        icon: "bi bi-calendar3"
+                    },
+                    {
+                        label: "Saldos iniciales",
+                        to: "/tesoreria/caja/saldos-iniciales",
+                        icon: "bi bi-flag"
                     },
                     {
                         label: "Movimientos",

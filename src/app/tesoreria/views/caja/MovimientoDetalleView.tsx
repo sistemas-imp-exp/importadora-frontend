@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import dayjs from "dayjs";
 import { Link, useParams } from "react-router-dom";
 import PageHeader from "../../../../layouts/components/PageHeader";
 import SkeletonCallout from "../../../../shared/components/SkeletonCallout";
@@ -136,11 +137,13 @@ function MovimientoDetalleView() {
                             </div>
                             <div className="row text-muted gy-1" style={{ fontSize: "0.9rem" }}>
                                 <div className="col-md-3">
-                                    <span className="fw-semibold">Fecha:</span> {formatearFechaNumerica(movimiento.fecha, "numerico-hora")}
+                                    <span className="fw-semibold">Fecha:</span>{" "}
+                                    <Link to={`/tesoreria/caja/diaria?fecha=${dayjs(movimiento.fecha).format("YYYY-MM-DD")}`} title="Ver la caja de ese día">
+                                        {formatearFechaNumerica(movimiento.fecha)}
+                                    </Link>
                                 </div>
                                 <div className="col-md-3">
-                                    <span className="fw-semibold">Corte:</span>{" "}
-                                    <Link to={`/tesoreria/caja/corte/${movimiento.corte.id}`}>#{movimiento.corte.id}</Link>
+                                    <span className="fw-semibold">Capturó:</span> {getFullName(movimiento.usuario)}
                                 </div>
                                 <div className="col-md-3">
                                     <span className="fw-semibold">Autorizó:</span> {movimiento.autorizo}
@@ -192,12 +195,14 @@ function MovimientoDetalleView() {
                                         <ul className="list-unstyled mb-0" style={{ fontSize: "0.88rem" }}>
                                             <li className="mb-2">
                                                 <i className="bi bi-plus-circle text-muted me-2"></i>
-                                                Registrado el {formatearFechaNumerica(movimiento.creado, "numerico-hora")}
+                                                Registrado el {formatearFechaNumerica(movimiento.creado, "numerico-hora")} por{" "}
+                                                {getFullName(movimiento.usuario)}
                                             </li>
                                             {movimiento.editado && (
                                                 <li className="mb-2">
                                                     <i className="bi bi-pencil-square text-warning me-2"></i>
-                                                    Última modificación: {formatearFechaNumerica(movimiento.modificado, "numerico-hora")}
+                                                    Última edición: {formatearFechaNumerica(movimiento.editado_en ?? movimiento.modificado, "numerico-hora")}
+                                                    {movimiento.editado_por && <> por {getFullName(movimiento.editado_por)}</>}
                                                 </li>
                                             )}
                                             {movimiento.cancelado && (
@@ -217,7 +222,7 @@ function MovimientoDetalleView() {
                                         <p className="text-muted small mb-0 mt-2">
                                             <i className="bi bi-info-circle me-1"></i>
                                             No se guarda un detalle campo por campo de qué cambió en cada edición, solo
-                                            la fecha de la última modificación.
+                                            quién hizo la última y cuándo.
                                         </p>
                                     </div>
                                 </div>

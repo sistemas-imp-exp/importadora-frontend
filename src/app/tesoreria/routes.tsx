@@ -1,11 +1,11 @@
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import DashboardView from "./views/dashboard/DashboardView";
 import MovimientosView from "./views/caja/MovimientosView";
-import CorteCajaView from "./views/caja/CorteCajaView";
+import CajaDiariaView from "./views/caja/CajaDiariaView";
+import SaldosInicialesView from "./views/caja/SaldosInicialesView";
 import ArqueoCajaView from "./views/arqueo/ArqueoCajaView";
 import DivisasView from "./views/divisas/DivisasView";
 import DivisaDetalleView from "./views/divisas/DivisaDetalleView";
-import HistorialCorteDetalleView from "./views/caja/HistorialCorteDetalleView";
 import MovimientoDetalleView from "./views/caja/MovimientoDetalleView";
 import ReporteMovimientosView from "./views/reportes/ReporteMovimientosView";
 import RanchosView from "./views/nomina/RanchosView";
@@ -31,11 +31,10 @@ export const tesoreriaRoutes = (
             }
         />
         <Route path="/tesoreria/divisas/:id" element={<DivisaDetalleView />} />
-        <Route
-            path="/tesoreria/caja/corte"
-            element={<CorteCajaView />}
-        />
-        <Route path="/tesoreria/caja/corte/:id" element={<HistorialCorteDetalleView />} />
+        <Route path="/tesoreria/caja/diaria" element={<CajaDiariaView />} />
+        <Route path="/tesoreria/caja/saldos-iniciales" element={<SaldosInicialesView />} />
+        {/* Enlaces guardados de la pantalla anterior de corte de caja. */}
+        <Route path="/tesoreria/caja/corte/*" element={<Navigate to="/tesoreria/caja/diaria" replace />} />
 
         <Route
             path="/tesoreria/caja/movimientos"
