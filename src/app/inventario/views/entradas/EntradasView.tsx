@@ -19,6 +19,8 @@ import Paginacion from "../../../../shared/components/Paginacion";
 import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import DensidadToggle from "../../../../shared/components/DensidadToggle";
+import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 
 function EntradasView() {
     const [entradas, setEntradas] = useState<EntradaApi[]>([]);
@@ -38,6 +40,7 @@ function EntradasView() {
     const [eliminando, setEliminando] = useState(false);
 
     const { mostrarToast } = useToastContext();
+    const [densidad, setDensidad] = useDensidadTabla("entradas");
 
     // El listado se pagina en el servidor; los catálogos se cargan una vez.
     useEffect(() => {
@@ -161,6 +164,7 @@ function EntradasView() {
                                     placeholder="Buscar por factura, pedimento, proveedor, recibo, lote..."
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
+                                <DensidadToggle valor={densidad} onChange={setDensidad} />
                             </div>
 
                             {total > 0 && (
@@ -180,6 +184,7 @@ function EntradasView() {
                                 <EntradasTable
                                     entradas={entradas}
                                     camaras={camaras}
+                                    densidad={densidad}
                                     onEditar={setEntradaEditando}
                                     onEliminar={setEntradaEliminar}
                                 />

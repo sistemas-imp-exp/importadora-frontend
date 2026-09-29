@@ -2,6 +2,13 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 interface TablaResponsiveProps {
     children: React.ReactNode;
+    /**
+     * Altura máxima del área de la tabla (p. ej. "70vh"). Con ella la tabla
+     * desplaza en su propio contenedor y un encabezado `position: sticky`
+     * queda fijo arriba; sin ella, el scroll vertical es el de la página y el
+     * sticky no tiene contra qué fijarse (el contenedor tiene overflow-x).
+     */
+    alturaMaxima?: string;
 }
 
 /**
@@ -10,7 +17,7 @@ interface TablaResponsiveProps {
  * columnas obligaban a bajar hasta el fondo (a veces fuera de la pantalla,
  * con paginador y todo) solo para poder desplazarse lateralmente.
  */
-function TablaResponsive({ children }: TablaResponsiveProps) {
+function TablaResponsive({ children, alturaMaxima }: TablaResponsiveProps) {
     const scrollSuperiorRef = useRef<HTMLDivElement>(null);
     const contenedorRef = useRef<HTMLDivElement>(null);
     const [anchoContenido, setAnchoContenido] = useState(0);
@@ -45,6 +52,7 @@ function TablaResponsive({ children }: TablaResponsiveProps) {
             <div
                 ref={contenedorRef}
                 className="table-responsive"
+                style={alturaMaxima ? { maxHeight: alturaMaxima, overflowY: "auto" } : undefined}
                 onScroll={(e) => {
                     if (scrollSuperiorRef.current) scrollSuperiorRef.current.scrollLeft = e.currentTarget.scrollLeft;
                 }}
