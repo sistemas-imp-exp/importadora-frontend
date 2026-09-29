@@ -26,19 +26,15 @@ const FORM_VACIO = {
 
 function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [form, setForm] = useState(FORM_VACIO);
+    // El estado arranca desde `usuario`; para cambiar de usuario la vista
+    // remonta el formulario con otra `key` (ver UsuariosView).
+    const [form, setForm] = useState(() =>
+        usuario ? { ...usuario, areas_solo_lectura: usuario.areas_solo_lectura ?? [], password: "" } : FORM_VACIO
+    );
     const usernameInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
-        if (usuario) {
-            setForm({ ...usuario, areas_solo_lectura: usuario.areas_solo_lectura ?? [], password: "" });
-        } else {
-            setForm(FORM_VACIO);
-        }
-
-        if (!usuario && usernameInputRef.current) {
-            usernameInputRef.current.focus();
-        }
+        if (!usuario) usernameInputRef.current?.focus();
     }, [usuario]);
 
     function alternarArea(codigo: string) {

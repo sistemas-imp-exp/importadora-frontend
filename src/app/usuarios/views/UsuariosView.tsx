@@ -160,6 +160,7 @@ function UsuariosView() {
                 }}
             >
                 <UsuarioForm
+                    key={usuarioSeleccionado?.id ?? "nuevo"}
                     usuario={usuarioSeleccionado}
                     areas={areas}
                     onGuardar={guardarUsuario}
