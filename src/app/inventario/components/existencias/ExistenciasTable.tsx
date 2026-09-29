@@ -20,7 +20,6 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                         <th className="text-wrap">Proveedor</th>
                         <th className="text-wrap">Talla</th>
                         <th className="text-wrap">Tipo</th>
-                        <th className="text-wrap">Lote proveedor</th>
                         <th className="text-wrap">Recibo ingreso</th>
                         <th className="text-wrap">Factura</th>
                         <th className="text-wrap text-end">Peso/caja</th>
@@ -31,6 +30,7 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                         <th className="text-wrap text-end">Costo/kg</th>
                         <th className="text-wrap text-end">Total</th>
                         <th className="text-wrap">Caducidad</th>
+                        <th className="text-wrap">Lote proveedor</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,7 +48,6 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                                 <td className="text-wrap">{fila.proveedorNombre}</td>
                                 <td className="text-wrap">{fila.talla}</td>
                                 <td className="text-wrap">{fila.tipo}</td>
-                                <td className="text-wrap">{fila.loteProveedor}</td>
                                 <td className="text-wrap">{fila.reciboIngreso}</td>
                                 <td className="text-wrap">{fila.factura}</td>
                                 <td className="text-end">{fila.pesoPorCaja ?? "—"}</td>
@@ -70,6 +69,7 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                                         "—"
                                     )}
                                 </td>
+                                <td className="text-wrap">{fila.loteProveedor}</td>
                             </tr>
                         ))
                     )}
@@ -77,13 +77,13 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                 {filas.length > 0 && (
                     <tfoot>
                         <tr>
-                            <td colSpan={9} className="text-end fw-bold">Total ({totales.totalLotes} lotes):</td>
+                            <td colSpan={8} className="text-end fw-bold">Total ({totales.totalLotes} lotes):</td>
                             <td className="text-end fw-bold">{totales.totalCajas} cajas</td>
                             <td colSpan={2}></td>
                             <td className="text-end fw-bold">{formatearDinero(totales.totalKilosDisponibles)} kg</td>
                             <td></td>
                             <td className="text-end fw-bold">${formatearDinero(totales.totalPesos)}</td>
-                            <td></td>
+                            <td colSpan={2}></td>
                         </tr>
                     </tfoot>
                 )}

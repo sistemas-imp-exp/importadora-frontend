@@ -1,3 +1,4 @@
+import type { Empresa } from "../empresas/Empresa";
 import type { Producto } from "../productos/Producto";
 import type { Proveedor } from "../proveedores/Proveedor";
 
@@ -31,6 +32,9 @@ export interface EntradaDetalleApi {
 export interface EntradaApi {
     id: number;
     fecha: string;
+    // IMPORTADORA, MARISCOS SELECTOS… (catálogo de Empresas). En los traslados
+    // entre cámaras se hereda de la entrada de origen.
+    empresa: Empresa | null;
     // null cuando la entrada es la mitad "llegada" de un Movimiento entre cámaras,
     // no una compra real — ver MovimientoCamaraCrearSerializer en el backend.
     proveedor: Proveedor | null;
@@ -64,6 +68,7 @@ export interface CrearEntradaLineaRequest {
 
 export interface CrearEntradaRequest {
     fecha: string;
+    empresa_id: number;
     proveedor_id: number;
     es_internacional: boolean;
     factura: string;

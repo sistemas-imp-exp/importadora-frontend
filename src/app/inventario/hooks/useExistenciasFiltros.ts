@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import type { ExistenciaApi } from "../interfaces/existencias/Existencia";
 import type { OpcionFiltro } from "../../../shared/components/FiltroChip";
 import { calcularTotales, construirFilas, type FilaExistencia } from "../utils/existencias";
-import { ETIQUETA_NIVEL, type NivelCaducidad } from "../utils/caducidad";
+import { ETIQUETA_NIVEL, RANGO_NIVEL, type NivelCaducidad } from "../utils/caducidad";
 
 export interface FiltrosExistencias {
+    empresaId: string;
     camaraId: string;
     proveedor: string;
     nivel: string;
@@ -12,14 +13,14 @@ export interface FiltrosExistencias {
     tipo: string;
 }
 
-const SIN_FILTROS: FiltrosExistencias = { camaraId: "", proveedor: "", nivel: "", talla: "", tipo: "" };
+const SIN_FILTROS: FiltrosExistencias = { empresaId: "", camaraId: "", proveedor: "", nivel: "", talla: "", tipo: "" };
 
 const VALOR_SIN_CADUCIDAD = "sin_caducidad";
 
 const OPCIONES_NIVEL: OpcionFiltro[] = [
     ...(["vencido", "critico", "urgente", "por_vencer"] as NivelCaducidad[]).map((nivel) => ({
         value: nivel,
-        label: ETIQUETA_NIVEL[nivel],
+        label: `${ETIQUETA_NIVEL[nivel]} (${RANGO_NIVEL[nivel]})`,
     })),
     { value: VALOR_SIN_CADUCIDAD, label: "Sin caducidad" },
 ];
@@ -48,10 +49,15 @@ export function useExistenciasFiltros(existencias: ExistenciaApi[]) {
     // así ningún chip ofrece un valor que daría cero resultados.
     const opciones = useMemo(() => {
         const porCamara = new Map<string, string>();
+        const porEmpresa = new Map<string, string>();
         for (const fila of filas) {
             porCamara.set(String(fila.camaraId ?? ""), fila.camaraNombre);
+            porEmpresa.set(String(fila.empresaId ?? ""), fila.empresaNombre);
         }
         return {
+            empresas: Array.from(porEmpresa, ([value, label]) => ({ value, label })).sort((a, b) =>
+                a.label.localeCompare(b.label)
+            ),
             camaras: Array.from(porCamara, ([value, label]) => ({ value, label })).sort((a, b) =>
                 a.label.localeCompare(b.label)
             ),
@@ -65,6 +71,7 @@ export function useExistenciasFiltros(existencias: ExistenciaApi[]) {
     const filtradas = useMemo(() => {
         const termino = busqueda.trim().toLowerCase();
         return filas.filter((fila) => {
+            if (filtros.empresaId !== "" && String(fila.empresaId ?? "") !== filtros.empresaId) return false;
             if (filtros.camaraId !== "" && String(fila.camaraId ?? "") !== filtros.camaraId) return false;
             if (filtros.proveedor && fila.proveedorNombre !== filtros.proveedor) return false;
             if (filtros.talla && fila.talla !== filtros.talla) return false;

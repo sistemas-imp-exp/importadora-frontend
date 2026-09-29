@@ -9,7 +9,7 @@ import { obtenerAlertasCaducidad } from "../../services/alertaCaducidad.service"
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { AlertasCaducidadResponse, FiltrosAlertasCaducidad } from "../../interfaces/alertas/AlertaCaducidad";
 import type { NivelCaducidad } from "../../utils/caducidad";
-import { CLASE_BADGE_NIVEL, ETIQUETA_NIVEL } from "../../utils/caducidad";
+import { CLASE_BADGE_NIVEL, ETIQUETA_NIVEL, RANGO_NIVEL } from "../../utils/caducidad";
 import AlertasCaducidadTable from "../../components/alertas/AlertasCaducidadTable";
 
 const NIVELES: NivelCaducidad[] = ["vencido", "critico", "urgente", "por_vencer"];
@@ -79,6 +79,7 @@ function AlertasCaducidadView() {
                                         <div className="card-body py-2">
                                             <span className={`badge ${CLASE_BADGE_NIVEL[nivel]} mb-1`}>{ETIQUETA_NIVEL[nivel]}</span>
                                             <div className="fs-4 fw-bold">{datos.conteo_por_nivel[nivel]}</div>
+                                            <div className="small text-body-secondary">{RANGO_NIVEL[nivel]}</div>
                                         </div>
                                     </div>
                                 </button>

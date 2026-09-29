@@ -3,11 +3,13 @@ import LoadingButton from "../../../../shared/components/LoadingButton";
 import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import type { CrearEntradaLineaRequest, CrearEntradaRequest, EntradaApi } from "../../interfaces/entradas/Entrada";
+import type { Empresa } from "../../interfaces/empresas/Empresa";
 import type { Proveedor } from "../../interfaces/proveedores/Proveedor";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Producto } from "../../interfaces/productos/Producto";
 
 interface EntradaFormProps {
+    empresas: Empresa[];
     proveedores: Proveedor[];
     camaras: Camara[];
     productos: Producto[];
@@ -63,7 +65,7 @@ function lineaVacia(): LineaForm {
 }
 
 function cabeceraVacia() {
-    return { fecha: "", proveedor_id: 0, es_internacional: false, factura: "", pedimento: "", recibo_ingreso: "" };
+    return { fecha: "", empresa_id: 0, proveedor_id: 0, es_internacional: false, factura: "", pedimento: "", recibo_ingreso: "" };
 }
 
 type Cabecera = ReturnType<typeof cabeceraVacia>;
@@ -71,6 +73,7 @@ type Cabecera = ReturnType<typeof cabeceraVacia>;
 /** Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta. */
 function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecera, string>> {
     const errores: Partial<Record<keyof Cabecera, string>> = {};
+    if (!cabecera.empresa_id) errores.empresa_id = "Selecciona la empresa.";
     if (!cabecera.fecha) errores.fecha = "La fecha es obligatoria.";
     if (!cabecera.proveedor_id) errores.proveedor_id = "Selecciona un proveedor.";
     if (!cabecera.factura.trim()) errores.factura = "La factura es obligatoria.";
@@ -96,6 +99,7 @@ function cabeceraDesdeEntrada(entrada?: EntradaApi | null): Cabecera {
     if (!entrada) return cabeceraVacia();
     return {
         fecha: entrada.fecha,
+        empresa_id: entrada.empresa?.id ?? 0,
         proveedor_id: entrada.proveedor?.id ?? 0,
         es_internacional: entrada.es_internacional,
         factura: entrada.factura,
@@ -135,7 +139,7 @@ function borradorTieneDatos(linea: LineaForm): boolean {
     );
 }
 
-function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCancelar }: EntradaFormProps) {
+function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGuardar, onCancelar }: EntradaFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // El estado arranca desde `entrada`; para cambiar de registro el padre
@@ -146,6 +150,11 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     const [editandoUid, setEditandoUid] = useState<number | null>(null);
     const [erroresCabecera, setErroresCabecera] = useState<Partial<Record<keyof Cabecera, string>>>({});
     const [erroresLinea, setErroresLinea] = useState<Partial<Record<keyof LineaForm, string>>>({});
+    // El lote de proveedor se hereda de la línea anterior (suele repetirse en la
+    // misma recepción). `destelloLote` remonta el input para repetir la animación
+    // en cada línea nueva, aunque el lote no haya cambiado.
+    const [loteHeredado, setLoteHeredado] = useState(false);
+    const [destelloLote, setDestelloLote] = useState(0);
 
     const opcionesProducto = useMemo(
         () => productos.map((p) => ({ value: p.id, label: `${p.talla} ${p.tipo}`, disabled: !p.activo })),
@@ -172,6 +181,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     }
 
     function actualizarBorrador(cambios: Partial<LineaForm>) {
+        if ("lote_proveedor" in cambios) setLoteHeredado(false);
         setBorrador((actual) => {
             const nueva = { ...actual, ...cambios };
             // Total kilos se recalcula solo mientras cajas y kg/caja tengan valor;
@@ -223,9 +233,16 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
             setLineas((actual) => [...actual, borrador]);
         }
 
-        // La cámara y la caducidad casi siempre se repiten dentro de la misma
-        // recepción, así que se conservan para la siguiente línea.
-        setBorrador({ ...lineaVacia(), camara: borrador.camara, fecha_caducidad: borrador.fecha_caducidad });
+        // La cámara, la caducidad y el lote de proveedor casi siempre se repiten
+        // dentro de la misma recepción, así que se conservan para la siguiente línea.
+        setBorrador({
+            ...lineaVacia(),
+            camara: borrador.camara,
+            fecha_caducidad: borrador.fecha_caducidad,
+            lote_proveedor: borrador.lote_proveedor,
+        });
+        setLoteHeredado(borrador.lote_proveedor.trim() !== "");
+        setDestelloLote((n) => n + 1);
         enfocarProducto();
     }
 
@@ -242,6 +259,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     /** Limpia la sección de captura: cancela una edición en curso o solo borra lo escrito. */
     function cancelarEdicionLinea() {
         setBorrador(lineaVacia());
+        setLoteHeredado(false);
         setEditandoUid(null);
         setError(null);
         setErroresLinea({});
@@ -278,6 +296,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
     function validar(): string | null {
         const erroresCab = validarCabeceraCampos(cabecera);
         setErroresCabecera(erroresCab);
+        if (erroresCab.empresa_id) return "Selecciona la empresa (arriba, junto a Nacional/Importación).";
         if (Object.keys(erroresCab).length > 0) {
             return "Revisa los campos marcados en rojo en la información de recepción.";
         }
@@ -301,6 +320,7 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
 
         const payload: CrearEntradaRequest = {
             fecha: cabecera.fecha,
+            empresa_id: cabecera.empresa_id,
             proveedor_id: cabecera.proveedor_id,
             es_internacional: cabecera.es_internacional,
             factura: cabecera.factura.trim().toUpperCase(),
@@ -325,9 +345,11 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
         try {
             await onGuardar(payload);
             if (!entrada) {
-                setCabecera(cabeceraVacia());
+                // La empresa se conserva: las capturas seguidas suelen ser de la misma.
+                setCabecera({ ...cabeceraVacia(), empresa_id: cabecera.empresa_id });
                 setLineas([]);
                 setBorrador(lineaVacia());
+                setLoteHeredado(false);
                 setEditandoUid(null);
                 setErroresCabecera({});
                 setErroresLinea({});
@@ -347,21 +369,40 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                 <h3 className="card-title fs-6 fw-bold m-0">
                     {entrada ? `Editando entrada #${entrada.id}` : "Registrar entrada"}
                 </h3>
-                <div className="btn-group btn-group-sm" role="group" aria-label="Tipo de entrada">
-                    <button
-                        type="button"
-                        className={`btn ${cabecera.es_internacional ? "btn-outline-secondary" : "btn-primary"}`}
-                        onClick={() => actualizarCabecera({ es_internacional: false, pedimento: "" })}
+                <div className="d-flex flex-wrap gap-2">
+                    <div
+                        className={`btn-group btn-group-sm ${erroresCabecera.empresa_id ? "border border-danger rounded" : ""}`}
+                        role="group"
+                        aria-label="Empresa"
+                        title={erroresCabecera.empresa_id}
                     >
-                        Nacional
-                    </button>
-                    <button
-                        type="button"
-                        className={`btn ${cabecera.es_internacional ? "btn-primary" : "btn-outline-secondary"}`}
-                        onClick={() => actualizarCabecera({ es_internacional: true })}
-                    >
-                        Importación
-                    </button>
+                        {empresas.map((empresa) => (
+                            <button
+                                key={empresa.id}
+                                type="button"
+                                className={`btn ${cabecera.empresa_id === empresa.id ? "btn-primary" : "btn-outline-secondary"}`}
+                                onClick={() => actualizarCabecera({ empresa_id: empresa.id })}
+                            >
+                                {empresa.nombre}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="btn-group btn-group-sm" role="group" aria-label="Tipo de entrada">
+                        <button
+                            type="button"
+                            className={`btn ${cabecera.es_internacional ? "btn-outline-secondary" : "btn-primary"}`}
+                            onClick={() => actualizarCabecera({ es_internacional: false, pedimento: "" })}
+                        >
+                            Nacional
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn ${cabecera.es_internacional ? "btn-primary" : "btn-outline-secondary"}`}
+                            onClick={() => actualizarCabecera({ es_internacional: true })}
+                        >
+                            Importación
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -490,8 +531,10 @@ function EntradaForm({ proveedores, camaras, productos, entrada, onGuardar, onCa
                                     Lote <span className="text-danger">*</span>
                                 </label>
                                 <input
-                                    className={`form-control form-control-sm ${erroresLinea.lote_proveedor ? "is-invalid" : ""}`}
+                                    key={`lote-${destelloLote}`}
+                                    className={`form-control form-control-sm ${erroresLinea.lote_proveedor ? "is-invalid" : ""} ${loteHeredado ? "campo-heredado" : ""}`}
                                     placeholder="Ej. L-0982-A"
+                                    title={loteHeredado ? "Mismo lote que la línea anterior: cámbialo si esta línea es de otro lote." : undefined}
                                     value={borrador.lote_proveedor}
                                     onChange={(e) => actualizarBorrador({ lote_proveedor: e.target.value })}
                                 />

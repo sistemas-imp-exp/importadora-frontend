@@ -4,6 +4,8 @@ import { clasificarNivelCaducidad, diasRestantesHasta, type NivelCaducidad } fro
 export interface FilaExistencia {
     detalleId: number;
     fecha: string;
+    empresaId: number | null;
+    empresaNombre: string;
     camaraId: number | null;
     camaraNombre: string;
     proveedorNombre: string;
@@ -51,6 +53,8 @@ export function construirFilas(existencias: ExistenciaApi[]): FilaExistencia[] {
         return {
             detalleId: item.detalle_id,
             fecha: item.fecha,
+            empresaId: item.empresa_id,
+            empresaNombre: item.empresa_nombre,
             camaraId: item.camara_id,
             camaraNombre: item.camara_nombre,
             proveedorNombre: item.proveedor_nombre,

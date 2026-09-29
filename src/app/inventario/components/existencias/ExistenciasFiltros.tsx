@@ -3,6 +3,7 @@ import FiltroChip, { type OpcionFiltro } from "../../../../shared/components/Fil
 import type { FiltrosExistencias } from "../../hooks/useExistenciasFiltros";
 
 interface OpcionesExistencias {
+    empresas: OpcionFiltro[];
     camaras: OpcionFiltro[];
     proveedores: OpcionFiltro[];
     tallas: OpcionFiltro[];
@@ -41,6 +42,14 @@ function ExistenciasFiltros({
             />
 
             <div className="d-flex flex-wrap gap-2 align-items-center">
+                <FiltroChip
+                    etiqueta="Empresa"
+                    icono="bi-building"
+                    valor={filtros.empresaId}
+                    opciones={opciones.empresas}
+                    onChange={(valor) => onFiltroChange("empresaId", valor)}
+                    etiquetaTodos="Todas las empresas"
+                />
                 <FiltroChip
                     etiqueta="Cámara"
                     icono="bi-snow2"

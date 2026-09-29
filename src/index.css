@@ -48,3 +48,19 @@
 .card-footer.d-flex::after {
     display: none;
 }
+
+/* Campo precargado con el valor de la línea anterior (p. ej. el lote de
+   proveedor en EntradaForm): un destello breve avisa que no está vacío por
+   accidente sino heredado, y que hay que cambiarlo si la línea es de otro lote.
+   Se respeta prefers-reduced-motion: sin animación, solo el borde. */
+@keyframes campo-heredado-destello {
+    0%   { box-shadow: 0 0 0 .25rem rgba(var(--bs-warning-rgb), .55); background-color: rgba(var(--bs-warning-rgb), .18); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--bs-warning-rgb), 0);     background-color: transparent; }
+}
+.campo-heredado {
+    border-color: var(--bs-warning) !important;
+    animation: campo-heredado-destello 1.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+    .campo-heredado { animation: none; }
+}

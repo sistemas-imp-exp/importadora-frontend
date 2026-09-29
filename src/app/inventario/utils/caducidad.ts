@@ -31,6 +31,14 @@ export const ETIQUETA_NIVEL: Record<NivelCaducidad, string> = {
     por_vencer: "Por vencer",
 };
 
+/** Días que abarca cada nivel, para mostrarlo junto a su etiqueta. */
+export const RANGO_NIVEL: Record<NivelCaducidad, string> = {
+    vencido: "fecha ya pasada",
+    critico: `0 a ${DIAS_CRITICO} días`,
+    urgente: `${DIAS_CRITICO + 1} a ${DIAS_URGENTE} días`,
+    por_vencer: `${DIAS_URGENTE + 1} a ${DIAS_POR_VENCER} días`,
+};
+
 export const CLASE_BADGE_NIVEL: Record<NivelCaducidad, string> = {
     vencido: "text-bg-dark",
     critico: "text-bg-danger",

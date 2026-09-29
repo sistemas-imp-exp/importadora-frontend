@@ -1,7 +1,7 @@
 import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
 import { obtenerExistencias } from "../../services/existencia.service";
-import { descargarExistenciasPdf } from "../../services/reportes.service";
+import { descargarExistenciasExcel, descargarExistenciasPdf } from "../../services/reportes.service";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import ExistenciasTable from "../../components/existencias/ExistenciasTable";
 import ExistenciasFiltros from "../../components/existencias/ExistenciasFiltros";
@@ -23,7 +23,7 @@ function ExistenciasView() {
     const [error, setError] = useState<string | null>(null);
     const [colapsado, setColapsado] = useState(false);
     const [porPagina, setPorPagina] = useState(POR_PAGINA_INICIAL);
-    const [descargando, setDescargando] = useState(false);
+    const [descargando, setDescargando] = useState<"pdf" | "excel" | null>(null);
 
     const { mostrarToast } = useToastContext();
     const { busqueda, setBusqueda, filtros, setFiltro, limpiarFiltros, hayFiltros, opciones, filtradas, totales } =
@@ -55,16 +55,17 @@ function ExistenciasView() {
         }
     }
 
-    async function descargarPdf() {
+    async function descargar(formato: "pdf" | "excel") {
         try {
-            setDescargando(true);
-            // Se mandan los filtros, no las filas: el PDF lo arma el backend
+            setDescargando(formato);
+            // Se mandan los filtros, no las filas: el reporte lo arma el backend
             // volviendo a consultar, así que debe filtrar con el mismo criterio.
-            await descargarExistenciasPdf(filtros, busqueda);
+            const descargarReporte = formato === "pdf" ? descargarExistenciasPdf : descargarExistenciasExcel;
+            await descargarReporte(filtros, busqueda);
         } catch (error) {
             mostrarToast("Error al exportar", obtenerMensajeError(error), "danger");
         } finally {
-            setDescargando(false);
+            setDescargando(null);
         }
     }
 
@@ -131,24 +132,44 @@ function ExistenciasView() {
                             <PorPaginaSelect valor={porPagina} onChange={setPorPagina} />
                         )}
                         {listo && filtradas.length > 0 && (
-                            <button
-                                className="btn btn-outline-danger btn-sm"
-                                type="button"
-                                onClick={descargarPdf}
-                                disabled={descargando}
-                                title={
-                                    hayFiltros
-                                        ? "Descargar en PDF las existencias con los filtros aplicados"
-                                        : "Descargar todas las existencias en PDF"
-                                }
-                            >
-                                {descargando ? (
-                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                ) : (
-                                    <i className="bi bi-file-earmark-pdf" aria-hidden="true"></i>
-                                )}
-                                <span className="ms-1">PDF</span>
-                            </button>
+                            <>
+                                <button
+                                    className="btn btn-outline-success btn-sm"
+                                    type="button"
+                                    onClick={() => descargar("excel")}
+                                    disabled={descargando !== null}
+                                    title={
+                                        hayFiltros
+                                            ? "Descargar en Excel las existencias con los filtros aplicados"
+                                            : "Descargar todas las existencias en Excel"
+                                    }
+                                >
+                                    {descargando === "excel" ? (
+                                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                                    )}
+                                    <span className="ms-1">Excel</span>
+                                </button>
+                                <button
+                                    className="btn btn-outline-danger btn-sm"
+                                    type="button"
+                                    onClick={() => descargar("pdf")}
+                                    disabled={descargando !== null}
+                                    title={
+                                        hayFiltros
+                                            ? "Descargar en PDF las existencias con los filtros aplicados"
+                                            : "Descargar todas las existencias en PDF"
+                                    }
+                                >
+                                    {descargando === "pdf" ? (
+                                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                                    )}
+                                    <span className="ms-1">PDF</span>
+                                </button>
+                            </>
                         )}
                         <button className="btn btn-outline-secondary btn-sm" type="button" onClick={cargar} title="Actualizar">
                             <i className="bi bi-arrow-clockwise" aria-hidden="true"></i>

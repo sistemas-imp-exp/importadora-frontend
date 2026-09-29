@@ -5,6 +5,8 @@
 export interface ExistenciaApi {
     detalle_id: number;
     fecha: string;
+    empresa_id: number | null;
+    empresa_nombre: string;
     producto_id: number;
     precio_venta_planeado: string | null;
     camara_id: number | null;

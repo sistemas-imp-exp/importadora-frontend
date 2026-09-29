@@ -35,6 +35,7 @@ function EntradasTable({ entradas, camaras, onEditar, onEliminar }: EntradasTabl
                 <thead>
                     <tr>
                         <th className="text-wrap">Fecha</th>
+                        <th className="text-wrap">Empresa</th>
                         <th className="text-wrap">Tipo</th>
                         <th className="text-wrap">Proveedor</th>
                         <th className="text-wrap">Factura</th>
@@ -56,7 +57,7 @@ function EntradasTable({ entradas, camaras, onEditar, onEliminar }: EntradasTabl
                 <tbody>
                     {reales.length === 0 ? (
                         <tr>
-                            <td colSpan={17} className="text-center text-muted py-4">
+                            <td colSpan={18} className="text-center text-muted py-4">
                                 No hay entradas registradas.
                             </td>
                         </tr>
@@ -73,6 +74,7 @@ function EntradasTable({ entradas, camaras, onEditar, onEliminar }: EntradasTabl
                                             <td className="text-wrap" rowSpan={entrada.detalles.length}>
                                                 {formatearFechaNumerica(new Date(entrada.fecha + "T00:00:00"))}
                                             </td>
+                                            <td className="text-wrap" rowSpan={entrada.detalles.length}>{entrada.empresa?.nombre ?? "—"}</td>
                                             <td className="text-wrap" rowSpan={entrada.detalles.length}>
                                                 <span className={`badge ${entrada.es_internacional ? "text-bg-info" : "text-bg-secondary"}`}>
                                                     {entrada.es_internacional ? "Internacional" : "Nacional"}

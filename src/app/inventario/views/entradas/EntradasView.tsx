@@ -1,10 +1,12 @@
 import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
 import { actualizarEntrada, crearEntrada, eliminarEntrada, obtenerEntradas } from "../../services/entrada.service";
+import { obtenerEmpresas } from "../../services/empresa.service";
 import { obtenerProveedores } from "../../services/proveedor.service";
 import { obtenerCamaras } from "../../services/camara.service";
 import { obtenerProductos } from "../../services/producto.service";
 import type { EntradaApi, CrearEntradaRequest } from "../../interfaces/entradas/Entrada";
+import type { Empresa } from "../../interfaces/empresas/Empresa";
 import type { Proveedor } from "../../interfaces/proveedores/Proveedor";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Producto } from "../../interfaces/productos/Producto";
@@ -20,6 +22,7 @@ import { useToastContext } from "../../../../shared/context/ToastProvider";
 
 function EntradasView() {
     const [entradas, setEntradas] = useState<EntradaApi[]>([]);
+    const [empresas, setEmpresas] = useState<Empresa[]>([]);
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [productos, setProductos] = useState<Producto[]>([]);
@@ -63,11 +66,13 @@ function EntradasView() {
 
     async function cargarCatalogos() {
         try {
-            const [datosProveedores, datosCamaras, datosProductos] = await Promise.all([
+            const [datosEmpresas, datosProveedores, datosCamaras, datosProductos] = await Promise.all([
+                obtenerEmpresas(),
                 obtenerProveedores(),
                 obtenerCamaras(),
                 obtenerProductos(),
             ]);
+            setEmpresas(datosEmpresas);
             setProveedores(datosProveedores);
             setCamaras(datosCamaras);
             setProductos(datosProductos);
@@ -138,6 +143,7 @@ function EntradasView() {
                     <>
                         <EntradaForm
                             key={entradaEditando?.id ?? "nueva"}
+                            empresas={empresas}
                             proveedores={proveedores}
                             camaras={camaras}
                             productos={productos}
