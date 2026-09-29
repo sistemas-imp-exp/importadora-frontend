@@ -9,4 +9,6 @@ export interface Usuario {
     is_superuser: boolean;
     foto: string | null;
     areas: string[];
+    // Subconjunto de `areas` asignado en solo lectura (consulta y descarga).
+    areas_solo_lectura: string[];
 }

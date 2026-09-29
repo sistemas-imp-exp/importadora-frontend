@@ -19,8 +19,12 @@ import DensidadToggle from "../../../../shared/components/DensidadToggle";
 import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function SalidasView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [salidas, setSalidas] = useState<SalidaApi[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
@@ -136,20 +140,24 @@ function SalidasView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 {loading ? (
                     <SkeletonTable columnas={4} filas={3} />
                 ) : error ? (
                     <div className="alert alert-danger" role="alert">{error}</div>
                 ) : (
                     <>
-                        <SalidaForm
-                            key={salidaEditando?.id ?? "nueva"}
-                            clientes={clientes}
-                            existencias={existencias}
-                            salida={salidaEditando}
-                            onGuardar={guardarSalida}
-                            onCancelar={() => setSalidaEditando(null)}
-                        />
+                        {editable && (
+                            <SalidaForm
+                                key={salidaEditando?.id ?? "nueva"}
+                                clientes={clientes}
+                                existencias={existencias}
+                                salida={salidaEditando}
+                                onGuardar={guardarSalida}
+                                onCancelar={() => setSalidaEditando(null)}
+                            />
+                        )}
 
                         <div className="card card-outline card-primary">
                             <div className="card-header d-flex flex-wrap gap-2 align-items-center">
@@ -181,8 +189,8 @@ function SalidasView() {
                                     salidas={salidas}
                                     camaras={camaras}
                                     densidad={densidad}
-                                    onEditar={setSalidaEditando}
-                                    onEliminar={setSalidaEliminar}
+                                    onEditar={editable ? setSalidaEditando : undefined}
+                                    onEliminar={editable ? setSalidaEliminar : undefined}
                                 />
                             </div>
 

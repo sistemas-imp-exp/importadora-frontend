@@ -8,8 +8,12 @@ import ProductoForm from "../../components/productos/ProductoForm";
 import Modal from "../../../../shared/components/Modal";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function ProductosView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [productos, setProductos] = useState<Producto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -68,19 +72,23 @@ function ProductosView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 <div className="card card-outline card-primary">
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">Lista de productos</h3>
-                        <button
-                            className="btn btn-success"
-                            onClick={() => {
-                                setProductoSeleccionado(null);
-                                setMostrarModal(true);
-                            }}
-                        >
-                            <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
-                            Nuevo producto
-                        </button>
+                        {editable && (
+                            <button
+                                className="btn btn-success"
+                                onClick={() => {
+                                    setProductoSeleccionado(null);
+                                    setMostrarModal(true);
+                                }}
+                            >
+                                <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                Nuevo producto
+                            </button>
+                        )}
                     </div>
 
                     <div className="card-body p-0">
@@ -93,10 +101,10 @@ function ProductosView() {
                         ) : (
                             <ProductosTable
                                 productos={productos}
-                                onEditar={(producto) => {
+                                onEditar={editable ? (producto) => {
                                     setProductoSeleccionado(producto);
                                     setMostrarModal(true);
-                                }}
+                                } : undefined}
                             />
                         )}
                     </div>

@@ -49,6 +49,14 @@ export function AuthProvider({ children }: Props) {
 
         return user.areas.includes(area);
     };
+
+    // Misma regla que security.permissions.tiene_area(..., escritura=True) en
+    // el backend, que es el que realmente la hace cumplir.
+    const puedeEditar = (area: string) => {
+        if (!user || !hasArea(area)) return false;
+        if (user.is_superuser) return true;
+        return !(user.areas_solo_lectura ?? []).includes(area);
+    };
     useEffect(() => {
         async function loadUser() {
 
@@ -82,6 +90,7 @@ export function AuthProvider({ children }: Props) {
                 logout,
                 updateUser,
                 hasArea,
+                puedeEditar,
                 isAuthenticated: !!accessToken && !!user,
             }}
         >

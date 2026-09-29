@@ -7,7 +7,7 @@ import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface ProductosTableProps {
     productos: Producto[];
-    onEditar: (producto: Producto) => void;
+    onEditar?: (producto: Producto) => void;
 }
 
 const POR_PAGINA = 15;
@@ -44,13 +44,13 @@ function ProductosTable({ productos, onEditar }: ProductosTableProps) {
                             <th>Categoría</th>
                             <th>Presentación</th>
                             <th className="text-center">Estado</th>
-                            <th className="text-end">Acciones</th>
+                            {onEditar && <th className="text-end">Acciones</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {paginados.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="text-center text-body-secondary py-5">
+                                <td colSpan={onEditar ? 6 : 5} className="text-center text-body-secondary py-5">
                                     {productos.length === 0 ? "No hay productos registrados." : "Ningún producto coincide con la búsqueda."}
                                 </td>
                             </tr>
@@ -81,18 +81,20 @@ function ProductosTable({ productos, onEditar }: ProductosTableProps) {
                                             <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Inactivo</span>
                                         )}
                                     </td>
-                                    <td>
-                                        <div className="text-end">
-                                            <button
-                                                className="btn btn-outline-secondary btn-sm"
-                                                type="button"
-                                                title="Editar producto"
-                                                onClick={() => onEditar(producto)}
-                                            >
-                                                <i className="bi bi-pencil" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {onEditar && (
+                                        <td>
+                                            <div className="text-end">
+                                                <button
+                                                    className="btn btn-outline-secondary btn-sm"
+                                                    type="button"
+                                                    title="Editar producto"
+                                                    onClick={() => onEditar(producto)}
+                                                >
+                                                    <i className="bi bi-pencil" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

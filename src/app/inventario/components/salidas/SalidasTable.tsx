@@ -14,8 +14,8 @@ interface SalidasTableProps {
     salidas: SalidaApi[];
     camaras: Camara[];
     densidad: DensidadTabla;
-    onEditar: (salida: SalidaApi) => void;
-    onEliminar: (salida: SalidaApi) => void;
+    onEditar?: (salida: SalidaApi) => void;
+    onEliminar?: (salida: SalidaApi) => void;
 }
 
 const [FIJA_EXPANDIR, FIJA_FECHA, FIJA_FOLIO] = columnasFijas(["2.5rem", "6.5rem", "8rem"]);
@@ -102,13 +102,13 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                         <th className="num">Cajas</th>
                         <th className="num">Total kg</th>
                         <th className="num">Total venta</th>
-                        <th className="fija-der text-end">Acciones</th>
+                        {onEditar && <th className="fija-der text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {reales.length === 0 ? (
                         <tr>
-                            <td colSpan={COLUMNAS} className="text-center text-body-secondary py-5">
+                            <td colSpan={onEditar ? COLUMNAS : COLUMNAS - 1} className="text-center text-body-secondary py-5">
                                 <i className="bi bi-inbox fs-3 d-block mb-2" aria-hidden="true"></i>
                                 No hay salidas registradas.
                             </td>
@@ -156,23 +156,25 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                                 ></i>
                                             )}
                                         </td>
-                                        <td className="fija-der text-end text-nowrap">
-                                            <BotonAccionFila
-                                                icono="bi-pencil"
-                                                etiqueta={`Editar salida ${salida.folio_de_salida}`}
-                                                onClick={() => onEditar(salida)}
-                                            />{" "}
-                                            <BotonAccionFila
-                                                icono="bi-trash"
-                                                etiqueta={`Eliminar salida ${salida.folio_de_salida}`}
-                                                variante="danger"
-                                                onClick={() => onEliminar(salida)}
-                                            />
-                                        </td>
+                                        {onEditar && onEliminar && (
+                                            <td className="fija-der text-end text-nowrap">
+                                                <BotonAccionFila
+                                                    icono="bi-pencil"
+                                                    etiqueta={`Editar salida ${salida.folio_de_salida}`}
+                                                    onClick={() => onEditar?.(salida)}
+                                                />{" "}
+                                                <BotonAccionFila
+                                                    icono="bi-trash"
+                                                    etiqueta={`Eliminar salida ${salida.folio_de_salida}`}
+                                                    variante="danger"
+                                                    onClick={() => onEliminar?.(salida)}
+                                                />
+                                            </td>
+                                        )}
                                     </tr>
                                     {abierta && (
                                         <tr className="fila-detalle" id={idDetalle}>
-                                            <td colSpan={COLUMNAS}>
+                                            <td colSpan={onEditar ? COLUMNAS : COLUMNAS - 1}>
                                                 <DetalleSalida detalles={salida.detalles} nombreCamara={nombreCamara} />
                                             </td>
                                         </tr>

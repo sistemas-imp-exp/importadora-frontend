@@ -21,8 +21,12 @@ import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 import DensidadToggle from "../../../../shared/components/DensidadToggle";
 import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function EntradasView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [entradas, setEntradas] = useState<EntradaApi[]>([]);
     const [empresas, setEmpresas] = useState<Empresa[]>([]);
     const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -138,22 +142,26 @@ function EntradasView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 {loading ? (
                     <SkeletonTable columnas={4} filas={3} />
                 ) : error ? (
                     <div className="alert alert-danger" role="alert">{error}</div>
                 ) : (
                     <>
-                        <EntradaForm
-                            key={entradaEditando?.id ?? "nueva"}
-                            empresas={empresas}
-                            proveedores={proveedores}
-                            camaras={camaras}
-                            productos={productos}
-                            entrada={entradaEditando}
-                            onGuardar={guardarEntrada}
-                            onCancelar={() => setEntradaEditando(null)}
-                        />
+                        {editable && (
+                            <EntradaForm
+                                key={entradaEditando?.id ?? "nueva"}
+                                empresas={empresas}
+                                proveedores={proveedores}
+                                camaras={camaras}
+                                productos={productos}
+                                entrada={entradaEditando}
+                                onGuardar={guardarEntrada}
+                                onCancelar={() => setEntradaEditando(null)}
+                            />
+                        )}
 
                         <div className="card card-outline card-primary">
                             <div className="card-header d-flex flex-wrap gap-2 align-items-center">
@@ -185,8 +193,8 @@ function EntradasView() {
                                     entradas={entradas}
                                     camaras={camaras}
                                     densidad={densidad}
-                                    onEditar={setEntradaEditando}
-                                    onEliminar={setEntradaEliminar}
+                                    onEditar={editable ? setEntradaEditando : undefined}
+                                    onEliminar={editable ? setEntradaEliminar : undefined}
                                 />
                             </div>
 

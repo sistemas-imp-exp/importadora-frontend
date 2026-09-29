@@ -11,8 +11,12 @@ import MovimientosCamaraTable from "../../components/movimientos/MovimientosCama
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function MovimientosCamaraView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [movimientos, setMovimientos] = useState<MovimientoCamaraApi[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [existencias, setExistencias] = useState<ExistenciaApi[]>([]);
@@ -69,13 +73,15 @@ function MovimientosCamaraView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 {loading ? (
                     <SkeletonTable columnas={4} filas={3} />
                 ) : error ? (
                     <div className="alert alert-danger" role="alert">{error}</div>
                 ) : (
                     <>
-                        <MovimientoCamaraForm camaras={camaras} existencias={existencias} onGuardar={guardarMovimiento} />
+                        {editable && <MovimientoCamaraForm camaras={camaras} existencias={existencias} onGuardar={guardarMovimiento} />}
 
                         <div className="card card-outline card-primary">
                             <div className="card-header">

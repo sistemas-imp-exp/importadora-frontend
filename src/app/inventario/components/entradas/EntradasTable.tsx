@@ -15,8 +15,8 @@ interface EntradasTableProps {
     entradas: EntradaApi[];
     camaras: Camara[];
     densidad: DensidadTabla;
-    onEditar: (entrada: EntradaApi) => void;
-    onEliminar: (entrada: EntradaApi) => void;
+    onEditar?: (entrada: EntradaApi) => void;
+    onEliminar?: (entrada: EntradaApi) => void;
 }
 
 const [FIJA_EXPANDIR, FIJA_FECHA, FIJA_PROVEEDOR] = columnasFijas(["2.5rem", "6.5rem", "13rem"]);
@@ -126,13 +126,13 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                         <th className="num">Total kg</th>
                         <th>Caducidad próxima</th>
                         <th>Estado</th>
-                        <th className="fija-der text-end">Acciones</th>
+                        {onEditar && <th className="fija-der text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {reales.length === 0 ? (
                         <tr>
-                            <td colSpan={COLUMNAS} className="text-center text-body-secondary py-5">
+                            <td colSpan={onEditar ? COLUMNAS : COLUMNAS - 1} className="text-center text-body-secondary py-5">
                                 <i className="bi bi-inbox fs-3 d-block mb-2" aria-hidden="true"></i>
                                 No hay entradas registradas.
                             </td>
@@ -200,25 +200,27 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="fija-der text-end text-nowrap">
-                                            <BotonAccionFila
-                                                icono="bi-pencil"
-                                                etiqueta={`Editar entrada ${entrada.id}`}
-                                                onClick={() => onEditar(entrada)}
-                                                motivoBloqueo={conSalidas ? "Ya tiene salidas: solo un superusuario puede corregirla desde Auditoría de entradas" : null}
-                                            />{" "}
-                                            <BotonAccionFila
-                                                icono="bi-trash"
-                                                etiqueta={`Eliminar entrada ${entrada.id}`}
-                                                variante="danger"
-                                                onClick={() => onEliminar(entrada)}
-                                                motivoBloqueo={conSalidas ? "No se puede eliminar: ya tiene salidas registradas" : null}
-                                            />
-                                        </td>
+                                        {onEditar && onEliminar && (
+                                            <td className="fija-der text-end text-nowrap">
+                                                <BotonAccionFila
+                                                    icono="bi-pencil"
+                                                    etiqueta={`Editar entrada ${entrada.id}`}
+                                                    onClick={() => onEditar?.(entrada)}
+                                                    motivoBloqueo={conSalidas ? "Ya tiene salidas: solo un superusuario puede corregirla desde Auditoría de entradas" : null}
+                                                />{" "}
+                                                <BotonAccionFila
+                                                    icono="bi-trash"
+                                                    etiqueta={`Eliminar entrada ${entrada.id}`}
+                                                    variante="danger"
+                                                    onClick={() => onEliminar?.(entrada)}
+                                                    motivoBloqueo={conSalidas ? "No se puede eliminar: ya tiene salidas registradas" : null}
+                                                />
+                                            </td>
+                                        )}
                                     </tr>
                                     {abierta && (
                                         <tr className="fila-detalle" id={idDetalle}>
-                                            <td colSpan={COLUMNAS}>
+                                            <td colSpan={onEditar ? COLUMNAS : COLUMNAS - 1}>
                                                 <DetalleEntrada detalles={entrada.detalles} nombreCamara={nombreCamara} />
                                             </td>
                                         </tr>

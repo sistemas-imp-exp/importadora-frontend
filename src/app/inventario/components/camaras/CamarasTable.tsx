@@ -5,7 +5,7 @@ import TablaResponsive from "../../../../shared/components/TablaResponsive";
 interface CamarasTableProps {
     camaras: Camara[];
     empresas: Empresa[];
-    onEditar: (camara: Camara) => void;
+    onEditar?: (camara: Camara) => void;
 }
 
 function CamarasTable({ camaras, empresas, onEditar }: CamarasTableProps) {
@@ -24,13 +24,13 @@ function CamarasTable({ camaras, empresas, onEditar }: CamarasTableProps) {
                         <th>Tipo</th>
                         <th>Empresa</th>
                         <th className="text-center">Estado</th>
-                        <th className="text-end">Acciones</th>
+                        {onEditar && <th className="text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {camaras.length === 0 ? (
                         <tr>
-                            <td colSpan={6} className="text-center text-body-secondary py-5">
+                            <td colSpan={onEditar ? 6 : 5} className="text-center text-body-secondary py-5">
                                 No hay cámaras registradas.
                             </td>
                         </tr>
@@ -48,18 +48,20 @@ function CamarasTable({ camaras, empresas, onEditar }: CamarasTableProps) {
                                         <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Inactivo</span>
                                     )}
                                 </td>
-                                <td>
-                                    <div className="text-end">
-                                        <button
-                                            className="btn btn-outline-secondary btn-sm"
-                                            type="button"
-                                            title="Editar cámara"
-                                            onClick={() => onEditar(camara)}
-                                        >
-                                            <i className="bi bi-pencil" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                </td>
+                                {onEditar && (
+                                    <td>
+                                        <div className="text-end">
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm"
+                                                type="button"
+                                                title="Editar cámara"
+                                                onClick={() => onEditar(camara)}
+                                            >
+                                                <i className="bi bi-pencil" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     )}

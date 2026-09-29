@@ -112,9 +112,19 @@ function UsuariosTable({ usuarios, onEditar, onToggleActivo }: UsuariosTableProp
                                             {usuario.areas.length === 0 ? (
                                                 <span className="text-muted">—</span>
                                             ) : (
-                                                usuario.areas.map((codigo) => (
-                                                    <span className="badge text-bg-info me-1" key={codigo}>{codigo}</span>
-                                                ))
+                                                usuario.areas.map((codigo) =>
+                                                    (usuario.areas_solo_lectura ?? []).includes(codigo) ? (
+                                                        <span
+                                                            className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle me-1"
+                                                            key={codigo}
+                                                            title="Solo lectura: consulta y descarga"
+                                                        >
+                                                            <i className="bi bi-eye me-1" aria-hidden="true"></i>{codigo}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge text-bg-info me-1" key={codigo}>{codigo}</span>
+                                                    )
+                                                )
                                             )}
                                         </td>
                                         <td className="text-wrap text-center">

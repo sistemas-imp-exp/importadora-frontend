@@ -3,7 +3,7 @@ import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface EmpresasTableProps {
     empresas: Empresa[];
-    onEditar: (empresa: Empresa) => void;
+    onEditar?: (empresa: Empresa) => void;
 }
 
 function EmpresasTable({ empresas, onEditar }: EmpresasTableProps) {
@@ -13,13 +13,13 @@ function EmpresasTable({ empresas, onEditar }: EmpresasTableProps) {
                 <thead>
                     <tr>
                         <th>Nombre</th>
-                        <th className="text-end">Acciones</th>
+                        {onEditar && <th className="text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {empresas.length === 0 ? (
                         <tr>
-                            <td colSpan={2} className="text-center text-body-secondary py-5">
+                            <td colSpan={onEditar ? 2 : 1} className="text-center text-body-secondary py-5">
                                 No hay empresas registradas.
                             </td>
                         </tr>
@@ -27,18 +27,20 @@ function EmpresasTable({ empresas, onEditar }: EmpresasTableProps) {
                         empresas.map((empresa) => (
                             <tr key={empresa.id} className="fila-principal">
                                 <td className="text-wrap">{empresa.nombre}</td>
-                                <td>
-                                    <div className="text-end">
-                                        <button
-                                            className="btn btn-outline-secondary btn-sm"
-                                            type="button"
-                                            title="Editar empresa"
-                                            onClick={() => onEditar(empresa)}
-                                        >
-                                            <i className="bi bi-pencil" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                </td>
+                                {onEditar && (
+                                    <td>
+                                        <div className="text-end">
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm"
+                                                type="button"
+                                                title="Editar empresa"
+                                                onClick={() => onEditar(empresa)}
+                                            >
+                                                <i className="bi bi-pencil" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     )}

@@ -8,8 +8,12 @@ import EmpresaForm from "../../components/empresas/EmpresaForm";
 import Modal from "../../../../shared/components/Modal";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function EmpresasView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [empresas, setEmpresas] = useState<Empresa[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -68,19 +72,23 @@ function EmpresasView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 <div className="card card-outline card-primary">
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">Lista de empresas</h3>
-                        <button
-                            className="btn btn-success"
-                            onClick={() => {
-                                setEmpresaSeleccionada(null);
-                                setMostrarModal(true);
-                            }}
-                        >
-                            <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
-                            Nueva empresa
-                        </button>
+                        {editable && (
+                            <button
+                                className="btn btn-success"
+                                onClick={() => {
+                                    setEmpresaSeleccionada(null);
+                                    setMostrarModal(true);
+                                }}
+                            >
+                                <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                Nueva empresa
+                            </button>
+                        )}
                     </div>
 
                     <div className="card-body p-0">
@@ -93,10 +101,10 @@ function EmpresasView() {
                         ) : (
                             <EmpresasTable
                                 empresas={empresas}
-                                onEditar={(empresa) => {
+                                onEditar={editable ? (empresa) => {
                                     setEmpresaSeleccionada(empresa);
                                     setMostrarModal(true);
-                                }}
+                                } : undefined}
                             />
                         )}
                     </div>

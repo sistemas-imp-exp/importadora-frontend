@@ -21,6 +21,7 @@ const FORM_VACIO = {
     is_superuser: false,
     foto: null as string | null,
     areas: [] as string[],
+    areas_solo_lectura: [] as string[],
 };
 
 function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps) {
@@ -30,7 +31,7 @@ function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps
 
     useEffect(() => {
         if (usuario) {
-            setForm({ ...usuario, password: "" });
+            setForm({ ...usuario, areas_solo_lectura: usuario.areas_solo_lectura ?? [], password: "" });
         } else {
             setForm(FORM_VACIO);
         }
@@ -41,11 +42,23 @@ function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps
     }, [usuario]);
 
     function alternarArea(codigo: string) {
+        setForm((f) => {
+            const quitar = f.areas.includes(codigo);
+            return {
+                ...f,
+                areas: quitar ? f.areas.filter((c) => c !== codigo) : [...f.areas, codigo],
+                // Sin el área, su marca de solo lectura no tiene sentido.
+                areas_solo_lectura: quitar ? f.areas_solo_lectura.filter((c) => c !== codigo) : f.areas_solo_lectura,
+            };
+        });
+    }
+
+    function alternarSoloLectura(codigo: string) {
         setForm((f) => ({
             ...f,
-            areas: f.areas.includes(codigo)
-                ? f.areas.filter((c) => c !== codigo)
-                : [...f.areas, codigo],
+            areas_solo_lectura: f.areas_solo_lectura.includes(codigo)
+                ? f.areas_solo_lectura.filter((c) => c !== codigo)
+                : [...f.areas_solo_lectura, codigo],
         }));
     }
 
@@ -143,21 +156,49 @@ function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps
                         <small className="text-secondary">No hay áreas registradas.</small>
                     ) : (
                         <div className="d-flex flex-wrap gap-3">
-                            {areas.map((area) => (
-                                <div className="form-check" key={area.codigo}>
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id={`area-${area.codigo}`}
-                                        checked={form.areas.includes(area.codigo)}
-                                        onChange={() => alternarArea(area.codigo)}
-                                    />
-                                    <label className="form-check-label" htmlFor={`area-${area.codigo}`}>
-                                        {area.nombre}
-                                    </label>
-                                </div>
-                            ))}
+                            {areas.map((area) => {
+                                const asignada = form.areas.includes(area.codigo);
+                                return (
+                                    <div className="border rounded px-3 py-2" key={area.codigo}>
+                                        <div className="form-check mb-1">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                id={`area-${area.codigo}`}
+                                                checked={asignada}
+                                                onChange={() => alternarArea(area.codigo)}
+                                            />
+                                            <label className="form-check-label fw-semibold" htmlFor={`area-${area.codigo}`}>
+                                                {area.nombre}
+                                            </label>
+                                        </div>
+                                        <div className="form-check form-switch small">
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                role="switch"
+                                                id={`area-lectura-${area.codigo}`}
+                                                checked={form.areas_solo_lectura.includes(area.codigo)}
+                                                disabled={!asignada || form.is_superuser}
+                                                onChange={() => alternarSoloLectura(area.codigo)}
+                                            />
+                                            <label
+                                                className="form-check-label text-body-secondary"
+                                                htmlFor={`area-lectura-${area.codigo}`}
+                                                title="Puede consultar y descargar, pero no crear, editar ni eliminar en esta área"
+                                            >
+                                                Solo lectura
+                                            </label>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
+                    )}
+                    {form.is_superuser && (
+                        <small className="text-body-secondary d-block mt-2">
+                            Un superusuario tiene acceso completo a todas las áreas.
+                        </small>
                     )}
                 </div>
             </div>

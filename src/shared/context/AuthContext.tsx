@@ -8,6 +8,8 @@ export interface AuthContextType {
     logout: () => void;
     updateUser: (user: User) => void;
     hasArea: (area: string) => boolean;
+    /** Tiene el área y no en solo lectura: puede crear, editar y eliminar. */
+    puedeEditar: (area: string) => boolean;
     isAuthenticated: boolean;
 }
 

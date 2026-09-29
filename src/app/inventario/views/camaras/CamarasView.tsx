@@ -10,8 +10,12 @@ import CamaraForm from "../../components/camaras/CamaraForm";
 import Modal from "../../../../shared/components/Modal";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { useAuth } from "../../../../shared/hooks/useAuth";
+import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
 
 function CamarasView() {
+    const { puedeEditar } = useAuth();
+    const editable = puedeEditar("INV");
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [empresas, setEmpresas] = useState<Empresa[]>([]);
     const [loading, setLoading] = useState(true);
@@ -72,19 +76,23 @@ function CamarasView() {
             />
 
             <div className="container-fluid">
+
+                {!editable && <AvisoSoloLectura area="Inventario" />}
                 <div className="card card-outline card-primary">
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">Lista de cámaras</h3>
-                        <button
-                            className="btn btn-success"
-                            onClick={() => {
-                                setCamaraSeleccionada(null);
-                                setMostrarModal(true);
-                            }}
-                        >
-                            <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
-                            Nueva cámara
-                        </button>
+                        {editable && (
+                            <button
+                                className="btn btn-success"
+                                onClick={() => {
+                                    setCamaraSeleccionada(null);
+                                    setMostrarModal(true);
+                                }}
+                            >
+                                <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                Nueva cámara
+                            </button>
+                        )}
                     </div>
 
                     <div className="card-body p-0">
@@ -98,10 +106,10 @@ function CamarasView() {
                             <CamarasTable
                                 camaras={camaras}
                                 empresas={empresas}
-                                onEditar={(camara) => {
+                                onEditar={editable ? (camara) => {
                                     setCamaraSeleccionada(camara);
                                     setMostrarModal(true);
-                                }}
+                                } : undefined}
                             />
                         )}
                     </div>

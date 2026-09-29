@@ -3,7 +3,7 @@ import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface ClientesTableProps {
     clientes: Cliente[];
-    onEditar: (cliente: Cliente) => void;
+    onEditar?: (cliente: Cliente) => void;
 }
 
 function ClientesTable({ clientes, onEditar }: ClientesTableProps) {
@@ -14,13 +14,13 @@ function ClientesTable({ clientes, onEditar }: ClientesTableProps) {
                     <tr>
                         <th>Nombre</th>
                         <th className="text-center">Estado</th>
-                        <th className="text-end">Acciones</th>
+                        {onEditar && <th className="text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {clientes.length === 0 ? (
                         <tr>
-                            <td colSpan={3} className="text-center text-body-secondary py-5">
+                            <td colSpan={onEditar ? 3 : 2} className="text-center text-body-secondary py-5">
                                 No hay clientes registrados.
                             </td>
                         </tr>
@@ -35,18 +35,20 @@ function ClientesTable({ clientes, onEditar }: ClientesTableProps) {
                                         <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Inactivo</span>
                                     )}
                                 </td>
-                                <td>
-                                    <div className="text-end">
-                                        <button
-                                            className="btn btn-outline-secondary btn-sm"
-                                            type="button"
-                                            title="Editar cliente"
-                                            onClick={() => onEditar(cliente)}
-                                        >
-                                            <i className="bi bi-pencil" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                </td>
+                                {onEditar && (
+                                    <td>
+                                        <div className="text-end">
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm"
+                                                type="button"
+                                                title="Editar cliente"
+                                                onClick={() => onEditar(cliente)}
+                                            >
+                                                <i className="bi bi-pencil" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         ))
                     )}
