@@ -193,3 +193,29 @@
     z-index: 4;
     background-color: var(--bs-tertiary-bg);
 }
+
+/* Vista previa del reporte "Existencias por cámara": mismo aspecto que el
+   PDF/Excel del área (cuadrícula negra, encabezados en verde, totales en negrita). */
+.reporte-camara {
+    --bs-table-bg: var(--bs-body-bg);
+    font-size: .85rem;
+    border: 1px solid var(--bs-emphasis-color);
+}
+.reporte-camara > :not(caption) > * > * {
+    border: 1px solid var(--bs-emphasis-color);
+    padding: .2rem .5rem;
+}
+.reporte-camara thead th { font-weight: 700; }
+.reporte-camara .reporte-columnas th {
+    color: #1f7a1f;
+    text-align: center;
+    vertical-align: middle;
+}
+.reporte-camara .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.reporte-camara .reporte-rotulo td,
+.reporte-camara .reporte-total td { font-weight: 700; }
+.reporte-camara .text-normal { font-weight: 400; }
