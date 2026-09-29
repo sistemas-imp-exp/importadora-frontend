@@ -1,5 +1,6 @@
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Empresa } from "../../interfaces/empresas/Empresa";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface CamarasTableProps {
     camaras: Camara[];
@@ -14,37 +15,37 @@ function CamarasTable({ camaras, empresas, onEditar }: CamarasTableProps) {
     }
 
     return (
-        <div className="table-responsive">
-            <table className="table table-striped mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className="table tabla-datos">
                 <thead>
                     <tr>
-                        <th className="text-wrap">Nombre</th>
-                        <th className="text-wrap">Ubicación</th>
-                        <th className="text-wrap">Tipo</th>
-                        <th className="text-wrap">Empresa</th>
-                        <th className="text-wrap text-center">Estado</th>
-                        <th className="text-wrap text-end">Acciones</th>
+                        <th>Nombre</th>
+                        <th>Ubicación</th>
+                        <th>Tipo</th>
+                        <th>Empresa</th>
+                        <th className="text-center">Estado</th>
+                        <th className="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {camaras.length === 0 ? (
                         <tr>
-                            <td colSpan={6} className="text-center text-muted py-4">
+                            <td colSpan={6} className="text-center text-body-secondary py-5">
                                 No hay cámaras registradas.
                             </td>
                         </tr>
                     ) : (
                         camaras.map((camara) => (
-                            <tr key={camara.id}>
+                            <tr key={camara.id} className="fila-principal">
                                 <td className="text-wrap">{camara.nombre}</td>
                                 <td className="text-wrap">{camara.ubicacion || "—"}</td>
                                 <td className="text-wrap">{camara.tipo === "propia" ? "Propia" : "Rentada de tercero"}</td>
                                 <td className="text-wrap">{nombreEmpresa(camara.empresa)}</td>
                                 <td className="text-wrap text-center">
                                     {camara.activo ? (
-                                        <span className="badge text-bg-success">Activo</span>
+                                        <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle">Activo</span>
                                     ) : (
-                                        <span className="badge text-bg-secondary">Inactivo</span>
+                                        <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Inactivo</span>
                                     )}
                                 </td>
                                 <td>
@@ -64,7 +65,7 @@ function CamarasTable({ camaras, empresas, onEditar }: CamarasTableProps) {
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

@@ -15,6 +15,8 @@ import ConfirmModal from "../../../../shared/components/ConfirmModal";
 import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
 import Paginacion from "../../../../shared/components/Paginacion";
 import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
+import DensidadToggle from "../../../../shared/components/DensidadToggle";
+import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 
@@ -35,6 +37,7 @@ function SalidasView() {
     const [eliminando, setEliminando] = useState(false);
 
     const { mostrarToast } = useToastContext();
+    const [densidad, setDensidad] = useDensidadTabla("salidas");
 
     // El listado depende de página y búsqueda; los catálogos y las existencias
     // no, así que se cargan por separado para no repetirlos en cada página.
@@ -157,6 +160,7 @@ function SalidasView() {
                                     placeholder="Buscar por folio, cliente, nota o producto..."
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
+                                <DensidadToggle valor={densidad} onChange={setDensidad} />
                             </div>
 
                             {total > 0 && (
@@ -176,6 +180,7 @@ function SalidasView() {
                                 <SalidasTable
                                     salidas={salidas}
                                     camaras={camaras}
+                                    densidad={densidad}
                                     onEditar={setSalidaEditando}
                                     onEliminar={setSalidaEliminar}
                                 />

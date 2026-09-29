@@ -180,3 +180,16 @@
 @media (prefers-reduced-motion: reduce) {
     .tabla-datos .btn-expandir .bi { transition: none; }
 }
+
+/* Pie de totales fijo abajo: los totales siguen a la vista al desplazar. */
+.tabla-datos > tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background-color: var(--bs-tertiary-bg);
+    border-top: 2px solid var(--bs-border-color);
+}
+.tabla-datos > tfoot .fija-izq {
+    z-index: 4;
+    background-color: var(--bs-tertiary-bg);
+}

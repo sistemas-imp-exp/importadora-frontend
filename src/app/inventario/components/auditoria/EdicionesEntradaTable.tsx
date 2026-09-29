@@ -1,5 +1,6 @@
 import type { EdicionEntrada } from "../../interfaces/auditoria/EdicionEntrada";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface EdicionesEntradaTableProps {
     registros: EdicionEntrada[];
@@ -7,30 +8,29 @@ interface EdicionesEntradaTableProps {
 
 function EdicionesEntradaTable({ registros }: EdicionesEntradaTableProps) {
     return (
-        <div className="table-responsive">
-            <table className="table table-striped table-sm mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className="table tabla-datos">
                 <thead>
                     <tr>
-                        <th className="text-wrap">Fecha de edición</th>
-                        <th className="text-wrap">Quién</th>
-                        <th className="text-wrap">Entrada</th>
-                        <th className="text-wrap">Línea</th>
-                        <th className="text-wrap">Campo</th>
-                        <th className="text-wrap">Antes</th>
-                        <th className="text-wrap">Después</th>
-                        <th className="text-wrap">Motivo</th>
+                        <th>Fecha de edición</th>
+                        <th>Quién</th>
+                        <th>Entrada</th>
+                        <th>Línea</th>
+                        <th>Campo</th>
+                        <th>Cambio</th>
+                        <th>Motivo</th>
                     </tr>
                 </thead>
                 <tbody>
                     {registros.length === 0 ? (
                         <tr>
-                            <td colSpan={8} className="text-center text-muted py-4">
+                            <td colSpan={7} className="text-center text-body-secondary py-5">
                                 No hay ediciones registradas.
                             </td>
                         </tr>
                     ) : (
                         registros.map((registro) => (
-                            <tr key={registro.id}>
+                            <tr key={registro.id} className="fila-principal">
                                 <td className="text-nowrap">
                                     {formatearFechaNumerica(new Date(registro.editado_en), "numerico-hora")}
                                 </td>
@@ -38,24 +38,25 @@ function EdicionesEntradaTable({ registros }: EdicionesEntradaTableProps) {
                                 <td className="text-wrap small">
                                     {registro.entrada_referencia || "—"}
                                     {!registro.entrada_existe && (
-                                        <span className="badge text-bg-dark ms-1" title="La entrada ya fue eliminada">
+                                        <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle ms-1" title="La entrada ya fue eliminada">
                                             Eliminada
                                         </span>
                                     )}
                                 </td>
                                 <td className="text-wrap small">{registro.linea_referencia || "Cabecera"}</td>
                                 <td className="text-wrap">{registro.campo_etiqueta}</td>
-                                <td className="text-wrap text-body-secondary">
-                                    <s>{registro.valor_anterior || "—"}</s>
+                                <td className="text-wrap">
+                                    <span className="text-body-secondary"><s>{registro.valor_anterior || "—"}</s></span>
+                                    <i className="bi bi-arrow-right mx-2 text-body-secondary" aria-label="cambió a"></i>
+                                    <span className="fw-semibold">{registro.valor_nuevo || "—"}</span>
                                 </td>
-                                <td className="text-wrap fw-semibold">{registro.valor_nuevo || "—"}</td>
                                 <td className="text-wrap small">{registro.motivo}</td>
                             </tr>
                         ))
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

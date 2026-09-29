@@ -1,4 +1,5 @@
 import type { Empresa } from "../../interfaces/empresas/Empresa";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface EmpresasTableProps {
     empresas: Empresa[];
@@ -7,24 +8,24 @@ interface EmpresasTableProps {
 
 function EmpresasTable({ empresas, onEditar }: EmpresasTableProps) {
     return (
-        <div className="table-responsive">
-            <table className="table table-striped mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className="table tabla-datos">
                 <thead>
                     <tr>
-                        <th className="text-wrap">Nombre</th>
-                        <th className="text-wrap text-end">Acciones</th>
+                        <th>Nombre</th>
+                        <th className="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {empresas.length === 0 ? (
                         <tr>
-                            <td colSpan={2} className="text-center text-muted py-4">
+                            <td colSpan={2} className="text-center text-body-secondary py-5">
                                 No hay empresas registradas.
                             </td>
                         </tr>
                     ) : (
                         empresas.map((empresa) => (
-                            <tr key={empresa.id}>
+                            <tr key={empresa.id} className="fila-principal">
                                 <td className="text-wrap">{empresa.nombre}</td>
                                 <td>
                                     <div className="text-end">
@@ -43,7 +44,7 @@ function EmpresasTable({ empresas, onEditar }: EmpresasTableProps) {
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

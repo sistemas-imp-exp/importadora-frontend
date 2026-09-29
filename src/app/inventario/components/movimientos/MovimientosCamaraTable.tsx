@@ -1,5 +1,7 @@
 import type { MovimientoCamaraApi } from "../../interfaces/movimientos/MovimientoCamara";
 import type { Camara } from "../../interfaces/camaras/Camara";
+import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface MovimientosCamaraTableProps {
     movimientos: MovimientoCamaraApi[];
@@ -12,38 +14,40 @@ function MovimientosCamaraTable({ movimientos, camaras }: MovimientosCamaraTable
     }
 
     return (
-        <div className="table-responsive">
-            <table className="table table-striped table-sm mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className="table tabla-datos">
                 <thead>
                     <tr>
-                        <th className="text-wrap">Fecha</th>
-                        <th className="text-wrap">Lote</th>
-                        <th className="text-wrap">Cámara origen</th>
-                        <th className="text-wrap">Cámara destino</th>
-                        <th className="text-wrap text-end">Cajas</th>
+                        <th>Fecha</th>
+                        <th>Lote</th>
+                        <th>Traslado</th>
+                        <th className="num">Cajas</th>
                     </tr>
                 </thead>
                 <tbody>
                     {movimientos.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="text-center text-muted py-4">
+                            <td colSpan={4} className="text-center text-body-secondary py-5">
                                 No hay movimientos registrados.
                             </td>
                         </tr>
                     ) : (
                         movimientos.map((movimiento) => (
-                            <tr key={movimiento.id}>
-                                <td className="text-wrap">{movimiento.fecha}</td>
-                                <td className="text-wrap">{movimiento.lote_origen || "—"}</td>
-                                <td className="text-wrap">{nombreCamara(movimiento.camara_origen)}</td>
-                                <td className="text-wrap">{nombreCamara(movimiento.camara_destino)}</td>
-                                <td className="text-end">{movimiento.cajas}</td>
+                            <tr key={movimiento.id} className="fila-principal">
+                                <td className="text-nowrap">{formatearFechaNumerica(new Date(movimiento.fecha + "T00:00:00"))}</td>
+                                <td className="text-nowrap">{movimiento.lote_origen || "—"}</td>
+                                <td className="text-nowrap">
+                                    {nombreCamara(movimiento.camara_origen)}
+                                    <i className="bi bi-arrow-right mx-2 text-body-secondary" aria-label="hacia"></i>
+                                    <span className="fw-semibold">{nombreCamara(movimiento.camara_destino)}</span>
+                                </td>
+                                <td className="num">{movimiento.cajas.toLocaleString("es-MX")}</td>
                             </tr>
                         ))
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

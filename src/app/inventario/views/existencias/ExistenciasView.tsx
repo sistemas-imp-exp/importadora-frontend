@@ -11,6 +11,8 @@ import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import CardCollapseButton from "../../../../shared/components/CardCollapseButton";
 import Paginacion from "../../../../shared/components/Paginacion";
 import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
+import DensidadToggle from "../../../../shared/components/DensidadToggle";
+import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { usePaginacion } from "../../../../shared/hooks/usePaginacion";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
@@ -26,6 +28,7 @@ function ExistenciasView() {
     const [descargando, setDescargando] = useState<"pdf" | "excel" | null>(null);
 
     const { mostrarToast } = useToastContext();
+    const [densidad, setDensidad] = useDensidadTabla("existencias");
     const { busqueda, setBusqueda, filtros, setFiltro, limpiarFiltros, hayFiltros, opciones, filtradas, totales } =
         useExistenciasFiltros(existencias);
 
@@ -131,6 +134,7 @@ function ExistenciasView() {
                         {listo && filtradas.length > 0 && (
                             <PorPaginaSelect valor={porPagina} onChange={setPorPagina} />
                         )}
+                        {listo && filtradas.length > 0 && <DensidadToggle valor={densidad} onChange={setDensidad} />}
                         {listo && filtradas.length > 0 && (
                             <>
                                 <button
@@ -194,7 +198,7 @@ function ExistenciasView() {
                                 ) : loading ? (
                                     <SkeletonTable columnas={16} filas={6} />
                                 ) : (
-                                    <ExistenciasTable filas={paginadas} totales={totales} hayFiltros={hayFiltros} />
+                                    <ExistenciasTable filas={paginadas} totales={totales} hayFiltros={hayFiltros} densidad={densidad} />
                                 )}
                             </div>
 

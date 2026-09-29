@@ -1,4 +1,5 @@
 import type { Cliente } from "../../interfaces/clientes/Cliente";
+import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
 interface ClientesTableProps {
     clientes: Cliente[];
@@ -7,31 +8,31 @@ interface ClientesTableProps {
 
 function ClientesTable({ clientes, onEditar }: ClientesTableProps) {
     return (
-        <div className="table-responsive">
-            <table className="table table-striped mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className="table tabla-datos">
                 <thead>
                     <tr>
-                        <th className="text-wrap">Nombre</th>
-                        <th className="text-wrap text-center">Estado</th>
-                        <th className="text-wrap text-end">Acciones</th>
+                        <th>Nombre</th>
+                        <th className="text-center">Estado</th>
+                        <th className="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {clientes.length === 0 ? (
                         <tr>
-                            <td colSpan={3} className="text-center text-muted py-4">
+                            <td colSpan={3} className="text-center text-body-secondary py-5">
                                 No hay clientes registrados.
                             </td>
                         </tr>
                     ) : (
                         clientes.map((cliente) => (
-                            <tr key={cliente.id}>
+                            <tr key={cliente.id} className="fila-principal">
                                 <td className="text-wrap">{cliente.nombre}</td>
                                 <td className="text-wrap text-center">
                                     {cliente.activo ? (
-                                        <span className="badge text-bg-success">Activo</span>
+                                        <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle">Activo</span>
                                     ) : (
-                                        <span className="badge text-bg-secondary">Inactivo</span>
+                                        <span className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Inactivo</span>
                                     )}
                                 </td>
                                 <td>
@@ -51,7 +52,7 @@ function ClientesTable({ clientes, onEditar }: ClientesTableProps) {
                     )}
                 </tbody>
             </table>
-        </div>
+        </TablaResponsive>
     );
 }
 

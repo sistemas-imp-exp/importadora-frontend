@@ -1,18 +1,15 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import type { EntradaApi, EntradaDetalleApi } from "../../interfaces/entradas/Entrada";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
-import {
-    clasificarNivelCaducidad,
-    diasRestantesHasta,
-    CLASE_BADGE_NIVEL,
-    ETIQUETA_NIVEL,
-    RANGO_NIVEL,
-    type NivelCaducidad,
-} from "../../utils/caducidad";
+import BadgeCaducidad from "../BadgeCaducidad";
 import { formatearDinero } from "../../utils/existencias";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
 import type { DensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
+import BotonExpandir from "../../../../shared/components/tabla/BotonExpandir";
+import BotonAccionFila from "../../../../shared/components/tabla/BotonAccionFila";
+import { useFilasExpandibles } from "../../../../shared/components/tabla/useFilasExpandibles";
+import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
 
 interface EntradasTableProps {
     entradas: EntradaApi[];
@@ -22,12 +19,7 @@ interface EntradasTableProps {
     onEliminar: (entrada: EntradaApi) => void;
 }
 
-// Columnas fijas a la izquierda: el ancho es fijo para poder calcular el
-// desplazamiento (`left`) de cada una. Box-sizing border-box (Bootstrap) hace
-// que el ancho incluya el padding.
-const FIJA_EXPANDIR = { left: 0, width: "2.5rem", minWidth: "2.5rem" };
-const FIJA_FECHA = { left: "2.5rem", width: "6.5rem", minWidth: "6.5rem" };
-const FIJA_PROVEEDOR = { left: "9rem", width: "13rem", minWidth: "13rem", maxWidth: "13rem" };
+const [FIJA_EXPANDIR, FIJA_FECHA, FIJA_PROVEEDOR] = columnasFijas(["2.5rem", "6.5rem", "13rem"]);
 
 const COLUMNAS = 12;
 
@@ -37,25 +29,6 @@ function fecha(iso: string): string {
 
 function kilos(valor: number | string): string {
     return formatearDinero(Number(valor));
-}
-
-/** Descripción del nivel para el tooltip: "Crítico (0 a 7 días): vence en 3 días". */
-function describirCaducidad(nivel: NivelCaducidad, dias: number): string {
-    const cuando = dias < 0 ? `venció hace ${-dias} día(s)` : dias === 0 ? "vence hoy" : `vence en ${dias} día(s)`;
-    return `${ETIQUETA_NIVEL[nivel]} (${RANGO_NIVEL[nivel]}): ${cuando}`;
-}
-
-function BadgeCaducidad({ fechaCaducidad }: { fechaCaducidad: string | null }) {
-    if (!fechaCaducidad) return <span className="text-body-secondary">—</span>;
-    const dias = diasRestantesHasta(fechaCaducidad);
-    const nivel = clasificarNivelCaducidad(dias);
-    if (!nivel) return <span>{fecha(fechaCaducidad)}</span>;
-    return (
-        <span className="d-inline-flex align-items-center gap-1 text-nowrap" title={describirCaducidad(nivel, dias)}>
-            {fecha(fechaCaducidad)}
-            <span className={`badge ${CLASE_BADGE_NIVEL[nivel]}`}>{ETIQUETA_NIVEL[nivel]}</span>
-        </span>
-    );
 }
 
 /** La caducidad más próxima de la entrada: es la que decide si hay que atenderla. */
@@ -111,8 +84,6 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
 }
 
 function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: EntradasTableProps) {
-    const [expandidas, setExpandidas] = useState<Set<number>>(new Set());
-
     function nombreCamara(id: number | null): string {
         if (!id) return "Venta directa";
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
@@ -130,20 +101,7 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
         return entrada.detalles.some((d) => d.cajas_disponibles < d.cajas);
     }
 
-    const todasExpandidas = reales.length > 0 && reales.every((e) => expandidas.has(e.id));
-
-    function alternar(id: number) {
-        setExpandidas((actual) => {
-            const copia = new Set(actual);
-            if (copia.has(id)) copia.delete(id);
-            else copia.add(id);
-            return copia;
-        });
-    }
-
-    function alternarTodas() {
-        setExpandidas(todasExpandidas ? new Set() : new Set(reales.map((e) => e.id)));
-    }
+    const { estaExpandida, alternar, alternarTodas, todasExpandidas } = useFilasExpandibles(reales.map((e) => e.id));
 
     return (
         <TablaResponsive alturaMaxima="70vh">
@@ -151,17 +109,12 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                 <thead>
                     <tr>
                         <th className="fija-izq text-center" style={FIJA_EXPANDIR}>
-                            <button
-                                type="button"
-                                className="btn btn-link btn-sm btn-expandir text-body-secondary"
+                            <BotonExpandir
+                                expandido={todasExpandidas}
                                 onClick={alternarTodas}
-                                aria-expanded={todasExpandidas}
-                                title={todasExpandidas ? "Contraer todas" : "Expandir todas"}
+                                etiqueta="las líneas de todas las entradas"
                                 disabled={reales.length === 0}
-                            >
-                                <i className="bi bi-chevron-right" aria-hidden="true"></i>
-                                <span className="visually-hidden">{todasExpandidas ? "Contraer todas" : "Expandir todas"}</span>
-                            </button>
+                            />
                         </th>
                         <th className="fija-izq" style={FIJA_FECHA}>Fecha</th>
                         <th className="fija-izq fija-izq-borde" style={FIJA_PROVEEDOR}>Proveedor</th>
@@ -186,7 +139,7 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                         </tr>
                     ) : (
                         reales.map((entrada) => {
-                            const abierta = expandidas.has(entrada.id);
+                            const abierta = estaExpandida(entrada.id);
                             const conSalidas = tieneSalidas(entrada);
                             const totalCajas = entrada.detalles.reduce((acc, d) => acc + d.cajas, 0);
                             const totalKilos = entrada.detalles.reduce((acc, d) => acc + Number(d.total_kilos), 0);
@@ -195,17 +148,12 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                                 <Fragment key={entrada.id}>
                                     <tr className={`fila-principal ${abierta ? "expandida" : ""}`}>
                                         <td className="fija-izq text-center" style={FIJA_EXPANDIR}>
-                                            <button
-                                                type="button"
-                                                className="btn btn-link btn-sm btn-expandir text-body-secondary"
+                                            <BotonExpandir
+                                                expandido={abierta}
                                                 onClick={() => alternar(entrada.id)}
-                                                aria-expanded={abierta}
-                                                aria-controls={idDetalle}
-                                                title={abierta ? "Ocultar líneas" : "Ver líneas"}
-                                            >
-                                                <i className="bi bi-chevron-right" aria-hidden="true"></i>
-                                                <span className="visually-hidden">{abierta ? "Ocultar" : "Ver"} líneas de la entrada {entrada.id}</span>
-                                            </button>
+                                                etiqueta={`líneas de la entrada ${entrada.id}`}
+                                                controla={idDetalle}
+                                            />
                                         </td>
                                         <td className="fija-izq text-nowrap" style={FIJA_FECHA}>{fecha(entrada.fecha)}</td>
                                         <td
@@ -253,35 +201,19 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                                             </div>
                                         </td>
                                         <td className="fija-der text-end text-nowrap">
-                                            {/* Un botón deshabilitado no muestra su title: el span sí, y explica por qué. */}
-                                            <span
-                                                className="d-inline-block"
-                                                title={conSalidas ? "Ya tiene salidas: solo un superusuario puede corregirla desde Auditoría de entradas" : "Editar entrada"}
-                                            >
-                                                <button
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    type="button"
-                                                    disabled={conSalidas}
-                                                    onClick={() => onEditar(entrada)}
-                                                >
-                                                    <i className="bi bi-pencil" aria-hidden="true"></i>
-                                                    <span className="visually-hidden">Editar entrada {entrada.id}</span>
-                                                </button>
-                                            </span>{" "}
-                                            <span
-                                                className="d-inline-block"
-                                                title={conSalidas ? "No se puede eliminar: ya tiene salidas registradas" : "Eliminar entrada"}
-                                            >
-                                                <button
-                                                    className="btn btn-sm btn-outline-danger"
-                                                    type="button"
-                                                    disabled={conSalidas}
-                                                    onClick={() => onEliminar(entrada)}
-                                                >
-                                                    <i className="bi bi-trash" aria-hidden="true"></i>
-                                                    <span className="visually-hidden">Eliminar entrada {entrada.id}</span>
-                                                </button>
-                                            </span>
+                                            <BotonAccionFila
+                                                icono="bi-pencil"
+                                                etiqueta={`Editar entrada ${entrada.id}`}
+                                                onClick={() => onEditar(entrada)}
+                                                motivoBloqueo={conSalidas ? "Ya tiene salidas: solo un superusuario puede corregirla desde Auditoría de entradas" : null}
+                                            />{" "}
+                                            <BotonAccionFila
+                                                icono="bi-trash"
+                                                etiqueta={`Eliminar entrada ${entrada.id}`}
+                                                variante="danger"
+                                                onClick={() => onEliminar(entrada)}
+                                                motivoBloqueo={conSalidas ? "No se puede eliminar: ya tiene salidas registradas" : null}
+                                            />
                                         </td>
                                     </tr>
                                     {abierta && (

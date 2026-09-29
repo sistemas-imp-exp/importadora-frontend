@@ -45,10 +45,3 @@ export const CLASE_BADGE_NIVEL: Record<NivelCaducidad, string> = {
     urgente: "text-bg-warning",
     por_vencer: "text-bg-info",
 };
-
-export const CLASE_FILA_NIVEL: Record<NivelCaducidad, string> = {
-    vencido: "table-dark",
-    critico: "table-danger",
-    urgente: "table-warning",
-    por_vencer: "table-info",
-};

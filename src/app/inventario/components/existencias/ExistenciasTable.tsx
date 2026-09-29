@@ -1,75 +1,79 @@
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
-import { CLASE_FILA_NIVEL, ETIQUETA_NIVEL } from "../../utils/caducidad";
 import { formatearDinero, type FilaExistencia, type TotalesExistencias } from "../../utils/existencias";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
+import type { DensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
+import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
+import BadgeCaducidad from "../BadgeCaducidad";
 
 interface ExistenciasTableProps {
     filas: FilaExistencia[];
     totales: TotalesExistencias;
     hayFiltros: boolean;
+    densidad: DensidadTabla;
 }
 
-function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps) {
+// Lo que identifica al lote (dónde está y qué es) se queda fijo al desplazar a
+// la derecha para comparar cantidades sin perder de vista de qué fila se trata.
+const [FIJA_CAMARA, FIJA_PRODUCTO] = columnasFijas(["9rem", "10rem"]);
+const COLUMNAS = 15;
+
+function ExistenciasTable({ filas, totales, hayFiltros, densidad }: ExistenciasTableProps) {
     return (
-        <TablaResponsive>
-            <table className="table table-striped table-bordered table-sm mb-0">
+        <TablaResponsive alturaMaxima="70vh">
+            <table className={`table tabla-datos ${densidad === "compacta" ? "densidad-compacta" : ""}`}>
                 <thead>
                     <tr>
-                        <th className="text-wrap">Fecha</th>
-                        <th className="text-wrap">Cámara</th>
-                        <th className="text-wrap">Proveedor</th>
-                        <th className="text-wrap">Talla</th>
-                        <th className="text-wrap">Tipo</th>
-                        <th className="text-wrap">Recibo ingreso</th>
-                        <th className="text-wrap">Factura</th>
-                        <th className="text-wrap text-end">Peso/caja</th>
-                        <th className="text-wrap text-end">Cajas disponibles</th>
-                        <th className="text-wrap text-end">Entrada (kg)</th>
-                        <th className="text-wrap text-end">Salida (kg)</th>
-                        <th className="text-wrap text-end">Saldo (kg)</th>
-                        <th className="text-wrap text-end">Costo/kg</th>
-                        <th className="text-wrap text-end">Total</th>
-                        <th className="text-wrap">Caducidad</th>
-                        <th className="text-wrap">Lote proveedor</th>
+                        <th className="fija-izq" style={FIJA_CAMARA}>Cámara</th>
+                        <th className="fija-izq fija-izq-borde" style={FIJA_PRODUCTO}>Producto</th>
+                        <th>Proveedor</th>
+                        <th>Fecha entrada</th>
+                        <th>Recibo ingreso</th>
+                        <th>Factura</th>
+                        <th className="num">Kg/caja</th>
+                        <th className="num">Cajas disp.</th>
+                        <th className="num">Entrada kg</th>
+                        <th className="num">Salida kg</th>
+                        <th className="num">Saldo kg</th>
+                        <th className="num">Costo/kg</th>
+                        <th className="num">Total</th>
+                        <th>Caducidad</th>
+                        <th>Lote proveedor</th>
                     </tr>
                 </thead>
                 <tbody>
                     {filas.length === 0 ? (
                         <tr>
-                            <td colSpan={16} className="text-center text-muted py-4">
+                            <td colSpan={COLUMNAS} className="text-center text-body-secondary py-5">
+                                <i className="bi bi-box-seam fs-3 d-block mb-2" aria-hidden="true"></i>
                                 {hayFiltros ? "Nada coincide con los filtros." : "No hay existencias."}
                             </td>
                         </tr>
                     ) : (
                         filas.map((fila) => (
-                            <tr key={fila.detalleId} className={fila.nivel ? CLASE_FILA_NIVEL[fila.nivel] : undefined}>
-                                <td className="text-wrap">{formatearFechaNumerica(new Date(fila.fecha + "T00:00:00"))}</td>
-                                <td className="text-wrap">{fila.camaraNombre}</td>
-                                <td className="text-wrap">{fila.proveedorNombre}</td>
-                                <td className="text-wrap">{fila.talla}</td>
-                                <td className="text-wrap">{fila.tipo}</td>
-                                <td className="text-wrap">{fila.reciboIngreso}</td>
-                                <td className="text-wrap">{fila.factura}</td>
-                                <td className="text-end">{fila.pesoPorCaja ?? "—"}</td>
-                                <td className="text-end fw-bold">{fila.cajasDisponibles}</td>
-                                <td className="text-end">{fila.totalKilos}</td>
-                                <td className="text-end">{formatearDinero(fila.kilosVendidos)}</td>
-                                <td className="text-end fw-bold">{fila.kilosDisponibles}</td>
-                                <td className="text-end">{fila.costoPorKilo ?? "—"}</td>
-                                <td className="text-end">{fila.totalPesos !== null ? `$${formatearDinero(fila.totalPesos)}` : "—"}</td>
-                                <td className="text-wrap">
-                                    {fila.fechaCaducidad ? (
-                                        <>
-                                            {formatearFechaNumerica(new Date(fila.fechaCaducidad + "T00:00:00"))}
-                                            {fila.nivel && (
-                                                <span className="badge text-bg-light border ms-1">{ETIQUETA_NIVEL[fila.nivel]}</span>
-                                            )}
-                                        </>
+                            <tr key={fila.detalleId} className="fila-principal">
+                                <td className="fija-izq truncar" style={FIJA_CAMARA} title={fila.camaraNombre}>{fila.camaraNombre}</td>
+                                <td className="fija-izq fija-izq-borde text-nowrap fw-semibold" style={FIJA_PRODUCTO}>
+                                    {fila.talla} {fila.tipo}
+                                </td>
+                                <td className="truncar" title={fila.proveedorNombre}>{fila.proveedorNombre}</td>
+                                <td className="text-nowrap">{formatearFechaNumerica(new Date(fila.fecha + "T00:00:00"))}</td>
+                                <td className="text-nowrap">{fila.reciboIngreso}</td>
+                                <td className="text-nowrap">{fila.factura}</td>
+                                <td className="num">{fila.pesoPorCaja ? formatearDinero(Number(fila.pesoPorCaja)) : "—"}</td>
+                                <td className="num fw-semibold">{fila.cajasDisponibles.toLocaleString("es-MX")}</td>
+                                <td className="num">{formatearDinero(Number(fila.totalKilos))}</td>
+                                <td className="num">{formatearDinero(fila.kilosVendidos)}</td>
+                                <td className="num fw-semibold">{formatearDinero(Number(fila.kilosDisponibles))}</td>
+                                <td className="num">{fila.costoPorKilo ? `$${formatearDinero(Number(fila.costoPorKilo))}` : "—"}</td>
+                                <td className="num">
+                                    {fila.totalPesos !== null ? (
+                                        `$${formatearDinero(fila.totalPesos)}`
                                     ) : (
-                                        "—"
+                                        <span className="text-body-secondary" title="Lote sin costo capturado: no suma al total">—</span>
                                     )}
                                 </td>
-                                <td className="text-wrap">{fila.loteProveedor}</td>
+                                <td><BadgeCaducidad fechaCaducidad={fila.fechaCaducidad} /></td>
+                                <td className="text-nowrap">{fila.loteProveedor}</td>
                             </tr>
                         ))
                     )}
@@ -77,12 +81,16 @@ function ExistenciasTable({ filas, totales, hayFiltros }: ExistenciasTableProps)
                 {filas.length > 0 && (
                     <tfoot>
                         <tr>
-                            <td colSpan={8} className="text-end fw-bold">Total ({totales.totalLotes} lotes):</td>
-                            <td className="text-end fw-bold">{totales.totalCajas} cajas</td>
+                            <td className="fija-izq" style={FIJA_CAMARA}></td>
+                            <td className="fija-izq fija-izq-borde fw-bold text-nowrap" style={FIJA_PRODUCTO}>
+                                Total ({totales.totalLotes} lotes)
+                            </td>
+                            <td colSpan={5}></td>
+                            <td className="num fw-bold">{totales.totalCajas.toLocaleString("es-MX")}</td>
                             <td colSpan={2}></td>
-                            <td className="text-end fw-bold">{formatearDinero(totales.totalKilosDisponibles)} kg</td>
+                            <td className="num fw-bold">{formatearDinero(totales.totalKilosDisponibles)}</td>
                             <td></td>
-                            <td className="text-end fw-bold">${formatearDinero(totales.totalPesos)}</td>
+                            <td className="num fw-bold">${formatearDinero(totales.totalPesos)}</td>
                             <td colSpan={2}></td>
                         </tr>
                     </tfoot>
