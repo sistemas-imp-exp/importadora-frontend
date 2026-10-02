@@ -17,6 +17,8 @@ interface EntradasTableProps {
     densidad: DensidadTabla;
     onEditar?: (entrada: EntradaApi) => void;
     onEliminar?: (entrada: EntradaApi) => void;
+    /** Recibo de ingreso por línea: disponible aunque la entrada ya tenga salidas. */
+    onEditarRecibos?: (entrada: EntradaApi) => void;
 }
 
 const [FIJA_EXPANDIR, FIJA_FECHA, FIJA_PROVEEDOR] = columnasFijas(["2.5rem", "6.5rem", "13rem"]);
@@ -83,7 +85,7 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
     );
 }
 
-function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: EntradasTableProps) {
+function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEditarRecibos }: EntradasTableProps) {
     function nombreCamara(id: number | null): string {
         if (!id) return "Venta directa";
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
@@ -202,11 +204,21 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar }: En
                                         </td>
                                         {onEditar && onEliminar && (
                                             <td className="fija-der text-end text-nowrap">
+                                                {onEditarRecibos && (
+                                                    <>
+                                                        <BotonAccionFila
+                                                            icono="bi-receipt"
+                                                            etiqueta={`Editar recibo de ingreso de la entrada ${entrada.id}`}
+                                                            onClick={() => onEditarRecibos(entrada)}
+                                                            motivoBloqueo={entrada.detalles.some((d) => d.camara !== null) ? null : "Sin líneas en cámara: no lleva recibo de ingreso"}
+                                                        />{" "}
+                                                    </>
+                                                )}
                                                 <BotonAccionFila
                                                     icono="bi-pencil"
                                                     etiqueta={`Editar entrada ${entrada.id}`}
                                                     onClick={() => onEditar?.(entrada)}
-                                                    motivoBloqueo={conSalidas ? "Ya tiene salidas: solo un superusuario puede corregirla desde Auditoría de entradas" : null}
+                                                    motivoBloqueo={conSalidas ? "Ya tiene salidas: el recibo se edita con el botón de recibo; lo demás solo un superusuario desde Auditoría de entradas" : null}
                                                 />{" "}
                                                 <BotonAccionFila
                                                     icono="bi-trash"
