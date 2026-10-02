@@ -1,5 +1,4 @@
 import type { User } from "../../../../shared/interfaces/auth";
-import type { Divisa } from "../divisas/Divisa";
 import type { MovimientoApi } from "../movimientos/Movimiento";
 
 /** Divisa tal como la manda la consulta de caja (sin el flag de activa). */
@@ -23,36 +22,23 @@ export interface SaldoDivisaDia {
 /** GET treasury/caja/dia/?fecha= */
 export interface CajaDiaApi {
     fecha: string;
-    // null: todavía no hay saldos iniciales (apertura) para esa fecha.
-    apertura: { id: number; fecha: string } | null;
     saldos: SaldoDivisaDia[];
     negativo: boolean;
     movimientos: MovimientoApi[];
 }
 
-/** Un día del historial (solo días con movimientos o con apertura). */
+/** Un día del historial (solo días con movimientos). */
 export interface DiaHistorialApi {
     fecha: string;
-    apertura: boolean;
     movimientos: number;
     negativo: boolean;
     saldos: { divisa: DivisaCaja; ingresos: string; egresos: string; saldo_final: string }[];
 }
 
-/** Saldos iniciales de caja a una fecha (reemplaza la apertura de corte). */
-export interface AperturaApi {
-    id: number;
-    fecha: string;
-    observaciones: string;
-    saldos: { id: number; divisa: Divisa; monto: string }[];
-    creado_por: User;
+/** GET/POST treasury/saldos-iniciales/: saldo inicial de caja por divisa (sin fecha). */
+export interface SaldoInicialApi {
+    divisa: DivisaCaja;
+    monto: string;
     editado_por: User | null;
-    creado: string;
-    modificado: string;
-}
-
-export interface GuardarAperturaRequest {
-    fecha: string;
-    observaciones: string;
-    saldos: { divisa_id: number; monto: string }[];
+    editado_en: string | null;
 }

@@ -12,7 +12,7 @@ import type { CrearMovimientoRequest, Movimiento } from "../../interfaces/movimi
 import { mapMovimientosApiToMovimientos } from "../../interfaces/movimientos/Movimiento";
 import type { CajaDiaApi } from "../../interfaces/caja/Caja";
 import { actualizarMovimiento, crearMovimiento, obtenerMovimientos } from "../../services/movimientos.service";
-import { obtenerAperturas, obtenerCajaDia } from "../../services/caja.service";
+import { obtenerCajaDia } from "../../services/caja.service";
 import SkeletonCards from "../../../../shared/components/SkeletonCards";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import CardCollapseButton from "../../../../shared/components/CardCollapseButton";
@@ -25,7 +25,6 @@ function Movimientos() {
     const { mostrarToast } = useToastContext();
     const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
     const [cajaHoy, setCajaHoy] = useState<CajaDiaApi | null>(null);
-    const [primeraApertura, setPrimeraApertura] = useState<string | null>(null);
     const [divisas, setDivisas] = useState<Divisa[]>([]);
     // Día cuyos movimientos se listan (no necesariamente hoy: se capturan hojas atrasadas).
     const [fechaLista, setFechaLista] = useState(hoyISO());
@@ -46,15 +45,13 @@ function Movimientos() {
 
     async function cargar(fecha: string) {
         try {
-            const [datos, datosCaja, aperturas, datosDivisas] = await Promise.all([
+            const [datos, datosCaja, datosDivisas] = await Promise.all([
                 obtenerMovimientos({ fecha }),
                 obtenerCajaDia(),
-                obtenerAperturas(),
                 obtenerDivisas(),
             ]);
             setMovimientos(mapMovimientosApiToMovimientos(datos));
             setCajaHoy(datosCaja);
-            setPrimeraApertura(aperturas.length ? aperturas.map((a) => a.fecha).sort()[0] : null);
             setDivisas(datosDivisas);
             setError(null);
         } catch (err) {
@@ -131,30 +128,15 @@ function Movimientos() {
 
                 {!error && !loading && (
                     <>
-                        {!primeraApertura ? (
-                            <div className="callout callout-info mb-3">
-                                <p className="mb-1"><b>Primero captura los saldos iniciales de caja</b></p>
-                                <p className="mb-0">
-                                    Los movimientos parten de un saldo inicial por divisa a una fecha.{" "}
-                                    <Link to="/tesoreria/caja/saldos-iniciales">
-                                        Capturar saldos iniciales <i className="bi bi-box-arrow-up-right"></i>
-                                    </Link>
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                {cajaHoy && <SaldosDelDia caja={cajaHoy} titulo="Saldo de hoy" />}
-                                <div ref={formularioRef}>
-                                    <MovimientoForm
-                                        divisas={divisas}
-                                        movimiento={movimientoEnEdicion}
-                                        onGuardar={handleGuardarMovimiento}
-                                        onCancelar={() => setMovimientoEnEdicion(null)}
-                                        fechaMinima={primeraApertura}
-                                    />
-                                </div>
-                            </>
-                        )}
+                        {cajaHoy && <SaldosDelDia caja={cajaHoy} titulo="Saldo de hoy" />}
+                        <div ref={formularioRef}>
+                            <MovimientoForm
+                                divisas={divisas}
+                                movimiento={movimientoEnEdicion}
+                                onGuardar={handleGuardarMovimiento}
+                                onCancelar={() => setMovimientoEnEdicion(null)}
+                            />
+                        </div>
 
                         <div className="card card-outline card-primary">
                             <div className="card-header d-flex flex-wrap gap-2 align-items-center bg-body-tertiary">

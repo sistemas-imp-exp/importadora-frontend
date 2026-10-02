@@ -15,13 +15,6 @@ function dinero(simbolo: string, valor: string): string {
 
 /** Una tarjeta por divisa con el saldo calculado del día; en rojo si quedó negativo. */
 function SaldosDelDia({ caja, titulo, detalle = false }: SaldosDelDiaProps) {
-    if (!caja.apertura) {
-        return (
-            <div className="callout callout-info mb-3 small">
-                No hay saldos iniciales de caja para esta fecha: captura una apertura en <b>Saldos iniciales</b>.
-            </div>
-        );
-    }
     return (
         <>
             {titulo && <h6 className="text-uppercase small fw-semibold text-body-secondary mb-2">{titulo}</h6>}

@@ -14,8 +14,6 @@ interface MovimientoFormProps {
     movimiento?: Movimiento | null;
     onGuardar: (movimiento: CrearMovimientoRequest) => Promise<void>;
     onCancelar?: () => void;
-    /** Fecha de la primera apertura ('YYYY-MM-DD'): no se aceptan movimientos anteriores. */
-    fechaMinima?: string;
 }
 
 interface MovimientoDivisaForm {
@@ -28,7 +26,6 @@ function MovimientoForm({
     movimiento,
     onGuardar,
     onCancelar,
-    fechaMinima,
 }: MovimientoFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -149,9 +146,6 @@ function MovimientoForm({
     function validarFormulario(): string | null {
         if (!form.fecha) return "La fecha es obligatoria.";
         if (form.fecha > hoyISO()) return "La fecha no puede ser futura.";
-        if (fechaMinima && form.fecha < fechaMinima) {
-            return "La fecha no puede ser anterior a la primera apertura de caja.";
-        }
         if (!form.folio.trim()) return "El folio es obligatorio.";
         if (!form.autorizo.trim()) return "El nombre de quien autoriza es obligatorio.";
         if (!form.beneficiario.trim()) return "El beneficiario es obligatorio.";
@@ -265,7 +259,6 @@ function MovimientoForm({
                                     type="date"
                                     className="form-control form-control-sm"
                                     value={form.fecha}
-                                    min={fechaMinima}
                                     max={hoyISO()}
                                     onChange={(e) => setForm({ ...form, fecha: e.target.value })}
                                     required

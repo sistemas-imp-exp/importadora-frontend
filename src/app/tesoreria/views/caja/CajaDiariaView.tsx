@@ -27,7 +27,7 @@ function dinero(simbolo: string, valor: string): string {
 
 /**
  * Caja por día. Reemplaza al corte abierto/cerrado: cualquier día se consulta
- * con su saldo calculado (apertura vigente + movimientos hasta ese día), así
+ * con su saldo calculado (todos los movimientos hasta ese día), así
  * que una hoja capturada con fecha atrasada se refleja sola en los días siguientes.
  */
 function CajaDiariaView() {
@@ -195,11 +195,6 @@ function CajaDiariaView() {
                                                     </td>
                                                     <td>
                                                         <div className="d-flex flex-wrap gap-1">
-                                                            {dia.apertura && (
-                                                                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle">
-                                                                    <i className="bi bi-flag me-1" aria-hidden="true"></i>Saldo inicial
-                                                                </span>
-                                                            )}
                                                             {dia.negativo && (
                                                                 <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">
                                                                     <i className="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>Negativo

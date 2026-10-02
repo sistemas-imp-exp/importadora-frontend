@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 import PageHeader from "../../../../layouts/components/PageHeader";
 import SkeletonCards from "../../../../shared/components/SkeletonCards";
@@ -106,8 +105,6 @@ function ArqueoCajaView() {
         }
     }
 
-    const sinApertura = caja !== null && !caja.apertura;
-
     return (
         <>
             <PageHeader
@@ -144,14 +141,6 @@ function ArqueoCajaView() {
 
                 {cargando ? (
                     <SkeletonCards cantidad={2} columnas="col-md-6 col-sm-12" />
-                ) : sinApertura ? (
-                    <div className="callout callout-info mb-3">
-                        <p className="mb-1"><b>No hay saldos iniciales para esta fecha</b></p>
-                        <p className="mb-0">
-                            El arqueo se compara contra el saldo calculado del día.{" "}
-                            <Link to="/tesoreria/caja/saldos-iniciales">Capturar saldos iniciales <i className="bi bi-box-arrow-up-right"></i></Link>
-                        </p>
-                    </div>
                 ) : (
                     caja && (
                         <ArqueoForm

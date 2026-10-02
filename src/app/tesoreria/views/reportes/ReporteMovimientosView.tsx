@@ -17,7 +17,6 @@ import type {
     TipoFiltro,
 } from "../../interfaces/reportes/Reporte";
 import { obtenerDivisas } from "../../services/divisa.service";
-import { obtenerAperturas } from "../../services/caja.service";
 import dayjs from "dayjs";
 import {
     descargarReporteMovimientosExcel,
@@ -45,8 +44,6 @@ function ReporteMovimientosView() {
 
     const [filtros, setFiltros] = useState<FiltrosReporteMovimientos>(filtrosPorDefecto());
     const [divisas, setDivisas] = useState<Divisa[]>([]);
-    // Primera apertura de caja ('YYYY-MM-DD'): antes no puede haber movimientos.
-    const [primeraApertura, setPrimeraApertura] = useState<string | undefined>(undefined);
     const [resumen, setResumen] = useState<ResumenReporteMovimientosApi | null>(null);
     const [cargandoResumen, setCargandoResumen] = useState(true);
     const [generandoExcel, setGenerandoExcel] = useState(false);
@@ -61,15 +58,12 @@ function ReporteMovimientosView() {
     useEffect(() => {
         (async () => {
             try {
-                const [datosDivisas, aperturas] = await Promise.all([obtenerDivisas(), obtenerAperturas()]);
-                setDivisas(datosDivisas);
-                const primera = aperturas.map((a) => a.fecha).sort()[0];
-                setPrimeraApertura(primera);
-                // Por defecto el mes en curso, sin empezar antes de la primera apertura.
+                setDivisas(await obtenerDivisas());
+                // Por defecto el mes en curso.
                 const { primerDia, ultimoDia } = primerYUltimoDiaDelMesActualISO();
                 setFiltros((actual) => ({
                     ...actual,
-                    fechaInicio: primera && primera > primerDia ? primera : primerDia,
+                    fechaInicio: primerDia,
                     fechaFin: ultimoDia > hoyISO() ? hoyISO() : ultimoDia,
                 }));
             } catch (err) {
@@ -137,9 +131,7 @@ function ReporteMovimientosView() {
         }
     }
 
-    // Guardarraíles de los inputs de fecha: no se puede elegir antes de la
-    // primera apertura de caja, ni después de hoy, ni un rango invertido.
-    const fechaMinimaHistorica = primeraApertura;
+    // Guardarraíles de los inputs de fecha: ni después de hoy ni un rango invertido.
     const fechaMaximaHoy = hoyISO();
 
     function alternarDivisa(id: number) {
@@ -181,7 +173,6 @@ function ReporteMovimientosView() {
                                     type="date"
                                     className="form-control"
                                     value={filtros.fechaInicio}
-                                    min={fechaMinimaHistorica}
                                     max={filtros.fechaFin || fechaMaximaHoy}
                                     onChange={(e) => setFiltros({ ...filtros, fechaInicio: e.target.value })}
                                 />
@@ -192,7 +183,7 @@ function ReporteMovimientosView() {
                                     type="date"
                                     className="form-control"
                                     value={filtros.fechaFin}
-                                    min={filtros.fechaInicio || fechaMinimaHistorica}
+                                    min={filtros.fechaInicio || undefined}
                                     max={fechaMaximaHoy}
                                     onChange={(e) => setFiltros({ ...filtros, fechaFin: e.target.value })}
                                 />

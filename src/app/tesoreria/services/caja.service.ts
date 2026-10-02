@@ -1,8 +1,8 @@
 import api from "../../../shared/api/client";
-import type { AperturaApi, CajaDiaApi, DiaHistorialApi, GuardarAperturaRequest } from "../interfaces/caja/Caja";
+import type { CajaDiaApi, DiaHistorialApi, SaldoInicialApi } from "../interfaces/caja/Caja";
 
 const URL_CAJA = "treasury/caja/";
-const URL_APERTURAS = "treasury/aperturas/";
+const URL_SALDOS_INICIALES = "treasury/saldos-iniciales/";
 
 /** Saldos por divisa y movimientos de un día ('YYYY-MM-DD'; sin fecha = hoy). */
 export async function obtenerCajaDia(fecha?: string): Promise<CajaDiaApi> {
@@ -16,21 +16,13 @@ export async function obtenerHistorialCaja(desde: string, hasta: string): Promis
     return data;
 }
 
-export async function obtenerAperturas(): Promise<AperturaApi[]> {
-    const { data } = await api.get<AperturaApi[]>(URL_APERTURAS);
+export async function obtenerSaldosIniciales(): Promise<SaldoInicialApi[]> {
+    const { data } = await api.get<SaldoInicialApi[]>(URL_SALDOS_INICIALES);
     return data;
 }
 
-export async function crearApertura(apertura: GuardarAperturaRequest): Promise<AperturaApi> {
-    const { data } = await api.post<AperturaApi>(URL_APERTURAS, apertura);
+/** Solo superusuario. Devuelve el listado completo ya actualizado. */
+export async function guardarSaldosIniciales(saldos: { divisa_id: number; monto: string }[]): Promise<SaldoInicialApi[]> {
+    const { data } = await api.post<SaldoInicialApi[]>(URL_SALDOS_INICIALES, { saldos });
     return data;
-}
-
-export async function actualizarApertura(id: number, apertura: GuardarAperturaRequest): Promise<AperturaApi> {
-    const { data } = await api.put<AperturaApi>(`${URL_APERTURAS}${id}/`, apertura);
-    return data;
-}
-
-export async function eliminarApertura(id: number): Promise<void> {
-    await api.delete(`${URL_APERTURAS}${id}/`);
 }
