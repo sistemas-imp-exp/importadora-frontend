@@ -1,6 +1,6 @@
 import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
-import { actualizarEntrada, crearEntrada, eliminarEntrada, obtenerEntradas } from "../../services/entrada.service";
+import { actualizarEntrada, crearEntrada, descargarEntradasExcel, eliminarEntrada, obtenerEntradas } from "../../services/entrada.service";
 import { obtenerEmpresas } from "../../services/empresa.service";
 import { obtenerProveedores } from "../../services/proveedor.service";
 import { obtenerCamaras } from "../../services/camara.service";
@@ -21,6 +21,7 @@ import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 import DensidadToggle from "../../../../shared/components/DensidadToggle";
+import BotonDescargaExcel from "../../../../shared/components/BotonDescargaExcel";
 import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { useAuth } from "../../../../shared/hooks/useAuth";
 import AvisoSoloLectura from "../../../../shared/components/AvisoSoloLectura";
@@ -175,6 +176,11 @@ function EntradasView() {
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
                                 <DensidadToggle valor={densidad} onChange={setDensidad} />
+                                <BotonDescargaExcel
+                                    onDescargar={() => descargarEntradasExcel(busqueda)}
+                                    titulo={busqueda.trim() ? "Descargar en Excel las entradas que coinciden con la búsqueda" : "Descargar todas las entradas en Excel"}
+                                    disabled={total === 0}
+                                />
                             </div>
 
                             {total > 0 && (

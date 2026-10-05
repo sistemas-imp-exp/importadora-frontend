@@ -1,6 +1,6 @@
 import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
-import { actualizarSalida, crearSalida, eliminarSalida, obtenerSalidas } from "../../services/salida.service";
+import { actualizarSalida, crearSalida, descargarSalidasExcel, eliminarSalida, obtenerSalidas } from "../../services/salida.service";
 import { obtenerClientes } from "../../services/cliente.service";
 import { obtenerCamaras } from "../../services/camara.service";
 import { obtenerExistencias } from "../../services/existencia.service";
@@ -16,6 +16,7 @@ import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
 import Paginacion from "../../../../shared/components/Paginacion";
 import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import DensidadToggle from "../../../../shared/components/DensidadToggle";
+import BotonDescargaExcel from "../../../../shared/components/BotonDescargaExcel";
 import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
@@ -169,6 +170,11 @@ function SalidasView() {
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
                                 <DensidadToggle valor={densidad} onChange={setDensidad} />
+                                <BotonDescargaExcel
+                                    onDescargar={() => descargarSalidasExcel(busqueda)}
+                                    titulo={busqueda.trim() ? "Descargar en Excel las salidas que coinciden con la búsqueda" : "Descargar todas las salidas en Excel"}
+                                    disabled={total === 0}
+                                />
                             </div>
 
                             {total > 0 && (

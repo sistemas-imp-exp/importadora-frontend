@@ -1,4 +1,5 @@
 import api from "../../../shared/api/client";
+import { descargarBlob } from "../../../shared/utils/descargarArchivo";
 import type { EntradaApi, CrearEntradaRequest } from "../interfaces/entradas/Entrada";
 import type { RespuestaPaginada, ParamsPaginados } from "../../../shared/interfaces/Paginado";
 import { construirParams } from "../../../shared/interfaces/Paginado";
@@ -48,4 +49,11 @@ export async function editarRecibosEntrada(id: number, recibos: Record<number, s
 
 export async function eliminarEntrada(id: number): Promise<void> {
     await api.delete(`${URL}${id}/`);
+}
+
+/** La tabla completa en Excel (sin paginar), con la misma búsqueda que la pantalla. */
+export async function descargarEntradasExcel(busqueda: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (busqueda.trim()) params.set("busqueda", busqueda.trim());
+    await descargarBlob(`${URL}excel/`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "entradas.xlsx", params);
 }
