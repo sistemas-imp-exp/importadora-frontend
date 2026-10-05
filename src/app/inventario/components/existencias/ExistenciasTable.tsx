@@ -18,7 +18,7 @@ interface ExistenciasTableProps {
 // Lo que identifica al lote (dónde está y qué es) se queda fijo al desplazar a
 // la derecha para comparar cantidades sin perder de vista de qué fila se trata.
 const [FIJA_CAMARA, FIJA_PRODUCTO] = columnasFijas(["9rem", "10rem"]);
-const COLUMNAS = 15;
+const COLUMNAS = 16;
 
 function ExistenciasTable({
     filas, totales, hayFiltros, densidad, mostrarTotales = true, alturaMaxima = "70vh",
@@ -41,6 +41,7 @@ function ExistenciasTable({
                         <th className="num">Saldo kg</th>
                         <th className="num">Costo/kg</th>
                         <th className="num">Total</th>
+                        <th className="num" title="Saldo kg × (precio de venta planeado − costo/kg)">Utilidad</th>
                         <th>Caducidad</th>
                         <th>Lote proveedor</th>
                     </tr>
@@ -77,6 +78,13 @@ function ExistenciasTable({
                                         <span className="text-body-secondary" title="Lote sin costo capturado: no suma al total">—</span>
                                     )}
                                 </td>
+                                <td className={`num ${fila.utilidad !== null && fila.utilidad < 0 ? "text-danger" : ""}`}>
+                                    {fila.utilidad !== null ? (
+                                        `${fila.utilidad < 0 ? "−" : ""}$${formatearDinero(Math.abs(fila.utilidad))}`
+                                    ) : (
+                                        <span className="text-body-secondary" title="Sin precio de venta planeado o sin costo: no suma a la utilidad">—</span>
+                                    )}
+                                </td>
                                 <td><BadgeCaducidad fechaCaducidad={fila.fechaCaducidad} /></td>
                                 <td className="text-nowrap">{fila.loteProveedor}</td>
                             </tr>
@@ -96,6 +104,9 @@ function ExistenciasTable({
                             <td className="num fw-bold">{formatearDinero(totales.totalKilosDisponibles)}</td>
                             <td></td>
                             <td className="num fw-bold">${formatearDinero(totales.totalPesos)}</td>
+                            <td className={`num fw-bold ${totales.totalUtilidad < 0 ? "text-danger" : ""}`}>
+                                {totales.totalUtilidad < 0 ? "−" : ""}${formatearDinero(Math.abs(totales.totalUtilidad))}
+                            </td>
                             <td colSpan={2}></td>
                         </tr>
                     </tfoot>

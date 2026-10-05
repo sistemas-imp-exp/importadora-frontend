@@ -21,6 +21,8 @@ export interface FilaExistencia {
     kilosDisponibles: string;
     costoPorKilo: string | null;
     totalPesos: number | null;
+    /** Saldo kg × (precio de venta planeado − costo/kg); null si falta precio o costo. */
+    utilidad: number | null;
     fechaCaducidad: string | null;
     // Precalculados una sola vez al construir la fila: los usan tanto el filtro
     // por caducidad como el resaltado de la fila en la tabla.
@@ -33,6 +35,7 @@ export interface TotalesExistencias {
     totalCajas: number;
     totalKilosDisponibles: number;
     totalPesos: number;
+    totalUtilidad: number;
     lotesSinCosto: number;
 }
 
@@ -70,6 +73,10 @@ export function construirFilas(existencias: ExistenciaApi[]): FilaExistencia[] {
             kilosDisponibles: item.kilos_disponibles,
             costoPorKilo: item.costo_por_kilo,
             totalPesos: item.costo_por_kilo !== null ? kilosDisponibles * Number(item.costo_por_kilo) : null,
+            utilidad:
+                item.costo_por_kilo !== null && item.precio_venta_planeado !== null
+                    ? kilosDisponibles * (Number(item.precio_venta_planeado) - Number(item.costo_por_kilo))
+                    : null,
             fechaCaducidad: item.fecha_caducidad,
             diasRestantes,
             nivel: diasRestantes !== null ? clasificarNivelCaducidad(diasRestantes) : null,
@@ -83,6 +90,7 @@ export function calcularTotales(filas: FilaExistencia[]): TotalesExistencias {
         totalCajas: filas.reduce((acc, f) => acc + f.cajasDisponibles, 0),
         totalKilosDisponibles: filas.reduce((acc, f) => acc + Number(f.kilosDisponibles), 0),
         totalPesos: filas.reduce((acc, f) => acc + (f.totalPesos ?? 0), 0),
+        totalUtilidad: filas.reduce((acc, f) => acc + (f.utilidad ?? 0), 0),
         lotesSinCosto: filas.filter((f) => f.totalPesos === null).length,
     };
 }
