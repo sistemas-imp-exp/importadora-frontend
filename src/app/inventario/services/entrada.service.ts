@@ -41,16 +41,9 @@ export async function actualizarEntrada(id: number, entrada: CrearEntradaRequest
     return data;
 }
 
-/** Campos editables de una línea aunque la entrada tenga salidas; cada uno es opcional. */
-export interface CamposLinea {
-    recibo?: string;
-    /** Vacío quita el precio. */
-    precio_venta_planeado?: string;
-}
-
-/** Edición de campos por línea {detalle_id: campos}; queda en Auditoría de entradas. */
-export async function editarCamposEntrada(id: number, lineas: Record<number, CamposLinea>): Promise<EntradaApi> {
-    const { data } = await api.patch<EntradaApi>(`${URL}${id}/campos/`, { lineas });
+/** Recibo de ingreso (IMP) por línea, {detalle_id: codigo}; vale aunque la entrada tenga salidas. */
+export async function editarRecibosEntrada(id: number, recibos: Record<number, string>): Promise<EntradaApi> {
+    const { data } = await api.patch<EntradaApi>(`${URL}${id}/recibos/`, { recibos });
     return data;
 }
 

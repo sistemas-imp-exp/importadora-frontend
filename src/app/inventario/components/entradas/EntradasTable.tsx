@@ -17,8 +17,8 @@ interface EntradasTableProps {
     densidad: DensidadTabla;
     onEditar?: (entrada: EntradaApi) => void;
     onEliminar?: (entrada: EntradaApi) => void;
-    /** Edición de campos (recibo y precio de venta): disponible aunque la entrada ya tenga salidas. */
-    onEditarCampos?: (entrada: EntradaApi) => void;
+    /** Recibo de ingreso por línea: disponible aunque la entrada ya tenga salidas. */
+    onEditarRecibos?: (entrada: EntradaApi) => void;
 }
 
 const [FIJA_EXPANDIR, FIJA_FECHA, FIJA_PROVEEDOR] = columnasFijas(["2.5rem", "6.5rem", "13rem"]);
@@ -53,7 +53,6 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
                     <th className="num">Total kg</th>
                     <th className="num" title="Lo que queda de la línea después de salidas y traslados">Disponible</th>
                     <th className="num">Costo/kg</th>
-                    <th className="num">Precio venta/kg</th>
                     <th>Caducidad</th>
                     <th>Observaciones</th>
                 </tr>
@@ -74,13 +73,6 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
                                 {d.cajas_disponibles.toLocaleString("es-MX")} cj · {kilos(d.kilos_disponibles)} kg
                             </td>
                             <td className="num">{d.costo_por_kilo ? `$${formatearDinero(Number(d.costo_por_kilo))}` : "—"}</td>
-                            <td className="num">
-                                {d.precio_venta_planeado ? (
-                                    `$${formatearDinero(Number(d.precio_venta_planeado))}`
-                                ) : (
-                                    <span className="text-body-secondary" title="Sin precio de venta: no calcula utilidad">—</span>
-                                )}
-                            </td>
                             <td><BadgeCaducidad fechaCaducidad={d.fecha_caducidad} /></td>
                             <td className="truncar" title={d.observaciones || undefined}>
                                 {d.observaciones || <span className="text-body-secondary">—</span>}
@@ -93,7 +85,7 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
     );
 }
 
-function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEditarCampos }: EntradasTableProps) {
+function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEditarRecibos }: EntradasTableProps) {
     function nombreCamara(id: number | null): string {
         if (!id) return "Venta directa";
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
@@ -212,12 +204,13 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEd
                                         </td>
                                         {onEditar && onEliminar && (
                                             <td className="fija-der text-end text-nowrap">
-                                                {onEditarCampos && (
+                                                {onEditarRecibos && (
                                                     <>
                                                         <BotonAccionFila
                                                             icono="bi-receipt"
-                                                            etiqueta={`Edición de campos (recibo y precio de venta) de la entrada ${entrada.id}`}
-                                                            onClick={() => onEditarCampos(entrada)}
+                                                            etiqueta={`Editar recibo de ingreso de la entrada ${entrada.id}`}
+                                                            onClick={() => onEditarRecibos(entrada)}
+                                                            motivoBloqueo={entrada.detalles.some((d) => d.camara !== null) ? null : "Sin líneas en cámara: no lleva recibo de ingreso"}
                                                         />{" "}
                                                     </>
                                                 )}
@@ -225,7 +218,7 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEd
                                                     icono="bi-pencil"
                                                     etiqueta={`Editar entrada ${entrada.id}`}
                                                     onClick={() => onEditar?.(entrada)}
-                                                    motivoBloqueo={conSalidas ? "Ya tiene salidas: recibo y precio de venta se editan con Edición de campos; lo demás solo un superusuario desde Auditoría de entradas" : null}
+                                                    motivoBloqueo={conSalidas ? "Ya tiene salidas: el recibo se edita con el botón de recibo; lo demás solo un superusuario desde Auditoría de entradas" : null}
                                                 />{" "}
                                                 <BotonAccionFila
                                                     icono="bi-trash"

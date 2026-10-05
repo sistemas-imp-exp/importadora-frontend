@@ -12,7 +12,7 @@ import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Producto } from "../../interfaces/productos/Producto";
 import EntradaForm from "../../components/entradas/EntradaForm";
 import EntradasTable from "../../components/entradas/EntradasTable";
-import EdicionCamposModal from "../../components/entradas/EdicionCamposModal";
+import EditarRecibosModal from "../../components/entradas/EditarRecibosModal";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import ConfirmModal from "../../../../shared/components/ConfirmModal";
 import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
@@ -43,7 +43,7 @@ function EntradasView() {
 
     const [entradaEditando, setEntradaEditando] = useState<EntradaApi | null>(null);
     const [entradaEliminar, setEntradaEliminar] = useState<EntradaApi | null>(null);
-    const [entradaCampos, setEntradaCampos] = useState<EntradaApi | null>(null);
+    const [entradaRecibos, setEntradaRecibos] = useState<EntradaApi | null>(null);
     const [eliminando, setEliminando] = useState(false);
 
     const { mostrarToast } = useToastContext();
@@ -203,7 +203,7 @@ function EntradasView() {
                                     densidad={densidad}
                                     onEditar={editable ? setEntradaEditando : undefined}
                                     onEliminar={editable ? setEntradaEliminar : undefined}
-                                    onEditarCampos={editable ? setEntradaCampos : undefined}
+                                    onEditarRecibos={editable ? setEntradaRecibos : undefined}
                                 />
                             </div>
 
@@ -224,14 +224,14 @@ function EntradasView() {
                 )}
             </div>
 
-            {entradaCampos && (
-                <EdicionCamposModal
-                    key={entradaCampos.id}
-                    entrada={entradaCampos}
+            {entradaRecibos && (
+                <EditarRecibosModal
+                    key={entradaRecibos.id}
+                    entrada={entradaRecibos}
                     nombreCamara={(id) => (id ? camaras.find((c) => c.id === id)?.nombre ?? "—" : "Venta directa")}
-                    onCerrar={() => setEntradaCampos(null)}
+                    onCerrar={() => setEntradaRecibos(null)}
                     onGuardado={() => {
-                        setEntradaCampos(null);
+                        setEntradaRecibos(null);
                         cargar();
                     }}
                 />
