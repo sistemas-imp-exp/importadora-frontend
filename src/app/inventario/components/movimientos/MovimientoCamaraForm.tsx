@@ -1,18 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
-import SearchableSelect from "../../../../shared/components/SearchableSelect";
+import SelectorLotesModal from "../salidas/SelectorLotesModal";
+import { construirLotesDisponibles, type LoteDisponible } from "../../utils/lotesDisponibles";
 import type { CrearMovimientoCamaraRequest } from "../../interfaces/movimientos/MovimientoCamara";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Camara } from "../../interfaces/camaras/Camara";
-
-interface LoteDisponible {
-    entradaDetalleId: number;
-    productoNombre: string;
-    loteProveedor: string;
-    camaraOrigen: number | null;
-    pesoPorCaja: string | null;
-    cajasDisponibles: number;
-}
 
 interface MovimientoCamaraFormProps {
     camaras: Camara[];
@@ -28,21 +20,16 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [form, setForm] = useState(formVacio());
+    const [mostrarSelector, setMostrarSelector] = useState(false);
 
-    // Solo lotes que sí están en una cámara (una línea de "venta directa" no se puede
-    // mover) y que todavía tienen cajas disponibles.
-    // La foto de existencias ya excluye los lotes agotados; aquí solo se descartan
-    // los de venta directa, que al no estar en una cámara no se pueden trasladar.
-    const lotesDisponibles: LoteDisponible[] = existencias
-        .map((item) => ({
-            entradaDetalleId: item.detalle_id,
-            productoNombre: `${item.talla} ${item.tipo}`,
-            loteProveedor: item.lote_proveedor,
-            camaraOrigen: item.camara_id,
-            pesoPorCaja: item.peso_por_caja,
-            cajasDisponibles: item.cajas_disponibles,
-        }))
-        .filter((lote) => lote.camaraOrigen !== null);
+    // Mismos lotes y buscador que Salidas (factura, recibo, lote, talla, tipo,
+    // proveedor, cámara). La foto de existencias ya excluye los lotes agotados;
+    // aquí solo se descartan los de venta directa, que al no estar en una cámara
+    // no se pueden trasladar.
+    const lotesDisponibles: LoteDisponible[] = useMemo(
+        () => construirLotesDisponibles(existencias).filter((lote) => lote.camaraOrigen !== null),
+        [existencias]
+    );
 
     const loteSeleccionado = lotesDisponibles.find((l) => l.entradaDetalleId === form.entrada_detalle_origen) ?? null;
 
@@ -114,15 +101,25 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                     <div className="row g-2 align-items-end">
                         <div className="col-12 col-md-4">
                             <label className="form-label small fw-bold">Lote de origen <span className="text-danger">*</span></label>
-                            <SearchableSelect
-                                placeholder="Buscar lote..."
-                                options={lotesDisponibles.map((lote) => ({
-                                    value: lote.entradaDetalleId,
-                                    label: `${lote.productoNombre} — lote ${lote.loteProveedor} (${lote.cajasDisponibles} cajas disponibles)`,
-                                }))}
-                                value={form.entrada_detalle_origen}
-                                onChange={(v) => actualizar({ entrada_detalle_origen: v })}
-                            />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm w-100 text-start text-truncate"
+                                onClick={() => setMostrarSelector(true)}
+                                title={loteSeleccionado ? "Cambiar el lote de origen" : "Buscar por factura, recibo, lote, talla..."}
+                            >
+                                <i className="bi bi-search me-1" aria-hidden="true"></i>
+                                {loteSeleccionado
+                                    ? `${loteSeleccionado.productoNombre} — lote ${loteSeleccionado.loteProveedor}`
+                                    : "Buscar lote…"}
+                            </button>
+                            {loteSeleccionado && (
+                                <div className="small text-body-secondary mt-1">
+                                    {loteSeleccionado.camaraNombre} · {loteSeleccionado.proveedorNombre}
+                                    {loteSeleccionado.factura && ` · Fact. ${loteSeleccionado.factura}`}
+                                    {loteSeleccionado.recibo && ` · Recibo ${loteSeleccionado.recibo}`}
+                                    {" · "}<span className="fw-semibold">{loteSeleccionado.cajasDisponibles} cajas disp.</span>
+                                </div>
+                            )}
                         </div>
                         <div className="col-12 col-sm-6 col-md-2">
                             <label className="form-label small fw-bold">Cámara destino <span className="text-danger">*</span></label>
@@ -183,6 +180,19 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                     )}
                 </div>
             </form>
+
+            <SelectorLotesModal
+                show={mostrarSelector}
+                lotes={lotesDisponibles}
+                yaAgregados={[]}
+                titulo="Elegir lote a mover"
+                seleccionUnica
+                onCerrar={() => setMostrarSelector(false)}
+                onAgregar={([lote]) => {
+                    actualizar({ entrada_detalle_origen: lote.entradaDetalleId });
+                    setMostrarSelector(false);
+                }}
+            />
         </div>
     );
 }

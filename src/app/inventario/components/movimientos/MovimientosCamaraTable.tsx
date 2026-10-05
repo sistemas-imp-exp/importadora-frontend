@@ -2,13 +2,18 @@ import type { MovimientoCamaraApi } from "../../interfaces/movimientos/Movimient
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
+import BotonAccionFila from "../../../../shared/components/tabla/BotonAccionFila";
 
 interface MovimientosCamaraTableProps {
     movimientos: MovimientoCamaraApi[];
     camaras: Camara[];
+    /** Recibo en destino; solo con edición en Inventario. */
+    onEditarRecibo?: (movimiento: MovimientoCamaraApi) => void;
 }
 
-function MovimientosCamaraTable({ movimientos, camaras }: MovimientosCamaraTableProps) {
+function MovimientosCamaraTable({ movimientos, camaras, onEditarRecibo }: MovimientosCamaraTableProps) {
+    const columnas = onEditarRecibo ? 7 : 6;
+
     function nombreCamara(id: number): string {
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
     }
@@ -22,12 +27,15 @@ function MovimientosCamaraTable({ movimientos, camaras }: MovimientosCamaraTable
                         <th>Lote</th>
                         <th>Traslado</th>
                         <th className="num">Cajas</th>
+                        <th>Recibo origen</th>
+                        <th>Recibo destino</th>
+                        {onEditarRecibo && <th className="fija-der text-end">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {movimientos.length === 0 ? (
                         <tr>
-                            <td colSpan={4} className="text-center text-body-secondary py-5">
+                            <td colSpan={columnas} className="text-center text-body-secondary py-5">
                                 No hay movimientos registrados.
                             </td>
                         </tr>
@@ -42,6 +50,28 @@ function MovimientosCamaraTable({ movimientos, camaras }: MovimientosCamaraTable
                                     <span className="fw-semibold">{nombreCamara(movimiento.camara_destino)}</span>
                                 </td>
                                 <td className="num">{movimiento.cajas.toLocaleString("es-MX")}</td>
+                                <td className="text-nowrap">{movimiento.recibo_origen || "—"}</td>
+                                <td className="text-nowrap">
+                                    {movimiento.recibo_destino_propio ? (
+                                        <span className="fw-semibold">{movimiento.recibo_destino}</span>
+                                    ) : (
+                                        <span
+                                            className="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"
+                                            title="Aún sin recibo propio en destino: se muestra el de origen"
+                                        >
+                                            Heredado{movimiento.recibo_destino ? ` · ${movimiento.recibo_destino}` : ""}
+                                        </span>
+                                    )}
+                                </td>
+                                {onEditarRecibo && (
+                                    <td className="fija-der text-end">
+                                        <BotonAccionFila
+                                            icono="bi-receipt"
+                                            etiqueta={`Editar recibo en destino del movimiento ${movimiento.id}`}
+                                            onClick={() => onEditarRecibo(movimiento)}
+                                        />
+                                    </td>
+                                )}
                             </tr>
                         ))
                     )}

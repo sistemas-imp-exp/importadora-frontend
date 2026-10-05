@@ -8,6 +8,7 @@ import type { Camara } from "../../interfaces/camaras/Camara";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import MovimientoCamaraForm from "../../components/movimientos/MovimientoCamaraForm";
 import MovimientosCamaraTable from "../../components/movimientos/MovimientosCamaraTable";
+import EditarReciboMovimientoModal from "../../components/movimientos/EditarReciboMovimientoModal";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
@@ -22,6 +23,7 @@ function MovimientosCamaraView() {
     const [existencias, setExistencias] = useState<ExistenciaApi[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [movimientoRecibo, setMovimientoRecibo] = useState<MovimientoCamaraApi | null>(null);
 
     const { mostrarToast } = useToastContext();
 
@@ -88,12 +90,29 @@ function MovimientosCamaraView() {
                                 <h3 className="card-title mb-0">Movimientos registrados</h3>
                             </div>
                             <div className="card-body p-0">
-                                <MovimientosCamaraTable movimientos={movimientos} camaras={camaras} />
+                                <MovimientosCamaraTable
+                                    movimientos={movimientos}
+                                    camaras={camaras}
+                                    onEditarRecibo={editable ? setMovimientoRecibo : undefined}
+                                />
                             </div>
                         </div>
                     </>
                 )}
             </div>
+
+            {movimientoRecibo && (
+                <EditarReciboMovimientoModal
+                    key={movimientoRecibo.id}
+                    movimiento={movimientoRecibo}
+                    camaraDestino={camaras.find((c) => c.id === movimientoRecibo.camara_destino)?.nombre ?? "—"}
+                    onCerrar={() => setMovimientoRecibo(null)}
+                    onGuardado={() => {
+                        setMovimientoRecibo(null);
+                        cargar();
+                    }}
+                />
+            )}
         </>
     );
 }

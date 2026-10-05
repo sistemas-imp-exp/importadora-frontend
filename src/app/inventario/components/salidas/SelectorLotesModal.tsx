@@ -11,9 +11,16 @@ interface SelectorLotesModalProps {
     yaAgregados: number[];
     onAgregar: (lotes: LoteDisponible[]) => void;
     onCerrar: () => void;
+    /** Por defecto el de Salidas; Movimientos entre cámaras usa el suyo. */
+    titulo?: string;
+    /** Un solo lote a la vez (Movimientos entre cámaras); Salidas elige varios. */
+    seleccionUnica?: boolean;
 }
 
-function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: SelectorLotesModalProps) {
+function SelectorLotesModal({
+    show, lotes, yaAgregados, onAgregar, onCerrar,
+    titulo = "Agregar productos a la salida", seleccionUnica = false,
+}: SelectorLotesModalProps) {
     const [busqueda, setBusqueda] = useState("");
     const [seleccionados, setSeleccionados] = useState<number[]>([]);
 
@@ -31,9 +38,10 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
     const todosMarcados = seleccionables.length > 0 && seleccionables.every((l) => seleccionados.includes(l.entradaDetalleId));
 
     function alternar(id: number) {
-        setSeleccionados((actual) =>
-            actual.includes(id) ? actual.filter((i) => i !== id) : [...actual, id]
-        );
+        setSeleccionados((actual) => {
+            if (actual.includes(id)) return actual.filter((i) => i !== id);
+            return seleccionUnica ? [id] : [...actual, id];
+        });
     }
 
     function alternarTodos() {
@@ -54,7 +62,7 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
         .reduce((acc, l) => acc + l.cajasDisponibles, 0);
 
     return (
-        <Modal show={show} onClose={onCerrar} title="Agregar productos a la salida" size="modal-xl">
+        <Modal show={show} onClose={onCerrar} title={titulo} size="modal-xl">
             <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
                 <BuscadorTabla
                     valor={busqueda}
@@ -71,14 +79,16 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
                     <thead className="sticky-top bg-body">
                         <tr className="small text-uppercase text-body-secondary">
                             <th style={{ width: "36px" }}>
-                                <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={todosMarcados}
-                                    onChange={alternarTodos}
-                                    disabled={seleccionables.length === 0}
-                                    title="Seleccionar todo lo visible"
-                                />
+                                {!seleccionUnica && (
+                                    <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        checked={todosMarcados}
+                                        onChange={alternarTodos}
+                                        disabled={seleccionables.length === 0}
+                                        title="Seleccionar todo lo visible"
+                                    />
+                                )}
                             </th>
                             <th>Factura</th>
                             <th>Recibo</th>
@@ -113,8 +123,9 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
                                     >
                                         <td>
                                             <input
-                                                type="checkbox"
+                                                type={seleccionUnica ? "radio" : "checkbox"}
                                                 className="form-check-input"
+                                                aria-label={`Elegir ${lote.productoNombre} lote ${lote.loteProveedor}`}
                                                 checked={marcado}
                                                 disabled={agregado}
                                                 onChange={() => alternar(lote.entradaDetalleId)}
@@ -150,7 +161,7 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
             <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3 pt-3 border-top">
                 <span className="small text-body-secondary">
                     {seleccionados.length === 0
-                        ? "Marca los lotes que vas a surtir."
+                        ? seleccionUnica ? "Elige el lote que vas a mover." : "Marca los lotes que vas a surtir."
                         : `${seleccionados.length} lote(s) seleccionado(s) · ${totalCajas} cajas disponibles en total`}
                 </span>
                 <div className="d-flex gap-2">
@@ -163,8 +174,8 @@ function SelectorLotesModal({ show, lotes, yaAgregados, onAgregar, onCerrar }: S
                         onClick={confirmar}
                         disabled={seleccionados.length === 0}
                     >
-                        <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
-                        Agregar {seleccionados.length > 0 ? `(${seleccionados.length})` : ""}
+                        <i className={`bi ${seleccionUnica ? "bi-check-lg" : "bi-plus-lg"} me-1`} aria-hidden="true"></i>
+                        {seleccionUnica ? "Elegir lote" : `Agregar ${seleccionados.length > 0 ? `(${seleccionados.length})` : ""}`}
                     </button>
                 </div>
             </div>
