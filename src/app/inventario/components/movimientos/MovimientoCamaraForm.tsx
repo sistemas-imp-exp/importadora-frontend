@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SelectorLotesModal from "../salidas/SelectorLotesModal";
 import { construirLotesDisponibles, type LoteDisponible } from "../../utils/lotesDisponibles";
+import { calcularTotales, construirFilas } from "../../utils/existencias";
+import ExistenciasTable from "../existencias/ExistenciasTable";
 import type { CrearMovimientoCamaraRequest } from "../../interfaces/movimientos/MovimientoCamara";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Camara } from "../../interfaces/camaras/Camara";
@@ -13,7 +15,10 @@ interface MovimientoCamaraFormProps {
 }
 
 function formVacio() {
-    return { entrada_detalle_origen: "" as number | "", camara_destino: "" as number | "", fecha: "", cajas: "", total_kilos: "" };
+    return {
+        entrada_detalle_origen: "" as number | "", camara_destino: "" as number | "", fecha: "", cajas: "", total_kilos: "",
+        recibo_destino: "",
+    };
 }
 
 function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCamaraFormProps) {
@@ -32,6 +37,11 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
     );
 
     const loteSeleccionado = lotesDisponibles.find((l) => l.entradaDetalleId === form.entrada_detalle_origen) ?? null;
+    // Toda la información del lote elegido, con la misma tabla de Existencias.
+    const filasLote = useMemo(
+        () => construirFilas(existencias.filter((e) => e.detalle_id === form.entrada_detalle_origen)),
+        [existencias, form.entrada_detalle_origen]
+    );
 
     function actualizar(cambios: Partial<ReturnType<typeof formVacio>>) {
         setForm((actual) => {
@@ -77,6 +87,7 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
             fecha: form.fecha,
             cajas: Number(form.cajas),
             total_kilos: Number(form.total_kilos),
+            ...(form.recibo_destino.trim() ? { recibo_destino: form.recibo_destino.trim() } : {}),
         };
 
         setIsLoading(true);
@@ -99,7 +110,7 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
             <form onSubmit={guardar}>
                 <div className="card-body">
                     <div className="row g-2 align-items-end">
-                        <div className="col-12 col-md-4">
+                        <div className="col-12 col-md-3">
                             <label className="form-label small fw-bold">Lote de origen <span className="text-danger">*</span></label>
                             <button
                                 type="button"
@@ -112,14 +123,6 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                                     ? `${loteSeleccionado.productoNombre} — lote ${loteSeleccionado.loteProveedor}`
                                     : "Buscar lote…"}
                             </button>
-                            {loteSeleccionado && (
-                                <div className="small text-body-secondary mt-1">
-                                    {loteSeleccionado.camaraNombre} · {loteSeleccionado.proveedorNombre}
-                                    {loteSeleccionado.factura && ` · Fact. ${loteSeleccionado.factura}`}
-                                    {loteSeleccionado.recibo && ` · Recibo ${loteSeleccionado.recibo}`}
-                                    {" · "}<span className="fw-semibold">{loteSeleccionado.cajasDisponibles} cajas disp.</span>
-                                </div>
-                            )}
                         </div>
                         <div className="col-12 col-sm-6 col-md-2">
                             <label className="form-label small fw-bold">Cámara destino <span className="text-danger">*</span></label>
@@ -145,7 +148,7 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                                 onChange={(e) => actualizar({ fecha: e.target.value })}
                             />
                         </div>
-                        <div className="col-6 col-sm-3 col-md-2">
+                        <div className="col-6 col-sm-3 col-md-1">
                             <label className="form-label small fw-bold">Cajas <span className="text-danger">*</span></label>
                             <input
                                 type="number" min="0" className="form-control form-control-sm"
@@ -161,7 +164,33 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                                 onChange={(e) => actualizar({ total_kilos: e.target.value })}
                             />
                         </div>
+                        <div className="col-12 col-sm-6 col-md-2">
+                            <label className="form-label small fw-bold" htmlFor="movimiento-recibo">Recibo en destino</label>
+                            <input
+                                id="movimiento-recibo"
+                                className="form-control form-control-sm text-uppercase"
+                                maxLength={30}
+                                placeholder={loteSeleccionado?.recibo || "IMP-…"}
+                                title="Opcional. Si lo dejas vacío, conserva el recibo de origen; también se puede capturar después."
+                                value={form.recibo_destino}
+                                onChange={(e) => actualizar({ recibo_destino: e.target.value })}
+                            />
+                        </div>
                     </div>
+
+                    {filasLote.length > 0 && (
+                        <div className="mt-3">
+                            <h4 className="small text-uppercase fw-semibold text-body-secondary mb-2">Lote seleccionado</h4>
+                            <ExistenciasTable
+                                filas={filasLote}
+                                totales={calcularTotales(filasLote)}
+                                hayFiltros={false}
+                                densidad="compacta"
+                                mostrarTotales={false}
+                                alturaMaxima="none"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {error && (

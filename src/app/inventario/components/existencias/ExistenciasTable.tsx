@@ -10,6 +10,9 @@ interface ExistenciasTableProps {
     totales: TotalesExistencias;
     hayFiltros: boolean;
     densidad: DensidadTabla;
+    /** Fila de totales al pie; Movimientos la oculta al mostrar un solo lote. */
+    mostrarTotales?: boolean;
+    alturaMaxima?: string;
 }
 
 // Lo que identifica al lote (dónde está y qué es) se queda fijo al desplazar a
@@ -17,9 +20,11 @@ interface ExistenciasTableProps {
 const [FIJA_CAMARA, FIJA_PRODUCTO] = columnasFijas(["9rem", "10rem"]);
 const COLUMNAS = 15;
 
-function ExistenciasTable({ filas, totales, hayFiltros, densidad }: ExistenciasTableProps) {
+function ExistenciasTable({
+    filas, totales, hayFiltros, densidad, mostrarTotales = true, alturaMaxima = "70vh",
+}: ExistenciasTableProps) {
     return (
-        <TablaResponsive alturaMaxima="70vh">
+        <TablaResponsive alturaMaxima={alturaMaxima}>
             <table className={`table tabla-datos ${densidad === "compacta" ? "densidad-compacta" : ""}`}>
                 <thead>
                     <tr>
@@ -78,7 +83,7 @@ function ExistenciasTable({ filas, totales, hayFiltros, densidad }: ExistenciasT
                         ))
                     )}
                 </tbody>
-                {filas.length > 0 && (
+                {mostrarTotales && filas.length > 0 && (
                     <tfoot>
                         <tr>
                             <td className="fija-izq" style={FIJA_CAMARA}></td>

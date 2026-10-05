@@ -1,3 +1,5 @@
+import type { User } from "../../../../shared/interfaces/auth";
+
 export interface MovimientoCamaraApi {
     id: number;
     entrada_detalle_origen: number;
@@ -14,6 +16,15 @@ export interface MovimientoCamaraApi {
     recibo_origen: string;
     recibo_destino: string;
     recibo_destino_propio: boolean;
+    kilos: string;
+    proveedor: string;
+    factura: string;
+    empresa: string;
+    fecha_caducidad: string | null;
+    // Lo que queda hoy en destino de lo movido (ya descontadas sus salidas).
+    cajas_disponibles_destino: number;
+    kilos_disponibles_destino: string;
+    creado_por: User | null;
 }
 
 export interface CrearMovimientoCamaraRequest {
@@ -22,4 +33,6 @@ export interface CrearMovimientoCamaraRequest {
     fecha: string;
     cajas: number;
     total_kilos: number;
+    /** Opcional: sin él, la mercancía conserva el recibo de origen. */
+    recibo_destino?: string;
 }
