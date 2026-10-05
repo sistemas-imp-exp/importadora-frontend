@@ -90,7 +90,7 @@ function ExistenciasView() {
                 {listo && (
                     <>
                         <div className="row g-3 mb-3">
-                            <div className="col-sm-12 col-md-4">
+                            <div className="col-sm-12 col-md-6">
                                 <div className="card card-outline card-info mb-0 h-100">
                                     <div className="card-body py-2">
                                         <div className="text-muted small">Total kilos disponibles</div>
@@ -98,7 +98,7 @@ function ExistenciasView() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-sm-12 col-md-4">
+                            <div className="col-sm-12 col-md-6">
                                 <div className="card card-outline card-success mb-0 h-100">
                                     <div className="card-body py-2">
                                         <div className="text-muted small">Total en pesos (existencia)</div>
@@ -111,19 +111,6 @@ function ExistenciasView() {
                                                 ></i>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-sm-12 col-md-4">
-                                <div className="card card-outline card-primary mb-0 h-100">
-                                    <div className="card-body py-2">
-                                        <div className="text-muted small" title="Saldo kg × (precio de venta planeado − costo/kg)">
-                                            Utilidad estimada
-                                        </div>
-                                        <div className={`fs-4 fw-bold ${totales.totalUtilidad < 0 ? "text-danger" : ""}`}>
-                                            {totales.totalUtilidad < 0 ? "−" : ""}${formatearDinero(Math.abs(totales.totalUtilidad))}
-                                        </div>
-                                        <div className="small text-body-secondary">Solo lotes con precio de venta y costo</div>
                                     </div>
                                 </div>
                             </div>
