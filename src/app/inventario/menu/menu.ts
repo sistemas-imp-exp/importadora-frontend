@@ -49,8 +49,19 @@ export const inventarioMenu: SidebarMenuItem[] = [
             },
             {
                 label: "Reportes",
-                to: "/inventario/reportes",
-                icon: "bi bi-file-earmark-bar-graph"
+                icon: "bi bi-file-earmark-bar-graph",
+                children: [
+                    {
+                        label: "Existencias por cámara",
+                        to: "/inventario/reportes/existencias-camara",
+                        icon: "bi bi-snow"
+                    },
+                    {
+                        label: "Utilidad",
+                        to: "/inventario/reportes/utilidad",
+                        icon: "bi bi-graph-up-arrow"
+                    }
+                ]
             },
             {
                 label: "Alertas de caducidad",

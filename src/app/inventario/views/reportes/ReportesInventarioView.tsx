@@ -73,12 +73,13 @@ function ReportesInventarioView() {
     return (
         <>
             <PageHeader
-                title="Reportes de inventario"
+                title="Existencias por cámara"
                 subtitle="Existencias por cámara, con el formato del área, a hoy o a una fecha pasada"
                 breadcrumbs={[
                     { label: "Inicio", to: "/" },
                     { label: "Inventario", to: "/inventario" },
                     { label: "Reportes" },
+                    { label: "Existencias por cámara" },
                 ]}
             />
 

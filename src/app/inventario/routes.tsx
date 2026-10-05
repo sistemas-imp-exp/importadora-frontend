@@ -11,6 +11,7 @@ import ExistenciasView from "./views/existencias/ExistenciasView";
 import AlertasCaducidadView from "./views/alertas/AlertasCaducidadView";
 import AuditoriaEntradasView from "./views/auditoria/AuditoriaEntradasView";
 import ReportesInventarioView from "./views/reportes/ReportesInventarioView";
+import ReporteUtilidadView from "./views/reportes/ReporteUtilidadView";
 
 export const inventarioRoutes = (
     <>
@@ -26,6 +27,9 @@ export const inventarioRoutes = (
         <Route path="/inventario/existencias" element={<ExistenciasView />} />
         <Route path="/inventario/alertas-caducidad" element={<AlertasCaducidadView />} />
         <Route path="/inventario/auditoria-entradas" element={<AuditoriaEntradasView />} />
-        <Route path="/inventario/reportes" element={<ReportesInventarioView />} />
+        {/* Antes había un solo reporte en /inventario/reportes: los enlaces guardados siguen funcionando. */}
+        <Route path="/inventario/reportes" element={<Navigate to="/inventario/reportes/existencias-camara" replace />} />
+        <Route path="/inventario/reportes/existencias-camara" element={<ReportesInventarioView />} />
+        <Route path="/inventario/reportes/utilidad" element={<ReporteUtilidadView />} />
     </>
 );
