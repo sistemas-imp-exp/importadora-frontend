@@ -57,13 +57,15 @@ function claseSigno(valor: string | null): string {
     return valor !== null && Number(valor) < 0 ? "text-danger" : "";
 }
 
-function Tarjeta({ titulo, valor, clase = "", nota }: { titulo: string; valor: string; clase?: string; nota?: string }) {
+function Tarjeta({ titulo, valor, color, clase = "", nota }: {
+    titulo: string; valor: string; color: string; clase?: string; nota?: string;
+}) {
     return (
         <div className="col-6 col-lg">
-            <div className="card mb-0 h-100">
+            <div className={`card card-outline card-${color} mb-0 h-100`}>
                 <div className="card-body py-2">
                     <div className="text-muted small">{titulo}</div>
-                    <div className={`fs-5 fw-bold font-tabular-nums ${clase}`}>{valor}</div>
+                    <div className={`fs-4 fw-bold ${clase}`}>{valor}</div>
                     {nota && <div className="small text-body-secondary">{nota}</div>}
                 </div>
             </div>
@@ -171,7 +173,7 @@ function ReporteUtilidadView() {
             />
 
             <div className="container-fluid">
-                <form className="card card-outline card-primary" onSubmit={generar}>
+                <form className="card card-outline card-primary mb-3" onSubmit={generar}>
                     <div className="card-body">
                         <div className="row g-3 align-items-end">
                             <div className="col-sm-6 col-lg-2">
@@ -241,11 +243,12 @@ function ReporteUtilidadView() {
                 {!cargando && reporte && r && (
                     <>
                         <div className="row g-2 mb-3">
-                            <Tarjeta titulo="Venta" valor={pesos(r.venta)} />
-                            <Tarjeta titulo="Costo" valor={pesos(r.costo)} />
-                            <Tarjeta titulo="Utilidad" valor={pesos(r.utilidad)} clase={claseSigno(r.utilidad) || "text-success"} />
-                            <Tarjeta titulo="Margen" valor={margen(r.margen)} clase={claseSigno(r.margen)} />
-                            <Tarjeta titulo="Kg vendidos" valor={formatearDinero(Number(r.kilos))} nota={`${r.lineas - r.incompletas} línea(s) incluidas`} />
+                            <Tarjeta titulo="Venta" valor={pesos(r.venta)} color="info" />
+                            <Tarjeta titulo="Costo" valor={pesos(r.costo)} color="secondary" />
+                            <Tarjeta titulo="Utilidad" valor={pesos(r.utilidad)} color="success" clase={claseSigno(r.utilidad) || "text-success"} />
+                            <Tarjeta titulo="Margen" valor={margen(r.margen)} color="primary" clase={claseSigno(r.margen)} />
+                            <Tarjeta titulo="Kg vendidos" valor={formatearDinero(Number(r.kilos))} color="warning"
+                                nota={`${r.lineas - r.incompletas} línea(s) incluidas`} />
                         </div>
 
                         {r.incompletas > 0 && (
