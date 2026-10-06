@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Producto } from "../../interfaces/productos/Producto";
 import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
 import Paginacion from "../../../../shared/components/Paginacion";
+import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import { usePaginacion } from "../../../../shared/hooks/usePaginacion";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
 
@@ -10,10 +11,9 @@ interface ProductosTableProps {
     onEditar?: (producto: Producto) => void;
 }
 
-const POR_PAGINA = 15;
-
 function ProductosTable({ productos, onEditar }: ProductosTableProps) {
     const [busqueda, setBusqueda] = useState("");
+    const [porPagina, setPorPagina] = useState(25);
 
     const filtrados = useMemo(() => {
         const termino = busqueda.trim().toLowerCase();
@@ -26,13 +26,14 @@ function ProductosTable({ productos, onEditar }: ProductosTableProps) {
         );
     }, [productos, busqueda]);
 
-    const { pagina, setPagina, totalPaginas, inicio, fin } = usePaginacion(filtrados.length, POR_PAGINA, busqueda);
+    const { pagina, setPagina, totalPaginas, inicio, fin } = usePaginacion(filtrados.length, porPagina, `${busqueda}|${porPagina}`);
     const paginados = filtrados.slice(inicio, fin);
 
     return (
         <>
             <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center p-3 border-bottom">
                 <BuscadorTabla valor={busqueda} onChange={setBusqueda} placeholder="Buscar por talla, tipo o categoría..." />
+                <PorPaginaSelect valor={porPagina} onChange={setPorPagina} />
             </div>
 
             <TablaResponsive alturaMaxima="70vh">
