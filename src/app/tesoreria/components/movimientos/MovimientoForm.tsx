@@ -8,6 +8,10 @@ import type {
 } from "../../interfaces/movimientos/Movimiento";
 import { obtenerSiguienteFolio, obtenerSugerencias } from "../../services/movimientos.service";
 import { fechaISO, hoyISO } from "../../../../shared/utils/fechas";
+import SeleccionarDeudaModal from "../deudas/SeleccionarDeudaModal";
+import type { Deuda } from "../../interfaces/deudas/Deuda";
+import { obtenerDeuda } from "../../services/deudas.service";
+import { formatearDineroDivisa } from "../../utils/deudas";
 
 interface MovimientoFormProps {
     divisas: Divisa[];
@@ -19,6 +23,25 @@ interface MovimientoFormProps {
 interface MovimientoDivisaForm {
     divisa: number;
     cantidad: string;
+}
+
+/** Deuda a la que abona el ingreso; `tope` es lo máximo que se puede abonar. */
+interface AbonoDeuda {
+    id: number;
+    concepto: string;
+    deudor: string;
+    divisa: Divisa;
+    tope: number;
+}
+
+function abonoDe(deuda: Deuda, extra = 0): AbonoDeuda {
+    return {
+        id: deuda.id,
+        concepto: deuda.concepto,
+        deudor: deuda.deudor.nombre,
+        divisa: deuda.divisa,
+        tope: Number(deuda.saldo) + extra,
+    };
 }
 
 function MovimientoForm({
@@ -56,6 +79,8 @@ function MovimientoForm({
     });
 
     const folioInputRef = useRef<HTMLInputElement | null>(null);
+    const [deuda, setDeuda] = useState<AbonoDeuda | null>(null);
+    const [mostrarDeudas, setMostrarDeudas] = useState(false);
 
     // Guardar el estado en localStorage cada vez que cambie
     useEffect(() => {
@@ -77,7 +102,18 @@ function MovimientoForm({
                 })),
             });
             setIsCollapsed(false);
+            setDeuda(null);
+            if (movimiento.deuda) {
+                // Al editar, el tope es el saldo actual más lo que ya abonó este mismo ingreso.
+                const propio = movimiento.cancelado ? 0 : movimiento.divisas.reduce((acc, d) => acc + d.cantidad, 0);
+                obtenerDeuda(movimiento.deuda.id)
+                    .then((d) => setDeuda(abonoDe(d, propio)))
+                    .catch(() => {
+                        // Sin el saldo, el backend sigue validando el tope al guardar.
+                    });
+            }
         } else {
+            setDeuda(null);
             setForm((actual) => ({
                 fecha: actual.fecha || hoyISO(),
                 folio: "",
@@ -143,6 +179,19 @@ function MovimientoForm({
     //     });
     // }
 
+    function seleccionarDeuda(seleccionada: Deuda) {
+        setDeuda(abonoDe(seleccionada));
+        // La información base de la deuda llena el ingreso; la cantidad la captura el usuario.
+        setForm((actual) => ({
+            ...actual,
+            tipo: "I",
+            beneficiario: seleccionada.deudor.nombre,
+            concepto: `Abono: ${seleccionada.concepto}`,
+            divisas: [{ divisa: seleccionada.divisa.id, cantidad: actual.divisas[0]?.cantidad ?? "" }],
+        }));
+        setMostrarDeudas(false);
+    }
+
     function validarFormulario(): string | null {
         if (!form.fecha) return "La fecha es obligatoria.";
         if (form.fecha > hoyISO()) return "La fecha no puede ser futura.";
@@ -156,6 +205,12 @@ function MovimientoForm({
             if (!item.divisa || item.divisa === 0) return "Seleccione una divisa válida.";
             const cantidad = Number(item.cantidad);
             if (Number.isNaN(cantidad) || cantidad <= 0) return "Ingrese una cantidad válida mayor que cero.";
+        }
+        if (deuda) {
+            if (form.tipo !== "I") return "Solo un ingreso puede abonar a una deuda.";
+            if (Number(form.divisas[0]?.cantidad) > deuda.tope + 0.001) {
+                return `El abono excede el saldo pendiente de la deuda (${formatearDineroDivisa(deuda.divisa.simbolo, deuda.tope)}).`;
+            }
         }
         return null;
     }
@@ -181,6 +236,7 @@ function MovimientoForm({
                 divisa_id: item.divisa,
                 cantidad: Number(item.cantidad),
             })),
+            deuda_id: deuda?.id ?? null,
         };
 
         setIsLoading(true);
@@ -204,6 +260,7 @@ function MovimientoForm({
             concepto: "",
             divisas: [{ divisa: divisas[0]?.id ?? 0, cantidad: "" }],
         }));
+        setDeuda(null);
         setError(null);
         // El tipo siempre vuelve a "I": si ya estaba en "I" (ingresos consecutivos),
         // el useEffect que depende de form.tipo no se dispara de nuevo (mismo valor),
@@ -285,7 +342,7 @@ function MovimientoForm({
                                     </label>
 
                                     <input type="radio" className="btn-check" id="btn-egreso" autoComplete="off"
-                                        checked={form.tipo === "E"} onChange={() => setForm({ ...form, tipo: "E" })} />
+                                        checked={form.tipo === "E"} onChange={() => { setForm({ ...form, tipo: "E" }); setDeuda(null); }} />
                                     <label className="btn btn-sm btn-outline-danger text-nowrap" htmlFor="btn-egreso">
                                         <i className="bi bi-arrow-down-circle me-1"></i> Egreso
                                     </label>
@@ -323,6 +380,38 @@ function MovimientoForm({
                             </div>
                         </div>
 
+                        {form.tipo === "I" && (
+                            <div className="mb-3">
+                                {deuda ? (
+                                    <div className="alert alert-info d-flex flex-wrap align-items-center gap-3 py-2 mb-0">
+                                        <i className="bi bi-person-lines-fill fs-5" aria-hidden="true"></i>
+                                        <div>
+                                            <div className="small text-body-secondary">Abono a deuda</div>
+                                            <div className="fw-semibold">{deuda.deudor} — {deuda.concepto}</div>
+                                        </div>
+                                        <div>
+                                            <div className="small text-body-secondary">Saldo pendiente</div>
+                                            <div className="fw-bold">
+                                                {formatearDineroDivisa(deuda.divisa.simbolo, deuda.tope)} {deuda.divisa.codigo}
+                                            </div>
+                                        </div>
+                                        <div className="ms-auto d-flex gap-2">
+                                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setMostrarDeudas(true)}>
+                                                Cambiar
+                                            </button>
+                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setDeuda(null)}>
+                                                Quitar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarDeudas(true)}>
+                                        <i className="bi bi-person-lines-fill me-1" aria-hidden="true"></i>Abono a deuda
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 pt-2 border-top">
                             <div className="flex-grow-1">
                                 {divisas.length === 0 ? (
@@ -337,6 +426,8 @@ function MovimientoForm({
                                                     <select
                                                         className="form-select form-select-sm"
                                                         value={item.divisa}
+                                                        disabled={!!deuda}
+                                                        title={deuda ? "El abono va en la divisa de la deuda" : undefined}
                                                         onChange={(e) => actualizarDivisa(index, "divisa", e.target.value)}
                                                         style={{ minWidth: "180px" }}
                                                     >
@@ -355,6 +446,7 @@ function MovimientoForm({
                                                             type="number"
                                                             className="form-control"
                                                             min="0"
+                                                            max={deuda ? deuda.tope : undefined}
                                                             step="0.01"
                                                             placeholder="0.00"
                                                             value={item.cantidad}
@@ -404,6 +496,12 @@ function MovimientoForm({
                     )}
                 </form>
             )}
+
+            <SeleccionarDeudaModal
+                show={mostrarDeudas}
+                onClose={() => setMostrarDeudas(false)}
+                onSeleccionar={seleccionarDeuda}
+            />
         </div>
     );
 }

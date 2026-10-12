@@ -49,6 +49,23 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                 ]
             },
             {
+                label: "Deudas",
+                icon: "bi bi-person-lines-fill",
+                children: [
+                    {
+                        label: "Deudas",
+                        to: "/tesoreria/deudas",
+                        icon: "bi bi-journal-minus"
+                    },
+                    {
+                        label: "Deudores",
+                        to: "/tesoreria/deudas/deudores",
+                        icon: "bi bi-people",
+                        catalogo: true
+                    }
+                ]
+            },
+            {
                 label: "Nómina",
                 icon: "bi bi-people-fill",
                 children: [

@@ -157,7 +157,18 @@ function MovimientosTable({
                                     </td>
                                     <td>{movimiento.autorizo}</td>
                                     <td>{movimiento.beneficiario}</td>
-                                    <td>{movimiento.concepto}</td>
+                                    <td>
+                                        {movimiento.concepto}
+                                        {movimiento.deuda && (
+                                            <Link
+                                                to={`/tesoreria/deudas?deudor=${movimiento.deuda.deudor.id}&estado=`}
+                                                className="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-2 text-decoration-none"
+                                                title={`Abono a la deuda "${movimiento.deuda.concepto}" de ${movimiento.deuda.deudor.nombre}`}
+                                            >
+                                                Abono a deuda
+                                            </Link>
+                                        )}
+                                    </td>
                                     <td>
                                         {badgeTipo(movimiento.tipo)}
                                     </td>

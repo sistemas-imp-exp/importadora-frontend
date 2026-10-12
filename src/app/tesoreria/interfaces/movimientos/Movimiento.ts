@@ -1,5 +1,6 @@
 import type { Divisa } from "../divisas/Divisa";
 import type { User } from "../../../../shared/interfaces/auth";
+import type { DeudaDeMovimiento } from "../deudas/Deuda";
 import dayjs from 'dayjs';
 
 export type TipoMovimiento = "I" | "E";
@@ -32,6 +33,8 @@ export interface MovimientoApi {
     motivo_cancelacion: string;
     usuario_cancelacion: User | null;
     archivos_count: number;
+    // Si el ingreso es abono a una deuda.
+    deuda: DeudaDeMovimiento | null;
 }
 
 export interface MovimientoDivisa {
@@ -60,6 +63,7 @@ export interface Movimiento {
     motivo_cancelacion: string;
     usuario_cancelacion: User | null;
     archivosCount: number;
+    deuda: DeudaDeMovimiento | null;
 }
 
 export function mapMovimientoApiToMovimiento(api: MovimientoApi): Movimiento {
@@ -88,6 +92,7 @@ export function mapMovimientoApiToMovimiento(api: MovimientoApi): Movimiento {
         motivo_cancelacion: api.motivo_cancelacion ?? "",
         usuario_cancelacion: api.usuario_cancelacion,
         archivosCount: api.archivos_count,
+        deuda: api.deuda ?? null,
     };
 }
 
@@ -106,4 +111,6 @@ export interface CrearMovimientoRequest {
         divisa_id: number;
         cantidad: number;
     }[];
+    // Abono a deuda: solo ingresos, en la divisa de la deuda y hasta su saldo.
+    deuda_id?: number | null;
 }
