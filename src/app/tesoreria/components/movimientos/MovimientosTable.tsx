@@ -133,7 +133,7 @@ function MovimientosTable({
                             <tr>
                                 <td colSpan={8} className="text-center text-muted py-4">
                                     {movimientos.length === 0
-                                        ? "No hay movimientos en este día."
+                                        ? "No hay movimientos en este periodo."
                                         : "Ningún movimiento coincide con la búsqueda."}
                                 </td>
                             </tr>

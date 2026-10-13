@@ -34,6 +34,7 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                     {
                         label: "Movimientos",
                         to: "/tesoreria/caja/movimientos",
+                        matchPrefix: true,
                         icon: "bi bi-arrow-left-right"
                     },
                     {

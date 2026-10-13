@@ -117,7 +117,7 @@ function MovimientoDetalleView() {
                     const fechaISO = dayjs(movimiento.fecha).format("YYYY-MM-DD");
                     return (
                         <>
-                            <div className={`card shadow-sm mb-3 detalle-movimiento border-start border-4 border-${acento}`}>
+                            <div className="card shadow-sm mb-3 detalle-movimiento" style={{ borderLeft: `4px solid var(--bs-${acento})` }}>
                                 <div className="card-body">
                                     <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
                                         <div className="d-flex align-items-center gap-3">
@@ -145,7 +145,7 @@ function MovimientoDetalleView() {
                                         <div className="text-end">
                                             <div className="detalle-movimiento__etiqueta">Importe</div>
                                             {movimiento.divisas.map((d) => (
-                                                <div key={d.id} className={`fs-4 fw-bold lh-sm font-tabular-nums text-${movimiento.cancelado ? "body-secondary text-decoration-line-through" : `${acento}-emphasis`}`}>
+                                                <div key={d.id} className={`fs-4 fw-bold lh-sm text-${movimiento.cancelado ? "body-secondary text-decoration-line-through" : `${acento}-emphasis`}`}>
                                                     {ingreso ? "+" : "−"}{d.divisa.simbolo}
                                                     {d.cantidad.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     <span className="fs-6 fw-semibold text-body-secondary ms-1">{d.divisa.codigo}</span>

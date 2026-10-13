@@ -14,6 +14,17 @@ export async function obtenerMovimientos(filtro: FiltroFechasMovimientos = {}): 
     return data;
 }
 
+export interface RangoFechas {
+    desde: string; // 'YYYY-MM-DD'
+    hasta: string;
+}
+
+/** Primera y última fecha con movimientos (hoy si no hay ninguno). */
+export async function obtenerRangoMovimientos(): Promise<RangoFechas> {
+    const { data } = await client.get<RangoFechas>(`${URL}rango/`);
+    return data;
+}
+
 export async function obtenerMovimiento(id: number): Promise<MovimientoApi> {
     const { data } = await client.get<MovimientoApi>(`${URL}${id}/`);
     return data;
