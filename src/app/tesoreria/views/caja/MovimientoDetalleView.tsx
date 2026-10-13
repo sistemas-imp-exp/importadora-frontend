@@ -5,6 +5,7 @@ import PageHeader from "../../../../layouts/components/PageHeader";
 import SkeletonCallout from "../../../../shared/components/SkeletonCallout";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import AdjuntosMovimiento from "../../components/movimientos/AdjuntosMovimiento";
+import HistorialMovimiento from "../../components/movimientos/HistorialMovimiento";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
@@ -191,39 +192,8 @@ function MovimientoDetalleView() {
                                     <div className="card-header">
                                         <h3 className="card-title">Historial</h3>
                                     </div>
-                                    <div className="card-body">
-                                        <ul className="list-unstyled mb-0" style={{ fontSize: "0.88rem" }}>
-                                            <li className="mb-2">
-                                                <i className="bi bi-plus-circle text-muted me-2"></i>
-                                                Registrado el {formatearFechaNumerica(movimiento.creado, "numerico-hora")} por{" "}
-                                                {getFullName(movimiento.usuario)}
-                                            </li>
-                                            {movimiento.editado && (
-                                                <li className="mb-2">
-                                                    <i className="bi bi-pencil-square text-warning me-2"></i>
-                                                    Última edición: {formatearFechaNumerica(movimiento.editado_en ?? movimiento.modificado, "numerico-hora")}
-                                                    {movimiento.editado_por && <> por {getFullName(movimiento.editado_por)}</>}
-                                                </li>
-                                            )}
-                                            {movimiento.cancelado && (
-                                                <li className="mb-2">
-                                                    <i className="bi bi-x-circle text-danger me-2"></i>
-                                                    Cancelado el {formatearFechaNumerica(movimiento.fecha_cancelacion, "numerico-hora")}
-                                                    {movimiento.usuario_cancelacion && <> por {getFullName(movimiento.usuario_cancelacion)}</>}
-                                                    {movimiento.motivo_cancelacion && (
-                                                        <div className="text-muted ms-4 mt-1">"{movimiento.motivo_cancelacion}"</div>
-                                                    )}
-                                                </li>
-                                            )}
-                                            {!movimiento.editado && !movimiento.cancelado && (
-                                                <li className="text-muted">Sin cambios desde su registro.</li>
-                                            )}
-                                        </ul>
-                                        <p className="text-muted small mb-0 mt-2">
-                                            <i className="bi bi-info-circle me-1"></i>
-                                            No se guarda un detalle campo por campo de qué cambió en cada edición, solo
-                                            quién hizo la última y cuándo.
-                                        </p>
+                                    <div className="card-body" style={{ maxHeight: "32rem", overflowY: "auto" }}>
+                                        <HistorialMovimiento key={`${movimiento.id}-${movimiento.modificado.getTime()}`} movimientoId={movimiento.id} />
                                     </div>
                                 </div>
                             </div>

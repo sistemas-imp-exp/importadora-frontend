@@ -100,6 +100,25 @@ export function mapMovimientosApiToMovimientos(api: MovimientoApi[]): Movimiento
     return api.map(mapMovimientoApiToMovimiento);
 }
 
+export interface CambioMovimiento {
+    campo: string;
+    antes: string;
+    despues: string;
+}
+
+interface EventoBase {
+    fecha: string;
+    usuario: User | null;
+}
+
+/** Evento de la línea de tiempo de un movimiento (GET movimientos/<id>/historial/). */
+export type EventoHistorial =
+    | (EventoBase & { tipo: "registro" })
+    // `cambios` vacío: edición anterior a la bitácora, sin detalle.
+    | (EventoBase & { tipo: "edicion"; cambios: CambioMovimiento[] })
+    | (EventoBase & { tipo: "cancelacion"; motivo: string })
+    | (EventoBase & { tipo: "adjunto" | "adjunto_quitado"; archivo: string });
+
 export interface CrearMovimientoRequest {
     fecha: string; // 'YYYY-MM-DD'
     folio: string;

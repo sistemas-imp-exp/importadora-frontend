@@ -1,5 +1,5 @@
 import client from "../../../shared/api/client";
-import type { MovimientoApi, CrearMovimientoRequest} from "../interfaces/movimientos/Movimiento";
+import type { MovimientoApi, CrearMovimientoRequest, EventoHistorial } from "../interfaces/movimientos/Movimiento";
 
 const URL = "treasury/movimientos/";
 
@@ -49,6 +49,11 @@ export async function cancelarMovimiento(
     const { data } = await client.post<MovimientoApi>(`${URL}${id}/cancelar/`, {
         motivo,
     });
+    return data;
+}
+
+export async function obtenerHistorialMovimiento(id: number): Promise<EventoHistorial[]> {
+    const { data } = await client.get<EventoHistorial[]>(`${URL}${id}/historial/`);
     return data;
 }
 
