@@ -111,104 +111,134 @@ function MovimientoDetalleView() {
                     </div>
                 )}
 
-                {!loading && !error && movimiento && (
-                    <>
-                        <div
-                            className={`callout mb-3 shadow-sm ${movimiento.cancelado
-                                ? "callout-secondary"
-                                : movimiento.tipo === "I"
-                                    ? "callout-success"
-                                    : "callout-danger"
-                                }`}
-                        >
-                            <div className="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-                                <h5 className="mb-0 fw-bold">
-                                    Folio {movimiento.folio}
-                                    {movimiento.editado && !movimiento.cancelado && (
-                                        <span className="badge bg-warning text-dark ms-2">Editado</span>
+                {!loading && !error && movimiento && (() => {
+                    const ingreso = movimiento.tipo === "I";
+                    const acento = movimiento.cancelado ? "secondary" : ingreso ? "success" : "danger";
+                    const fechaISO = dayjs(movimiento.fecha).format("YYYY-MM-DD");
+                    return (
+                        <>
+                            <div className={`card shadow-sm mb-3 detalle-movimiento border-start border-4 border-${acento}`}>
+                                <div className="card-body">
+                                    <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            <span className={`detalle-movimiento__icono bg-${acento}-subtle text-${acento}-emphasis`} aria-hidden="true">
+                                                <i className={`bi ${ingreso ? "bi-arrow-up-right" : "bi-arrow-down-left"}`}></i>
+                                            </span>
+                                            <div>
+                                                <div className="detalle-movimiento__etiqueta">{ingreso ? "Ingreso" : "Egreso"} · Folio</div>
+                                                <div className="d-flex flex-wrap align-items-center gap-2">
+                                                    <span className={`fs-4 fw-bold lh-1 ${movimiento.cancelado ? "text-decoration-line-through text-body-secondary" : ""}`}>
+                                                        {movimiento.folio}
+                                                    </span>
+                                                    {movimiento.cancelado && (
+                                                        <span className="badge border bg-secondary-subtle text-secondary-emphasis border-secondary-subtle">Cancelado</span>
+                                                    )}
+                                                    {movimiento.editado && (
+                                                        <span className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle">Editado</span>
+                                                    )}
+                                                    {movimiento.deuda && (
+                                                        <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle">Abono a deuda</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-end">
+                                            <div className="detalle-movimiento__etiqueta">Importe</div>
+                                            {movimiento.divisas.map((d) => (
+                                                <div key={d.id} className={`fs-4 fw-bold lh-sm font-tabular-nums text-${movimiento.cancelado ? "body-secondary text-decoration-line-through" : `${acento}-emphasis`}`}>
+                                                    {ingreso ? "+" : "−"}{d.divisa.simbolo}
+                                                    {d.cantidad.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    <span className="fs-6 fw-semibold text-body-secondary ms-1">{d.divisa.codigo}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <dl className="row g-3 mb-0 mt-1 pt-3 border-top detalle-movimiento__datos">
+                                        <div className="col-6 col-lg-3">
+                                            <dt>Fecha de la hoja</dt>
+                                            <dd>
+                                                <Link to={`/tesoreria/caja/diaria?fecha=${fechaISO}`} title="Ver la caja de ese día">
+                                                    {formatearFechaNumerica(movimiento.fecha)}
+                                                </Link>
+                                            </dd>
+                                        </div>
+                                        <div className="col-6 col-lg-3">
+                                            <dt>Beneficiario</dt>
+                                            <dd>{movimiento.beneficiario}</dd>
+                                        </div>
+                                        <div className="col-6 col-lg-3">
+                                            <dt>Autorizó</dt>
+                                            <dd>{movimiento.autorizo}</dd>
+                                        </div>
+                                        <div className="col-6 col-lg-3">
+                                            <dt>Capturó</dt>
+                                            <dd>
+                                                {getFullName(movimiento.usuario)}
+                                                <div className="small text-body-secondary">
+                                                    {formatearFechaNumerica(movimiento.creado, "numerico-hora")}
+                                                </div>
+                                            </dd>
+                                        </div>
+                                        <div className={movimiento.deuda ? "col-lg-6" : "col-12"}>
+                                            <dt>Concepto</dt>
+                                            <dd>{movimiento.concepto}</dd>
+                                        </div>
+                                        {movimiento.deuda && (
+                                            <div className="col-lg-6">
+                                                <dt>Abono a deuda</dt>
+                                                <dd>
+                                                    <Link to={`/tesoreria/deudas?deudor=${movimiento.deuda.deudor.id}&estado=`}>
+                                                        {movimiento.deuda.deudor.nombre}
+                                                    </Link>
+                                                    <span className="text-body-secondary"> — {movimiento.deuda.concepto}</span>
+                                                </dd>
+                                            </div>
+                                        )}
+                                    </dl>
+
+                                    {movimiento.cancelado && (
+                                        <div className="alert alert-secondary d-flex gap-2 py-2 mb-0 mt-3 small">
+                                            <i className="bi bi-x-octagon" aria-hidden="true"></i>
+                                            <div>
+                                                <strong>Cancelado</strong> el {formatearFechaNumerica(movimiento.fecha_cancelacion, "numerico-hora")}
+                                                {movimiento.usuario_cancelacion && <> por {getFullName(movimiento.usuario_cancelacion)}</>}
+                                                {movimiento.motivo_cancelacion && <>: “{movimiento.motivo_cancelacion}”</>}
+                                            </div>
+                                        </div>
                                     )}
-                                </h5>
-                                <div className="d-flex gap-2">
-                                    <span className={`badge ${movimiento.tipo === "I" ? "bg-success" : "bg-danger"}`}>
-                                        <i className={`bi ${movimiento.tipo === "I" ? "bi-arrow-up-circle" : "bi-arrow-down-circle"} me-1`}></i>
-                                        {movimiento.tipo === "I" ? "Ingreso" : "Egreso"}
-                                    </span>
-                                    {movimiento.cancelado && <span className="badge bg-secondary">Cancelado</span>}
-                                </div>
-                            </div>
-                            <div className="row text-muted gy-1" style={{ fontSize: "0.9rem" }}>
-                                <div className="col-md-3">
-                                    <span className="fw-semibold">Fecha:</span>{" "}
-                                    <Link to={`/tesoreria/caja/diaria?fecha=${dayjs(movimiento.fecha).format("YYYY-MM-DD")}`} title="Ver la caja de ese día">
-                                        {formatearFechaNumerica(movimiento.fecha)}
-                                    </Link>
-                                </div>
-                                <div className="col-md-3">
-                                    <span className="fw-semibold">Capturó:</span> {getFullName(movimiento.usuario)}
-                                </div>
-                                <div className="col-md-3">
-                                    <span className="fw-semibold">Autorizó:</span> {movimiento.autorizo}
-                                </div>
-                                <div className="col-md-3">
-                                    <span className="fw-semibold">Beneficiario:</span> {movimiento.beneficiario}
-                                </div>
-                            </div>
-                            <div className="text-muted mt-2" style={{ fontSize: "0.9rem" }}>
-                                <span className="fw-semibold">Concepto:</span> {movimiento.concepto}
-                            </div>
-                        </div>
-
-                        <div className="row g-3 mb-3">
-                            <div className="col-md-6">
-                                <div className="card card-outline card-primary h-100">
-                                    <div className="card-header">
-                                        <h3 className="card-title">Divisas</h3>
-                                    </div>
-                                    <div className="card-body p-0">
-                                        <table className="table table-sm table-striped align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Divisa</th>
-                                                    <th className="text-end">Cantidad</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {movimiento.divisas.map((d) => (
-                                                    <tr key={d.id}>
-                                                        <td>{d.divisa.codigo} — {d.divisa.nombre}</td>
-                                                        <td className="text-end">
-                                                            {d.divisa.simbolo}{d.cantidad.toLocaleString("es-MX")}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
                                 </div>
                             </div>
 
-                            <div className="col-md-6">
-                                <div className="card card-outline card-primary h-100">
-                                    <div className="card-header">
-                                        <h3 className="card-title">Historial</h3>
+                            <div className="row g-3">
+                                <div className="col-lg-7">
+                                    <div className="card shadow-sm h-100">
+                                        <div className="card-header bg-body-tertiary py-2">
+                                            <h3 className="card-title fs-6 fw-semibold mb-0">
+                                                <i className="bi bi-paperclip me-2 text-body-secondary" aria-hidden="true"></i>Archivos adjuntos
+                                            </h3>
+                                        </div>
+                                        <div className="card-body">
+                                            <AdjuntosMovimiento movimientoId={movimiento.id} />
+                                        </div>
                                     </div>
-                                    <div className="card-body" style={{ maxHeight: "32rem", overflowY: "auto" }}>
-                                        <HistorialMovimiento key={`${movimiento.id}-${movimiento.modificado.getTime()}`} movimientoId={movimiento.id} />
+                                </div>
+                                <div className="col-lg-5">
+                                    <div className="card shadow-sm h-100">
+                                        <div className="card-header bg-body-tertiary py-2">
+                                            <h3 className="card-title fs-6 fw-semibold mb-0">
+                                                <i className="bi bi-clock-history me-2 text-body-secondary" aria-hidden="true"></i>Historial
+                                            </h3>
+                                        </div>
+                                        <div className="card-body" style={{ maxHeight: "32rem", overflowY: "auto" }}>
+                                            <HistorialMovimiento key={`${movimiento.id}-${movimiento.modificado.getTime()}`} movimientoId={movimiento.id} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="card card-outline card-primary">
-                            <div className="card-header">
-                                <h3 className="card-title">Archivos adjuntos</h3>
-                            </div>
-                            <div className="card-body">
-                                <AdjuntosMovimiento movimientoId={movimiento.id} />
-                            </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    );
+                })()}
             </div>
         </>
     );

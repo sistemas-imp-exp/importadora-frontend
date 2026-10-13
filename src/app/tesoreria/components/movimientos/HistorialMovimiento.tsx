@@ -33,7 +33,7 @@ function titulo(evento: EventoHistorial): string {
 }
 
 function valor(texto: string) {
-    return texto ? <span>«{texto}»</span> : <span className="fst-italic text-body-secondary">vacío</span>;
+    return texto || <span className="fst-italic">vacío</span>;
 }
 
 /** Línea de tiempo del movimiento: registro, ediciones con lo que cambió, adjuntos y cancelación. */
@@ -55,35 +55,39 @@ function HistorialMovimiento({ movimientoId }: Props) {
     if (!eventos) return <p className="text-body-secondary mb-0">Cargando historial...</p>;
 
     return (
-        <ul className="list-unstyled mb-0" style={{ fontSize: "0.88rem" }}>
+        <ol className="linea-tiempo">
             {eventos.map((evento, indice) => (
-                <li key={indice} className={`d-flex gap-2 ${indice < eventos.length - 1 ? "pb-3 mb-3 border-bottom" : ""}`}>
-                    <i className={`bi ${ICONOS[evento.tipo]} mt-1`} aria-hidden="true"></i>
-                    <div className="flex-grow-1">
-                        <div>
-                            <span className="fw-semibold">{titulo(evento)}</span>
-                            <span className="text-body-secondary">
-                                {" "}· {formatearFechaNumerica(new Date(evento.fecha), "numerico-hora")}
-                                {evento.usuario && <> · {getFullName(evento.usuario)}</>}
-                            </span>
-                        </div>
-                        {evento.tipo === "edicion" && evento.cambios.length > 0 && (
-                            <ul className="list-unstyled ms-1 mt-1 mb-0">
-                                {evento.cambios.map((cambio, i) => (
-                                    <li key={i}>
-                                        <span className="text-body-secondary">{cambio.campo}:</span>{" "}
-                                        {valor(cambio.antes)} <i className="bi bi-arrow-right mx-1" aria-label="cambió a"></i> {valor(cambio.despues)}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        {evento.tipo === "cancelacion" && evento.motivo && (
-                            <div className="text-body-secondary mt-1">"{evento.motivo}"</div>
-                        )}
+                <li key={indice} className="linea-tiempo__evento">
+                    <span className="linea-tiempo__punto" aria-hidden="true">
+                        <i className={`bi ${ICONOS[evento.tipo]}`}></i>
+                    </span>
+                    <div className="d-flex flex-wrap justify-content-between gap-1">
+                        <span className="fw-semibold">{titulo(evento)}</span>
+                        <span className="text-body-secondary small text-nowrap">
+                            {formatearFechaNumerica(new Date(evento.fecha), "numerico-hora")}
+                        </span>
                     </div>
+                    {evento.usuario && <div className="small text-body-secondary">{getFullName(evento.usuario)}</div>}
+                    {evento.tipo === "edicion" && evento.cambios.length > 0 && (
+                        <dl className="linea-tiempo__cambios">
+                            {evento.cambios.map((cambio, i) => (
+                                <div key={i}>
+                                    <dt>{cambio.campo}</dt>
+                                    <dd>
+                                        <span className="text-decoration-line-through text-body-secondary">{valor(cambio.antes)}</span>
+                                        <i className="bi bi-arrow-right mx-1 text-body-secondary" aria-label="cambió a"></i>
+                                        <span className="fw-semibold">{valor(cambio.despues)}</span>
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+                    )}
+                    {evento.tipo === "cancelacion" && evento.motivo && (
+                        <div className="small mt-1">“{evento.motivo}”</div>
+                    )}
                 </li>
             ))}
-        </ul>
+        </ol>
     );
 }
 
