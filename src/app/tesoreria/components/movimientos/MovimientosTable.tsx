@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import MenuAccionesFila from "../../../../shared/components/tabla/MenuAccionesFila";
 import type { Movimiento, TipoMovimiento } from "../../interfaces/movimientos/Movimiento";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
@@ -24,6 +25,7 @@ function MovimientosTable({
     onCancelar,
     onVerArchivos,
 }: Props) {
+    const navigate = useNavigate();
     const [busqueda, setBusqueda] = useState("");
     const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
     const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
@@ -124,7 +126,7 @@ function MovimientosTable({
                             <th>Concepto de gastos efectuados</th>
                             <th>Tipo</th>
                             <th className="text-end">Cantidad</th>
-                            <th className="text-center">Acciones</th>
+                            <th className="text-center" style={{ width: "1%" }}>Acciones</th>
                         </tr>
                     </thead>
 
@@ -181,54 +183,35 @@ function MovimientosTable({
                                     </td>
 
                                     <td className="text-center text-decoration-none">
-                                        <div className="d-flex flex-wrap gap-2 justify-content-center align-items-center">
-                                            <Link
-                                                to={`/tesoreria/caja/movimientos/${movimiento.id}`}
-                                                className="btn btn-outline-secondary btn-sm"
-                                                title="Ver detalle"
-                                            >
-                                                <i className="bi bi-eye"></i>
-                                            </Link>
-                                            <button
-                                                className="btn btn-outline-secondary btn-sm position-relative"
-                                                onClick={() => onVerArchivos?.(movimiento)}
-                                                disabled={!onVerArchivos}
-                                                title="Archivos adjuntos"
-                                            >
-                                                <i className="bi bi-paperclip"></i>
-                                                {movimiento.archivosCount > 0 && (
-                                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
-                                                        {movimiento.archivosCount}
-                                                    </span>
-                                                )}
-                                            </button>
-                                            {movimiento.cancelado ? (
-                                                <span
-                                                    className="badge bg-secondary"
-                                                    title={movimiento.motivo_cancelacion || undefined}
-                                                >
-                                                    Cancelado
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        className="btn btn-warning btn-sm me-2"
-                                                        onClick={() => onEditar?.(movimiento)}
-                                                        disabled={!onEditar}
-                                                    >
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-
-                                                    <button
-                                                        className="btn btn-danger btn-sm"
-                                                        onClick={() => onCancelar?.(movimiento)}
-                                                        disabled={!onCancelar}
-                                                    >
-                                                        <i className="bi bi-x-circle"></i>
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        <MenuAccionesFila
+                                            etiqueta={`Acciones del folio ${movimiento.folio}`}
+                                            acciones={[
+                                                {
+                                                    etiqueta: "Ver detalle",
+                                                    icono: "bi-eye",
+                                                    onClick: () => navigate(`/tesoreria/caja/movimientos/${movimiento.id}`),
+                                                },
+                                                ...(onVerArchivos ? [{
+                                                    etiqueta: "Archivos adjuntos",
+                                                    icono: "bi-paperclip",
+                                                    contador: movimiento.archivosCount,
+                                                    onClick: () => onVerArchivos(movimiento),
+                                                }] : []),
+                                                ...(onEditar ? [{
+                                                    etiqueta: "Editar",
+                                                    icono: "bi-pencil",
+                                                    onClick: () => onEditar(movimiento),
+                                                    motivoBloqueo: movimiento.cancelado ? "Está cancelado" : null,
+                                                }] : []),
+                                                ...(onCancelar ? [{
+                                                    etiqueta: "Cancelar movimiento",
+                                                    icono: "bi-x-circle",
+                                                    variante: "danger" as const,
+                                                    onClick: () => onCancelar(movimiento),
+                                                    motivoBloqueo: movimiento.cancelado ? "Ya está cancelado" : null,
+                                                }] : []),
+                                            ]}
+                                        />
                                     </td>
                                 </tr>
                             ))
