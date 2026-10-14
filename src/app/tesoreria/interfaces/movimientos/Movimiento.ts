@@ -130,6 +130,8 @@ export interface CrearMovimientoRequest {
         divisa_id: number;
         cantidad: number;
     }[];
-    // Abono a deuda: solo ingresos, en la divisa de la deuda y hasta su saldo.
+    // Deuda ligada: un ingreso la abona (hasta su saldo) y un egreso la carga,
+    // siempre en la divisa de la deuda. `nueva_deuda` la crea junto con el egreso.
     deuda_id?: number | null;
+    nueva_deuda?: { deudor_id: number; concepto: string };
 }

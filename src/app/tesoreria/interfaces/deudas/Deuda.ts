@@ -30,9 +30,10 @@ export interface DeudorRequest {
 
 export type EstadoDeuda = "abierta" | "pagada" | "cancelada";
 
-/** Un abono es el ingreso de caja ligado a la deuda (una sola divisa). */
-export interface Abono {
+/** Movimiento de caja ligado a la deuda: egreso "E" = cargo, ingreso "I" = abono (una sola divisa). */
+export interface MovimientoDeuda {
     id: number;
+    tipo: "I" | "E";
     folio: string;
     fecha: string; // 'YYYY-MM-DD'
     concepto: string;
@@ -50,14 +51,17 @@ export interface Deuda {
     deudor: { id: number; nombre: string; tipo: TipoDeudor };
     concepto: string;
     divisa: Divisa;
-    monto: string;
+    // Lo que se debe sin salida de caja (venta a crédito, etc.); 0 si nació de un egreso.
+    monto_inicial: string;
     fecha: string; // 'YYYY-MM-DD'
     notas: string;
-    // Calculados con los abonos no cancelados.
+    // Calculados con los movimientos no cancelados: total = inicial + cargado; saldo = total - abonado.
+    cargado: string;
+    total: string;
     abonado: string;
     saldo: string;
     estado: EstadoDeuda;
-    abonos: Abono[];
+    movimientos: MovimientoDeuda[];
     usuario: User;
     creado: string;
     editado_por: User | null;
@@ -72,7 +76,7 @@ export interface DeudaRequest {
     deudor_id: number;
     concepto: string;
     divisa_id: number;
-    monto: number;
+    monto_inicial: number;
     fecha: string;
     notas: string;
 }

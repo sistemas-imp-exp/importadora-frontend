@@ -22,11 +22,13 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
         deudor: (deuda?.deudor.id ?? deudorInicial ?? "") as number | "",
         concepto: deuda?.concepto ?? "",
         divisa: deuda?.divisa.id ?? activas[0]?.id ?? 0,
-        monto: deuda ? String(Number(deuda.monto)) : "",
+        monto: deuda ? String(Number(deuda.monto_inicial)) : "",
         fecha: deuda?.fecha ?? hoyISO(),
         notas: deuda?.notas ?? "",
     });
     const [guardando, setGuardando] = useState(false);
+    // Con cargos o abonos activos solo se cambian concepto y notas (lo demás descuadraría el historial).
+    const bloqueada = !!deuda?.movimientos.some((m) => !m.cancelado);
     const [error, setError] = useState<string | null>(null);
 
     // Al editar se conserva el deudor aunque ya esté inactivo.
@@ -39,7 +41,7 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
         if (!form.concepto.trim()) return "El concepto es obligatorio.";
         if (!form.divisa) return "Selecciona la divisa.";
         const monto = Number(form.monto);
-        if (Number.isNaN(monto) || monto <= 0) return "El monto debe ser mayor que cero.";
+        if (!bloqueada && (Number.isNaN(monto) || monto <= 0)) return "El monto debe ser mayor que cero.";
         if (!form.fecha) return "La fecha es obligatoria.";
         if (form.fecha > hoyISO()) return "La fecha no puede ser futura.";
         return null;
@@ -59,7 +61,7 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
                 deudor_id: Number(form.deudor),
                 concepto: form.concepto.trim(),
                 divisa_id: form.divisa,
-                monto: Number(form.monto),
+                monto_inicial: Number(form.monto),
                 fecha: form.fecha,
                 notas: form.notas.trim(),
             });
@@ -77,13 +79,17 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
             <div className="row g-3">
                 <div className="col-md-8">
                     <label className="form-label" htmlFor="deuda-deudor">Deudor <span className="text-danger">*</span></label>
-                    <SearchableSelect
-                        id="deuda-deudor"
-                        options={opcionesDeudor}
-                        value={form.deudor}
-                        onChange={(valor) => setForm({ ...form, deudor: valor })}
-                        placeholder="Buscar deudor..."
-                    />
+                    {bloqueada ? (
+                        <input id="deuda-deudor" className="form-control" value={deuda?.deudor.nombre ?? ""} disabled />
+                    ) : (
+                        <SearchableSelect
+                            id="deuda-deudor"
+                            options={opcionesDeudor}
+                            value={form.deudor}
+                            onChange={(valor) => setForm({ ...form, deudor: valor })}
+                            placeholder="Buscar deudor..."
+                        />
+                    )}
                     {opcionesDeudor.length === 0 && (
                         <div className="form-text text-warning">No hay deudores activos: regístralos en Deudores.</div>
                     )}
@@ -92,6 +98,7 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
                     <label className="form-label" htmlFor="deuda-fecha">Fecha <span className="text-danger">*</span></label>
                     <input
                         id="deuda-fecha"
+                        disabled={bloqueada}
                         type="date"
                         className="form-control"
                         value={form.fecha}
@@ -113,6 +120,7 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
                     <label className="form-label" htmlFor="deuda-divisa">Divisa <span className="text-danger">*</span></label>
                     <select
                         id="deuda-divisa"
+                        disabled={bloqueada}
                         className="form-select"
                         value={form.divisa}
                         onChange={(e) => setForm({ ...form, divisa: Number(e.target.value) })}
@@ -123,11 +131,12 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
                     </select>
                 </div>
                 <div className="col-md-4">
-                    <label className="form-label" htmlFor="deuda-monto">Monto <span className="text-danger">*</span></label>
+                    <label className="form-label" htmlFor="deuda-monto">Monto sin salida de caja <span className="text-danger">*</span></label>
                     <div className="input-group">
                         <span className="input-group-text">{simbolo}</span>
                         <input
                             id="deuda-monto"
+                        disabled={bloqueada}
                             type="number"
                             min="0"
                             step="0.01"
@@ -150,9 +159,17 @@ function DeudaForm({ deuda, deudores, divisas, deudorInicial, onGuardar, onCance
                 </div>
             </div>
 
+            {bloqueada && (
+                <div className="alert alert-warning py-2 small mt-3 mb-0">
+                    <i className="bi bi-lock me-1" aria-hidden="true"></i>
+                    Tiene cargos o abonos de caja: solo se pueden cambiar el concepto y las notas.
+                </div>
+            )}
+
             <p className="small text-body-secondary mt-3 mb-0">
                 <i className="bi bi-info-circle me-1" aria-hidden="true"></i>
-                Registrar la deuda no mueve la caja. Los abonos se capturan como ingresos en Movimientos.
+                Aquí se registra lo que se debe <strong>sin salida de caja</strong> (p. ej. una venta a crédito). Si el dinero
+                sale de caja, captúralo como egreso en Movimientos con «Cargo a deuda». Los abonos son ingresos en Movimientos.
             </p>
 
             {error && (

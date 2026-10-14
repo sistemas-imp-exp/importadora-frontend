@@ -137,7 +137,7 @@ function DeudasView() {
         <>
             <PageHeader
                 title="Deudas"
-                subtitle="Lo que le deben a la caja y su historial de abonos"
+                subtitle="Lo que le deben a la caja, con sus cargos y abonos"
                 breadcrumbs={[
                     { label: "Inicio", to: "/" },
                     { label: "Tesorería", to: "/tesoreria" },

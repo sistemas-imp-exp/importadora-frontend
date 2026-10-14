@@ -7,7 +7,7 @@ import { useFilasExpandibles } from "../../../../shared/components/tabla/useFila
 import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
 import type { DensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
-import type { Abono, Deuda, EstadoDeuda } from "../../interfaces/deudas/Deuda";
+import type { Deuda, EstadoDeuda, MovimientoDeuda } from "../../interfaces/deudas/Deuda";
 import { fechaDeISO, formatearDineroDivisa } from "../../utils/deudas";
 
 interface DeudasTableProps {
@@ -36,9 +36,12 @@ function BadgeEstadoDeuda({ estado }: { estado: EstadoDeuda }) {
     return <span className={`badge border ${clase}`}>{texto}</span>;
 }
 
-function HistorialAbonos({ deuda }: { deuda: Deuda }) {
-    if (deuda.abonos.length === 0) {
-        return <p className="text-body-secondary small mb-0">Sin abonos. Se registran como ingresos en Movimientos.</p>;
+/** Historial de la deuda: monto inicial (sin salida de caja), cargos (egresos) y abonos (ingresos). */
+function HistorialDeuda({ deuda }: { deuda: Deuda }) {
+    const simbolo = deuda.divisa.simbolo;
+    const inicial = Number(deuda.monto_inicial);
+    if (deuda.movimientos.length === 0 && inicial === 0) {
+        return <p className="text-body-secondary small mb-0">Sin movimientos.</p>;
     }
     return (
         <table className="table table-sm tabla-detalle mb-0 border rounded">
@@ -46,33 +49,58 @@ function HistorialAbonos({ deuda }: { deuda: Deuda }) {
                 <tr>
                     <th>Folio</th>
                     <th>Fecha</th>
+                    <th>Tipo</th>
                     <th>Concepto</th>
+                    <th className="num">Cargo</th>
                     <th className="num">Abono</th>
                     <th>Capturó</th>
                     <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
-                {deuda.abonos.map((abono: Abono) => (
-                    <tr key={abono.id} className={abono.cancelado ? "text-decoration-line-through text-body-secondary" : ""}>
-                        <td className="text-nowrap fw-semibold">
-                            <Link to={`/tesoreria/caja/movimientos/${abono.id}`}>{abono.folio}</Link>
-                        </td>
-                        <td className="text-nowrap">{fecha(abono.fecha)}</td>
-                        <td className="truncar" title={abono.concepto}>{abono.concepto}</td>
-                        <td className="num">{dinero(deuda.divisa.simbolo, abono.cantidad)}</td>
-                        <td className="text-nowrap">{abono.usuario.username}</td>
-                        <td>
-                            {abono.cancelado ? (
-                                <span className="badge border bg-secondary-subtle text-secondary-emphasis border-secondary-subtle" title={abono.motivo_cancelacion || undefined}>
-                                    Cancelado
-                                </span>
-                            ) : (
-                                <span className="badge border bg-success-subtle text-success-emphasis border-success-subtle">Activo</span>
-                            )}
-                        </td>
+                {inicial > 0 && (
+                    <tr>
+                        <td className="text-body-secondary">—</td>
+                        <td className="text-nowrap">{fecha(deuda.fecha)}</td>
+                        <td><span className="badge border bg-light text-body-secondary">Inicial</span></td>
+                        <td className="text-body-secondary">Monto inicial (sin salida de caja)</td>
+                        <td className="num">{dinero(simbolo, inicial)}</td>
+                        <td className="num"></td>
+                        <td className="text-nowrap">{deuda.usuario.username}</td>
+                        <td></td>
                     </tr>
-                ))}
+                )}
+                {deuda.movimientos.map((mov: MovimientoDeuda) => {
+                    const cargo = mov.tipo === "E";
+                    return (
+                        <tr key={mov.id} className={mov.cancelado ? "text-decoration-line-through text-body-secondary" : ""}>
+                            <td className="text-nowrap fw-semibold">
+                                <Link to={`/tesoreria/caja/movimientos/${mov.id}`}>{mov.folio}</Link>
+                            </td>
+                            <td className="text-nowrap">{fecha(mov.fecha)}</td>
+                            <td>
+                                {cargo ? (
+                                    <span className="badge border bg-danger-subtle text-danger-emphasis border-danger-subtle">Cargo</span>
+                                ) : (
+                                    <span className="badge border bg-success-subtle text-success-emphasis border-success-subtle">Abono</span>
+                                )}
+                            </td>
+                            <td className="truncar" title={mov.concepto}>{mov.concepto}</td>
+                            <td className="num">{cargo ? dinero(simbolo, mov.cantidad) : ""}</td>
+                            <td className="num">{cargo ? "" : dinero(simbolo, mov.cantidad)}</td>
+                            <td className="text-nowrap">{mov.usuario.username}</td>
+                            <td>
+                                {mov.cancelado ? (
+                                    <span className="badge border bg-secondary-subtle text-secondary-emphasis border-secondary-subtle" title={mov.motivo_cancelacion || undefined}>
+                                        Cancelado
+                                    </span>
+                                ) : (
+                                    <span className="badge border bg-success-subtle text-success-emphasis border-success-subtle">Activo</span>
+                                )}
+                            </td>
+                        </tr>
+                    );
+                })}
             </tbody>
         </table>
     );
@@ -92,7 +120,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                             <BotonExpandir
                                 expandido={todasExpandidas}
                                 onClick={alternarTodas}
-                                etiqueta="los abonos de todas las deudas"
+                                etiqueta="el historial de todas las deudas"
                                 disabled={deudas.length === 0}
                             />
                         </th>
@@ -100,7 +128,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                         <th className="fija-izq fija-izq-borde" style={FIJA_DEUDOR}>Deudor</th>
                         <th>Concepto</th>
                         <th>Divisa</th>
-                        <th className="num">Monto</th>
+                        <th className="num">Total</th>
                         <th className="num">Abonado</th>
                         <th className="num">Saldo</th>
                         <th>Estado</th>
@@ -118,8 +146,9 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                     ) : (
                         deudas.map((deuda) => {
                             const abierta = estaExpandida(deuda.id);
-                            const idDetalle = `abonos-deuda-${deuda.id}`;
-                            const abonosActivos = deuda.abonos.filter((a) => !a.cancelado).length;
+                            const idDetalle = `historial-deuda-${deuda.id}`;
+                            const abonosActivos = deuda.movimientos.filter((m) => !m.cancelado && m.tipo === "I").length;
+                            const conMovimientos = deuda.movimientos.some((m) => !m.cancelado);
                             const simbolo = deuda.divisa.simbolo;
                             return (
                                 <Fragment key={deuda.id}>
@@ -128,7 +157,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                                             <BotonExpandir
                                                 expandido={abierta}
                                                 onClick={() => alternar(deuda.id)}
-                                                etiqueta={`abonos de ${deuda.concepto}`}
+                                                etiqueta={`historial de ${deuda.concepto}`}
                                                 controla={idDetalle}
                                             />
                                         </td>
@@ -140,7 +169,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                                             {deuda.concepto}
                                         </td>
                                         <td>{deuda.divisa.codigo}</td>
-                                        <td className="num">{dinero(simbolo, deuda.monto)}</td>
+                                        <td className="num">{dinero(simbolo, deuda.total)}</td>
                                         <td className="num">
                                             {dinero(simbolo, deuda.abonado)}
                                             {abonosActivos > 0 && (
@@ -160,8 +189,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                                                     etiqueta={`Editar deuda ${deuda.concepto}`}
                                                     onClick={() => onEditar?.(deuda)}
                                                     motivoBloqueo={
-                                                        deuda.cancelada ? "La deuda está cancelada"
-                                                            : abonosActivos > 0 ? "Tiene abonos: ya no se puede editar" : null
+                                                        deuda.cancelada ? "La deuda está cancelada" : null
                                                     }
                                                 />{" "}
                                                 <BotonAccionFila
@@ -171,7 +199,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                                                     onClick={() => onCancelar?.(deuda)}
                                                     motivoBloqueo={
                                                         deuda.cancelada ? "Ya está cancelada"
-                                                            : abonosActivos > 0 ? "Tiene abonos activos: cancela primero esos ingresos" : null
+                                                            : conMovimientos ? "Tiene cargos o abonos activos: cancela primero esos movimientos" : null
                                                     }
                                                 />
                                             </td>
@@ -180,7 +208,7 @@ function DeudasTable({ deudas, densidad, onEditar, onCancelar }: DeudasTableProp
                                     {abierta && (
                                         <tr className="fila-detalle" id={idDetalle}>
                                             <td colSpan={columnas}>
-                                                <HistorialAbonos deuda={deuda} />
+                                                <HistorialDeuda deuda={deuda} />
                                             </td>
                                         </tr>
                                     )}

@@ -8,7 +8,7 @@ import type {
 } from "../../interfaces/movimientos/Movimiento";
 import { obtenerSiguienteFolio, obtenerSugerencias } from "../../services/movimientos.service";
 import { fechaISO, hoyISO } from "../../../../shared/utils/fechas";
-import SeleccionarDeudaModal from "../deudas/SeleccionarDeudaModal";
+import SeleccionarDeudaModal, { type DeudaElegida } from "../deudas/SeleccionarDeudaModal";
 import type { Deuda } from "../../interfaces/deudas/Deuda";
 import { obtenerDeuda } from "../../services/deudas.service";
 import { formatearDineroDivisa } from "../../utils/deudas";
@@ -25,22 +25,28 @@ interface MovimientoDivisaForm {
     cantidad: string;
 }
 
-/** Deuda a la que abona el ingreso; `tope` es lo máximo que se puede abonar. */
-interface AbonoDeuda {
-    id: number;
-    concepto: string;
+/**
+ * Deuda ligada al movimiento. Existente: `id` y su divisa (fija); `saldo` es lo
+ * que debe, y en un abono también el tope. Nueva (solo egresos): sin `id` ni
+ * divisa, se crea al guardar con la divisa del egreso.
+ */
+interface DeudaLigada {
+    id: number | null;
+    deudorId: number;
     deudor: string;
-    divisa: Divisa;
-    tope: number;
+    concepto: string;
+    divisa: Divisa | null;
+    saldo: number | null;
 }
 
-function abonoDe(deuda: Deuda, extra = 0): AbonoDeuda {
+function ligadaDe(deuda: Deuda, extra = 0): DeudaLigada {
     return {
         id: deuda.id,
-        concepto: deuda.concepto,
+        deudorId: deuda.deudor.id,
         deudor: deuda.deudor.nombre,
+        concepto: deuda.concepto,
         divisa: deuda.divisa,
-        tope: Number(deuda.saldo) + extra,
+        saldo: Number(deuda.saldo) + extra,
     };
 }
 
@@ -79,7 +85,7 @@ function MovimientoForm({
     });
 
     const folioInputRef = useRef<HTMLInputElement | null>(null);
-    const [deuda, setDeuda] = useState<AbonoDeuda | null>(null);
+    const [deuda, setDeuda] = useState<DeudaLigada | null>(null);
     const [mostrarDeudas, setMostrarDeudas] = useState(false);
 
     // Guardar el estado en localStorage cada vez que cambie
@@ -104,10 +110,11 @@ function MovimientoForm({
             setIsCollapsed(false);
             setDeuda(null);
             if (movimiento.deuda) {
-                // Al editar, el tope es el saldo actual más lo que ya abonó este mismo ingreso.
-                const propio = movimiento.cancelado ? 0 : movimiento.divisas.reduce((acc, d) => acc + d.cantidad, 0);
+                // Al editar un abono, el tope es el saldo actual más lo que ya abonó este mismo ingreso.
+                const propio = movimiento.cancelado || movimiento.tipo !== "I"
+                    ? 0 : movimiento.divisas.reduce((acc, d) => acc + d.cantidad, 0);
                 obtenerDeuda(movimiento.deuda.id)
-                    .then((d) => setDeuda(abonoDe(d, propio)))
+                    .then((d) => setDeuda(ligadaDe(d, propio)))
                     .catch(() => {
                         // Sin el saldo, el backend sigue validando el tope al guardar.
                     });
@@ -179,15 +186,17 @@ function MovimientoForm({
     //     });
     // }
 
-    function seleccionarDeuda(seleccionada: Deuda) {
-        setDeuda(abonoDe(seleccionada));
-        // La información base de la deuda llena el ingreso; la cantidad la captura el usuario.
+    function seleccionarDeuda(eleccion: DeudaElegida) {
+        const ligada: DeudaLigada = eleccion.tipo === "existente"
+            ? ligadaDe(eleccion.deuda)
+            : { id: null, deudorId: eleccion.deudor.id, deudor: eleccion.deudor.nombre, concepto: eleccion.concepto, divisa: null, saldo: null };
+        setDeuda(ligada);
+        // La información base de la deuda llena el movimiento; la cantidad la captura el usuario.
         setForm((actual) => ({
             ...actual,
-            tipo: "I",
-            beneficiario: seleccionada.deudor.nombre,
-            concepto: `Abono: ${seleccionada.concepto}`,
-            divisas: [{ divisa: seleccionada.divisa.id, cantidad: actual.divisas[0]?.cantidad ?? "" }],
+            beneficiario: ligada.deudor,
+            concepto: actual.tipo === "I" ? `Abono: ${ligada.concepto}` : ligada.concepto,
+            divisas: [{ divisa: ligada.divisa?.id ?? actual.divisas[0]?.divisa ?? 0, cantidad: actual.divisas[0]?.cantidad ?? "" }],
         }));
         setMostrarDeudas(false);
     }
@@ -206,10 +215,9 @@ function MovimientoForm({
             const cantidad = Number(item.cantidad);
             if (Number.isNaN(cantidad) || cantidad <= 0) return "Ingrese una cantidad válida mayor que cero.";
         }
-        if (deuda) {
-            if (form.tipo !== "I") return "Solo un ingreso puede abonar a una deuda.";
-            if (Number(form.divisas[0]?.cantidad) > deuda.tope + 0.001) {
-                return `El abono excede el saldo pendiente de la deuda (${formatearDineroDivisa(deuda.divisa.simbolo, deuda.tope)}).`;
+        if (deuda && form.tipo === "I" && deuda.divisa && deuda.saldo !== null) {
+            if (Number(form.divisas[0]?.cantidad) > deuda.saldo + 0.001) {
+                return `El abono excede el saldo pendiente de la deuda (${formatearDineroDivisa(deuda.divisa.simbolo, deuda.saldo)}).`;
             }
         }
         return null;
@@ -237,6 +245,7 @@ function MovimientoForm({
                 cantidad: Number(item.cantidad),
             })),
             deuda_id: deuda?.id ?? null,
+            ...(deuda && deuda.id === null ? { nueva_deuda: { deudor_id: deuda.deudorId, concepto: deuda.concepto } } : {}),
         };
 
         setIsLoading(true);
@@ -336,7 +345,7 @@ function MovimientoForm({
                                 <label className="form-label small text-muted mb-1 fw-bold">Tipo</label>
                                 <div className="btn-group w-100" role="group">
                                     <input type="radio" className="btn-check" id="btn-ingreso" autoComplete="off"
-                                        checked={form.tipo === "I"} onChange={() => setForm({ ...form, tipo: "I" })} />
+                                        checked={form.tipo === "I"} onChange={() => { setForm({ ...form, tipo: "I" }); setDeuda(null); }} />
                                     <label className="btn btn-sm btn-outline-success text-nowrap" htmlFor="btn-ingreso">
                                         <i className="bi bi-arrow-up-circle me-1"></i> Ingreso
                                     </label>
@@ -380,37 +389,40 @@ function MovimientoForm({
                             </div>
                         </div>
 
-                        {form.tipo === "I" && (
-                            <div className="mb-3">
-                                {deuda ? (
-                                    <div className="alert alert-info d-flex flex-wrap align-items-center gap-3 py-2 mb-0">
-                                        <i className="bi bi-person-lines-fill fs-5" aria-hidden="true"></i>
-                                        <div>
-                                            <div className="small text-body-secondary">Abono a deuda</div>
-                                            <div className="fw-semibold">{deuda.deudor} — {deuda.concepto}</div>
+                        <div className="mb-3">
+                            {deuda ? (
+                                <div className="alert alert-info d-flex flex-wrap align-items-center gap-3 py-2 mb-0">
+                                    <i className="bi bi-person-lines-fill fs-5" aria-hidden="true"></i>
+                                    <div>
+                                        <div className="small text-body-secondary">
+                                            {form.tipo === "I" ? "Abono a deuda" : deuda.id === null ? "Cargo a nueva deuda" : "Cargo a deuda"}
                                         </div>
+                                        <div className="fw-semibold">{deuda.deudor} — {deuda.concepto}</div>
+                                    </div>
+                                    {deuda.divisa && deuda.saldo !== null && (
                                         <div>
-                                            <div className="small text-body-secondary">Saldo pendiente</div>
+                                            <div className="small text-body-secondary">{form.tipo === "I" ? "Saldo pendiente" : "Debe actualmente"}</div>
                                             <div className="fw-bold">
-                                                {formatearDineroDivisa(deuda.divisa.simbolo, deuda.tope)} {deuda.divisa.codigo}
+                                                {formatearDineroDivisa(deuda.divisa.simbolo, deuda.saldo)} {deuda.divisa.codigo}
                                             </div>
                                         </div>
-                                        <div className="ms-auto d-flex gap-2">
-                                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setMostrarDeudas(true)}>
-                                                Cambiar
-                                            </button>
-                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setDeuda(null)}>
-                                                Quitar
-                                            </button>
-                                        </div>
+                                    )}
+                                    <div className="ms-auto d-flex gap-2">
+                                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setMostrarDeudas(true)}>
+                                            Cambiar
+                                        </button>
+                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setDeuda(null)}>
+                                            Quitar
+                                        </button>
                                     </div>
-                                ) : (
-                                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarDeudas(true)}>
-                                        <i className="bi bi-person-lines-fill me-1" aria-hidden="true"></i>Abono a deuda
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                                </div>
+                            ) : (
+                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarDeudas(true)}>
+                                    <i className="bi bi-person-lines-fill me-1" aria-hidden="true"></i>
+                                    {form.tipo === "I" ? "Abono a deuda" : "Cargo a deuda"}
+                                </button>
+                            )}
+                        </div>
 
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 pt-2 border-top">
                             <div className="flex-grow-1">
@@ -426,8 +438,8 @@ function MovimientoForm({
                                                     <select
                                                         className="form-select form-select-sm"
                                                         value={item.divisa}
-                                                        disabled={!!deuda}
-                                                        title={deuda ? "El abono va en la divisa de la deuda" : undefined}
+                                                        disabled={!!deuda?.divisa}
+                                                        title={deuda?.divisa ? "El movimiento va en la divisa de la deuda" : undefined}
                                                         onChange={(e) => actualizarDivisa(index, "divisa", e.target.value)}
                                                         style={{ minWidth: "180px" }}
                                                     >
@@ -446,7 +458,7 @@ function MovimientoForm({
                                                             type="number"
                                                             className="form-control"
                                                             min="0"
-                                                            max={deuda ? deuda.tope : undefined}
+                                                            max={deuda && form.tipo === "I" && deuda.saldo !== null ? deuda.saldo : undefined}
                                                             step="0.01"
                                                             placeholder="0.00"
                                                             value={item.cantidad}
@@ -499,6 +511,7 @@ function MovimientoForm({
 
             <SeleccionarDeudaModal
                 show={mostrarDeudas}
+                modo={form.tipo === "I" ? "abono" : "cargo"}
                 onClose={() => setMostrarDeudas(false)}
                 onSeleccionar={seleccionarDeuda}
             />

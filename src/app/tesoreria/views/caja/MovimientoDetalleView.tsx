@@ -137,7 +137,7 @@ function MovimientoDetalleView() {
                                                         <span className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle">Editado</span>
                                                     )}
                                                     {movimiento.deuda && (
-                                                        <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle">Abono a deuda</span>
+                                                        <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle">{ingreso ? "Abono a deuda" : "Cargo a deuda"}</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -186,7 +186,7 @@ function MovimientoDetalleView() {
                                         </div>
                                         {movimiento.deuda && (
                                             <div className="col-lg-6">
-                                                <dt>Abono a deuda</dt>
+                                                <dt>{ingreso ? "Abono a deuda" : "Cargo a deuda"}</dt>
                                                 <dd>
                                                     <Link to={`/tesoreria/deudas?deudor=${movimiento.deuda.deudor.id}&estado=`}>
                                                         {movimiento.deuda.deudor.nombre}
