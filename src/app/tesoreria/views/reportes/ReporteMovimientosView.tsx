@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import PageHeader from "../../../../layouts/components/PageHeader";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import CardCollapseButton from "../../../../shared/components/CardCollapseButton";
+import Paginacion from "../../../../shared/components/Paginacion";
+import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
+import { usePaginacion } from "../../../../shared/hooks/usePaginacion";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import {
@@ -54,6 +57,7 @@ function ReporteMovimientosView() {
     const [colapsadoFiltros, setColapsadoFiltros] = useState(false);
     const [colapsadoResumen, setColapsadoResumen] = useState(false);
     const [colapsadoPreview, setColapsadoPreview] = useState(false);
+    const [porPagina, setPorPagina] = useState(25);
 
     useEffect(() => {
         (async () => {
@@ -142,6 +146,10 @@ function ReporteMovimientosView() {
                 : [...actual.divisaIds, id],
         }));
     }
+
+    // La vista previa trae todas las líneas del filtro; aquí solo se paginan.
+    const lineas = resumen?.muestra ?? [];
+    const { pagina, setPagina, totalPaginas, inicio, fin } = usePaginacion(lineas.length, porPagina, `${porPagina}|${resumen?.total ?? 0}`);
 
     return (
         <>
@@ -364,7 +372,7 @@ function ReporteMovimientosView() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        resumen.muestra.map((linea) => (
+                                        lineas.slice(inicio, fin).map((linea) => (
                                             <tr
                                                 key={linea.id}
                                                 className={linea.cancelado ? "table-secondary text-decoration-line-through opacity-75" : ""}
@@ -404,12 +412,15 @@ function ReporteMovimientosView() {
                         </div>
                     </div>
                     )}
-                    {resumen && resumen.muestra_limitada && (
-                        <div className="card-footer">
-                            <small className="text-muted">
-                                <i className="bi bi-info-circle me-1"></i>
-                                Muestra {resumen.muestra.length} de {resumen.total} filas. El Excel y el PDF generados incluyen todas las que coincidan con los filtros.
-                            </small>
+                    {!colapsadoPreview && lineas.length > 0 && (
+                        <div className="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div className="d-flex align-items-center gap-3">
+                                <PorPaginaSelect valor={porPagina} onChange={setPorPagina} />
+                                <small className="text-muted">
+                                    Mostrando {inicio + 1}-{Math.min(fin, lineas.length)} de {lineas.length} filas
+                                </small>
+                            </div>
+                            <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiar={setPagina} />
                         </div>
                     )}
                 </div>
