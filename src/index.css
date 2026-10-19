@@ -182,12 +182,71 @@
 }
 
 /* Pie de totales fijo abajo: los totales siguen a la vista al desplazar. */
+/* El separador va como sombra y no como border-top: con border-collapse los
+   bordes no viajan con la celda sticky y dejaban ver la fila de abajo. */
 .tabla-datos > tfoot td {
     position: sticky;
     bottom: 0;
     z-index: 3;
     background-color: var(--bs-tertiary-bg);
-    border-top: 2px solid var(--bs-border-color);
+    border-bottom-width: 0;
+    box-shadow: inset 0 2px 0 var(--bs-border-color), 0 -4px 6px -4px rgba(0, 0, 0, .15);
+}
+
+/* Encabezado en dos renglones: grupos de columnas arriba y columnas abajo,
+   ambos fijos al desplazar. Cada grupo arranca con una línea vertical. */
+.tabla-con-grupos {
+    --alto-grupos: 1.75rem;
+}
+.tabla-datos > thead > tr.encabezado-grupos > th {
+    height: var(--alto-grupos);
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: .68rem;
+    letter-spacing: .06em;
+    color: var(--bs-emphasis-color);
+    border-bottom-width: 0;
+}
+.tabla-datos > thead > tr.encabezado-grupos + tr > th {
+    top: var(--alto-grupos);
+}
+.tabla-datos .inicio-grupo {
+    border-left: 1px solid var(--bs-border-color);
+}
+
+/* Encabezado que ordena (EncabezadoOrdenable): todo el texto es el botón. */
+.tabla-datos .btn-ordenar {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    white-space: nowrap;
+}
+.tabla-datos .num > .btn-ordenar {
+    flex-direction: row-reverse;
+}
+.tabla-datos .btn-ordenar .bi {
+    font-size: .7rem;
+    opacity: .35;
+}
+.tabla-datos .btn-ordenar:hover,
+.tabla-datos .btn-ordenar.activo {
+    color: var(--bs-emphasis-color);
+}
+.tabla-datos .btn-ordenar:hover .bi,
+.tabla-datos .btn-ordenar.activo .bi {
+    opacity: 1;
+}
+.tabla-datos .btn-ordenar:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
 }
 .tabla-datos > tfoot .fija-izq {
     z-index: 4;
@@ -306,4 +365,13 @@
 .linea-tiempo__cambios dd {
     margin: 0;
     overflow-wrap: anywhere;
+}
+
+/* Producto en dos renglones (talla / tipo) dentro de una columna fija: sin
+   esto el nombre largo invadía la columna de al lado. */
+.tabla-datos .celda-producto {
+    line-height: 1.2;
+}
+.tabla-datos .celda-producto > .truncar {
+    max-width: 100%;
 }

@@ -6,7 +6,7 @@ import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import ExistenciasTable from "../../components/existencias/ExistenciasTable";
 import ExistenciasFiltros from "../../components/existencias/ExistenciasFiltros";
 import { useExistenciasFiltros } from "../../hooks/useExistenciasFiltros";
-import { formatearDinero } from "../../utils/existencias";
+import { formatearDinero, VALORES_ORDEN_EXISTENCIAS } from "../../utils/existencias";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
 import CardCollapseButton from "../../../../shared/components/CardCollapseButton";
 import Paginacion from "../../../../shared/components/Paginacion";
@@ -14,6 +14,7 @@ import PorPaginaSelect from "../../../../shared/components/PorPaginaSelect";
 import DensidadToggle from "../../../../shared/components/DensidadToggle";
 import { useDensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import { usePaginacion } from "../../../../shared/hooks/usePaginacion";
+import { useOrdenTabla } from "../../../../shared/hooks/useOrdenTabla";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
 
@@ -31,13 +32,15 @@ function ExistenciasView() {
     const [densidad, setDensidad] = useDensidadTabla("existencias");
     const { busqueda, setBusqueda, filtros, setFiltro, limpiarFiltros, hayFiltros, opciones, filtradas, totales } =
         useExistenciasFiltros(existencias);
+    // Se ordena todo lo filtrado antes de paginar, no solo la página visible.
+    const { ordenadas, orden, alternar } = useOrdenTabla(filtradas, VALORES_ORDEN_EXISTENCIAS);
 
     const { pagina, setPagina, totalPaginas, inicio, fin } = usePaginacion(
         filtradas.length,
         porPagina,
-        `${busqueda}|${JSON.stringify(filtros)}|${porPagina}`
+        `${busqueda}|${JSON.stringify(filtros)}|${porPagina}|${JSON.stringify(orden)}`
     );
-    const paginadas = filtradas.slice(inicio, fin);
+    const paginadas = ordenadas.slice(inicio, fin);
 
     useEffect(() => {
         cargar();
@@ -198,7 +201,14 @@ function ExistenciasView() {
                                 ) : loading ? (
                                     <SkeletonTable columnas={16} filas={6} />
                                 ) : (
-                                    <ExistenciasTable filas={paginadas} totales={totales} hayFiltros={hayFiltros} densidad={densidad} />
+                                    <ExistenciasTable
+                                        filas={paginadas}
+                                        totales={totales}
+                                        hayFiltros={hayFiltros}
+                                        densidad={densidad}
+                                        orden={orden}
+                                        onOrdenar={alternar}
+                                    />
                                 )}
                             </div>
 

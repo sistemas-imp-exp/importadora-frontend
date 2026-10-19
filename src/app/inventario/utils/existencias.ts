@@ -86,3 +86,33 @@ export function calcularTotales(filas: FilaExistencia[]): TotalesExistencias {
         lotesSinCosto: filas.filter((f) => f.totalPesos === null).length,
     };
 }
+
+export type ColumnaExistencias =
+    | "camara" | "producto" | "proveedor" | "fecha" | "recibo" | "factura" | "pesoPorCaja" | "cajas"
+    | "entrada" | "salida" | "saldo" | "costo" | "total" | "caducidad" | "loteProveedor";
+
+const numeroONulo = (valor: string | null) => (valor === null ? null : Number(valor));
+
+/** Valor por el que se ordena cada columna de Existencias (`useOrdenTabla`). */
+export const VALORES_ORDEN_EXISTENCIAS: Record<ColumnaExistencias, (fila: FilaExistencia) => string | number | null> = {
+    camara: (f) => f.camaraNombre,
+    producto: (f) => `${f.talla} ${f.tipo}`,
+    proveedor: (f) => f.proveedorNombre,
+    fecha: (f) => f.fecha,
+    recibo: (f) => f.reciboIngreso,
+    factura: (f) => f.factura,
+    pesoPorCaja: (f) => numeroONulo(f.pesoPorCaja),
+    cajas: (f) => f.cajasDisponibles,
+    entrada: (f) => Number(f.totalKilos),
+    salida: (f) => f.kilosVendidos,
+    saldo: (f) => Number(f.kilosDisponibles),
+    costo: (f) => numeroONulo(f.costoPorKilo),
+    total: (f) => f.totalPesos,
+    caducidad: (f) => f.fechaCaducidad,
+    loteProveedor: (f) => f.loteProveedor,
+};
+
+/** Peso por caja sin ceros de relleno: 20 → "20", 18.5 → "18.5". */
+export function formatearPeso(valor: number): string {
+    return valor.toLocaleString("es-MX", { maximumFractionDigits: 3 });
+}
