@@ -56,6 +56,8 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                     {
                         label: "Deudas",
                         to: "/tesoreria/deudas",
+                        // El detalle de cada deuda también deja el menú en "Deudas" (no así Deudores).
+                        matchPrefix: "/tesoreria/deudas/detalle",
                         icon: "bi bi-journal-minus"
                     },
                     {

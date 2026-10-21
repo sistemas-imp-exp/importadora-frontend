@@ -4,7 +4,8 @@ import { useState } from "react";
 
 function isItemActive(item: MenuItem, pathname: string): boolean {
     if (item.to) {
-        if (item.matchPrefix && (pathname === item.to || pathname.startsWith(`${item.to}/`))) {
+        const prefijo = typeof item.matchPrefix === "string" ? item.matchPrefix : item.to;
+        if (item.matchPrefix && (pathname === item.to || pathname.startsWith(`${prefijo}/`))) {
             return true;
         }
         if (item.to === pathname) {
@@ -47,7 +48,7 @@ export default function SidebarMenuItem({
             <li className="nav-item">
                 <NavLink
                     to={item.to ?? "#"}
-                    end={!item.matchPrefix}
+                    end={item.matchPrefix !== true}
                     className={({ isActive }) =>
                         `nav-link${isActive || (item.matchPrefix && isItemActive(item, location.pathname)) ? " active" : ""}`
                     }

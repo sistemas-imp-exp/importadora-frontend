@@ -136,8 +136,11 @@ function MovimientoDetalleView() {
                                                     {movimiento.editado && (
                                                         <span className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle">Editado</span>
                                                     )}
-                                                    {movimiento.deuda && (
-                                                        <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle">{ingreso ? "Abono a deuda" : "Cargo a deuda"}</span>
+                                                    {movimiento.deudas.length > 0 && (
+                                                        <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle">
+                                                            {ingreso ? "Abono a deuda" : "Cargo a deuda"}
+                                                            {movimiento.deudas.length > 1 && ` (${movimiento.deudas.length})`}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
@@ -180,18 +183,33 @@ function MovimientoDetalleView() {
                                                 </div>
                                             </dd>
                                         </div>
-                                        <div className={movimiento.deuda ? "col-lg-6" : "col-12"}>
+                                        <div className={movimiento.deudas.length ? "col-lg-6" : "col-12"}>
                                             <dt>Concepto</dt>
                                             <dd>{movimiento.concepto}</dd>
                                         </div>
-                                        {movimiento.deuda && (
+                                        {movimiento.deudas.length > 0 && (
                                             <div className="col-lg-6">
-                                                <dt>{ingreso ? "Abono a deuda" : "Cargo a deuda"}</dt>
+                                                <dt>
+                                                    {ingreso
+                                                        ? movimiento.deudas.length > 1 ? "Abono repartido entre deudas" : "Abono a deuda"
+                                                        : "Cargo a deuda"}
+                                                </dt>
                                                 <dd>
-                                                    <Link to={`/tesoreria/deudas?deudor=${movimiento.deuda.deudor.id}&estado=`}>
-                                                        {movimiento.deuda.deudor.nombre}
-                                                    </Link>
-                                                    <span className="text-body-secondary"> — {movimiento.deuda.concepto}</span>
+                                                    {movimiento.deudas.map((d) => (
+                                                        <div key={d.id} className="d-flex justify-content-between gap-3">
+                                                            <span>
+                                                                <span>{d.deudor.nombre}</span>
+                                                                <span className="text-body-secondary"> — </span>
+                                                                <Link to={`/tesoreria/deudas/detalle/${d.id}`} title="Ver el detalle de la deuda">{d.concepto}</Link>
+                                                            </span>
+                                                            {movimiento.deudas.length > 1 && (
+                                                                <span className="fw-semibold font-tabular-nums text-nowrap">
+                                                                    {movimiento.divisas[0]?.divisa.simbolo ?? "$"}
+                                                                    {Number(d.monto).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ))}
                                                 </dd>
                                             </div>
                                         )}

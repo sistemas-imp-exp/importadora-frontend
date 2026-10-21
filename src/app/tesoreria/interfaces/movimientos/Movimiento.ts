@@ -33,8 +33,8 @@ export interface MovimientoApi {
     motivo_cancelacion: string;
     usuario_cancelacion: User | null;
     archivos_count: number;
-    // Si el ingreso es abono a una deuda.
-    deuda: DeudaDeMovimiento | null;
+    // Deudas a las que abona (un ingreso puede repartirse) o carga (un egreso, solo una).
+    deudas: DeudaDeMovimiento[];
 }
 
 export interface MovimientoDivisa {
@@ -63,7 +63,7 @@ export interface Movimiento {
     motivo_cancelacion: string;
     usuario_cancelacion: User | null;
     archivosCount: number;
-    deuda: DeudaDeMovimiento | null;
+    deudas: DeudaDeMovimiento[];
 }
 
 export function mapMovimientoApiToMovimiento(api: MovimientoApi): Movimiento {
@@ -92,7 +92,7 @@ export function mapMovimientoApiToMovimiento(api: MovimientoApi): Movimiento {
         motivo_cancelacion: api.motivo_cancelacion ?? "",
         usuario_cancelacion: api.usuario_cancelacion,
         archivosCount: api.archivos_count,
-        deuda: api.deuda ?? null,
+        deudas: api.deudas ?? [],
     };
 }
 
@@ -130,8 +130,10 @@ export interface CrearMovimientoRequest {
         divisa_id: number;
         cantidad: number;
     }[];
-    // Deuda ligada: un ingreso la abona (hasta su saldo) y un egreso la carga,
-    // siempre en la divisa de la deuda. `nueva_deuda` la crea junto con el egreso.
-    deuda_id?: number | null;
+    // Deudas ligadas, en la divisa de cada deuda: un ingreso abona y puede
+    // repartirse entre varias (los montos suman el total); un egreso carga a
+    // una sola por el total. [] quita el reparto. `nueva_deuda` crea la deuda
+    // junto con el egreso.
+    aplicaciones?: { deuda_id: number; monto?: number }[];
     nueva_deuda?: { deudor_id: number; concepto: string };
 }

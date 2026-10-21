@@ -17,6 +17,7 @@ import NominaSemanalDetalleView from "./views/nomina/NominaSemanalDetalleView";
 import ReporteNominaView from "./views/nomina/ReporteNominaView";
 import DeudasView from "./views/deudas/DeudasView";
 import DeudoresView from "./views/deudas/DeudoresView";
+import DeudaDetalleView from "./views/deudas/DeudaDetalleView";
 
 export const tesoreriaRoutes = (
     <>
@@ -56,6 +57,7 @@ export const tesoreriaRoutes = (
 
         <Route path="/tesoreria/deudas" element={<DeudasView />} />
         <Route path="/tesoreria/deudas/deudores" element={<DeudoresView />} />
+        <Route path="/tesoreria/deudas/detalle/:id" element={<DeudaDetalleView />} />
 
         <Route path="/tesoreria/nomina/ranchos" element={<RanchosView />} />
         <Route path="/tesoreria/nomina/puestos" element={<PuestosView />} />

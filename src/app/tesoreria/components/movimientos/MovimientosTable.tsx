@@ -161,13 +161,18 @@ function MovimientosTable({
                                     <td>{movimiento.beneficiario}</td>
                                     <td>
                                         {movimiento.concepto}
-                                        {movimiento.deuda && (
+                                        {movimiento.deudas.length > 0 && (
                                             <Link
-                                                to={`/tesoreria/deudas?deudor=${movimiento.deuda.deudor.id}&estado=`}
+                                                to={movimiento.deudas.length === 1
+                                                    ? `/tesoreria/deudas/detalle/${movimiento.deudas[0].id}`
+                                                    : `/tesoreria/deudas?deudor=${movimiento.deudas[0].deudor.id}&estado=`}
                                                 className="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-2 text-decoration-none"
-                                                title={`${movimiento.tipo === "I" ? "Abono a" : "Cargo a"} la deuda "${movimiento.deuda.concepto}" de ${movimiento.deuda.deudor.nombre}`}
+                                                title={movimiento.deudas
+                                                    .map((d) => `${movimiento.tipo === "I" ? "Abono a" : "Cargo a"} "${d.concepto}" de ${d.deudor.nombre}: $${Number(d.monto).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`)
+                                                    .join("\n")}
                                             >
                                                 {movimiento.tipo === "I" ? "Abono a deuda" : "Cargo a deuda"}
+                                                {movimiento.deudas.length > 1 && ` (${movimiento.deudas.length})`}
                                             </Link>
                                         )}
                                     </td>

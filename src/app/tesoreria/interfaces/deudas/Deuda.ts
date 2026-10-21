@@ -37,9 +37,13 @@ export interface MovimientoDeuda {
     folio: string;
     fecha: string; // 'YYYY-MM-DD'
     concepto: string;
+    /** Lo aplicado a esta deuda; `monto_movimiento` es el total del folio (difieren si se repartió). */
     cantidad: string;
+    monto_movimiento: string;
     usuario: User;
     creado: string;
+    editado: boolean;
+    editado_en: string | null;
     cancelado: boolean;
     fecha_cancelacion: string | null;
     motivo_cancelacion: string;
@@ -81,9 +85,10 @@ export interface DeudaRequest {
     notas: string;
 }
 
-/** Resumen de la deuda que trae un movimiento que es abono. */
+/** Deuda ligada a un movimiento con la parte del movimiento que le toca (`monto`). */
 export interface DeudaDeMovimiento {
     id: number;
     concepto: string;
     deudor: { id: number; nombre: string };
+    monto: string;
 }

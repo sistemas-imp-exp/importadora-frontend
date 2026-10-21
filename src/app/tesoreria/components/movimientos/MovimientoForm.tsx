@@ -9,9 +9,11 @@ import type {
 import { obtenerSiguienteFolio, obtenerSugerencias } from "../../services/movimientos.service";
 import { fechaISO, hoyISO } from "../../../../shared/utils/fechas";
 import SeleccionarDeudaModal, { type DeudaElegida } from "../deudas/SeleccionarDeudaModal";
+import SelectorDeudasModal from "../deudas/SelectorDeudasModal";
 import type { Deuda } from "../../interfaces/deudas/Deuda";
 import { obtenerDeuda } from "../../services/deudas.service";
-import { formatearDineroDivisa } from "../../utils/deudas";
+import { fechaDeISO, formatearDineroDivisa } from "../../utils/deudas";
+import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 
 interface MovimientoFormProps {
     divisas: Divisa[];
@@ -27,8 +29,10 @@ interface MovimientoDivisaForm {
 
 /**
  * Deuda ligada al movimiento. Existente: `id` y su divisa (fija); `saldo` es lo
- * que debe, y en un abono también el tope. Nueva (solo egresos): sin `id` ni
- * divisa, se crea al guardar con la divisa del egreso.
+ * que debe, y en un abono también el tope (null mientras se consulta). Nueva
+ * (solo egresos): sin `id` ni divisa, se crea al guardar con la divisa del
+ * egreso. `monto` es su parte cuando un ingreso se reparte entre varias deudas;
+ * con una sola deuda la parte es el total del movimiento.
  */
 interface DeudaLigada {
     id: number | null;
@@ -37,9 +41,12 @@ interface DeudaLigada {
     concepto: string;
     divisa: Divisa | null;
     saldo: number | null;
+    monto: string;
+    /** 'YYYY-MM-DD'; un abono no puede ser anterior (null mientras se consulta o si es nueva). */
+    fecha: string | null;
 }
 
-function ligadaDe(deuda: Deuda, extra = 0): DeudaLigada {
+function ligadaDe(deuda: Deuda, extra = 0, monto = ""): DeudaLigada {
     return {
         id: deuda.id,
         deudorId: deuda.deudor.id,
@@ -47,8 +54,12 @@ function ligadaDe(deuda: Deuda, extra = 0): DeudaLigada {
         concepto: deuda.concepto,
         divisa: deuda.divisa,
         saldo: Number(deuda.saldo) + extra,
+        monto,
+        fecha: deuda.fecha,
     };
 }
+
+const TOLERANCIA = 0.005;
 
 function MovimientoForm({
     divisas,
@@ -85,7 +96,7 @@ function MovimientoForm({
     });
 
     const folioInputRef = useRef<HTMLInputElement | null>(null);
-    const [deuda, setDeuda] = useState<DeudaLigada | null>(null);
+    const [deudasLigadas, setDeudasLigadas] = useState<DeudaLigada[]>([]);
     const [mostrarDeudas, setMostrarDeudas] = useState(false);
 
     // Guardar el estado en localStorage cada vez que cambie
@@ -108,19 +119,33 @@ function MovimientoForm({
                 })),
             });
             setIsCollapsed(false);
-            setDeuda(null);
-            if (movimiento.deuda) {
+            // El reparto se arma al instante con lo que trae el movimiento (así
+            // guardar nunca lo borra por no haber terminado de cargar) y el
+            // saldo de cada deuda llega después.
+            const repartido = movimiento.deudas.length > 1;
+            const divisaMovimiento = movimiento.divisas[0]?.divisa ?? null;
+            setDeudasLigadas(movimiento.deudas.map((d) => ({
+                id: d.id,
+                deudorId: d.deudor.id,
+                deudor: d.deudor.nombre,
+                concepto: d.concepto,
+                divisa: divisaMovimiento,
+                saldo: null,
+                monto: repartido ? String(Number(d.monto)) : "",
+                fecha: null,
+            })));
+            movimiento.deudas.forEach((ligada) => {
                 // Al editar un abono, el tope es el saldo actual más lo que ya abonó este mismo ingreso.
-                const propio = movimiento.cancelado || movimiento.tipo !== "I"
-                    ? 0 : movimiento.divisas.reduce((acc, d) => acc + d.cantidad, 0);
-                obtenerDeuda(movimiento.deuda.id)
-                    .then((d) => setDeuda(ligadaDe(d, propio)))
+                const propio = movimiento.cancelado || movimiento.tipo !== "I" ? 0 : Number(ligada.monto);
+                obtenerDeuda(ligada.id)
+                    .then((d) => setDeudasLigadas((actuales) =>
+                        actuales.map((x) => (x.id === d.id ? { ...ligadaDe(d, propio), monto: x.monto } : x))))
                     .catch(() => {
                         // Sin el saldo, el backend sigue validando el tope al guardar.
                     });
-            }
+            });
         } else {
-            setDeuda(null);
+            setDeudasLigadas([]);
             setForm((actual) => ({
                 fecha: actual.fecha || hoyISO(),
                 folio: "",
@@ -186,20 +211,55 @@ function MovimientoForm({
     //     });
     // }
 
+    // Elegir deudas no toca el concepto (es el de la hoja física). Solo se
+    // propone el beneficiario si está vacío y la deuda es de una sola persona.
+    function proponerBeneficiario(nombres: string[]) {
+        const unicos = Array.from(new Set(nombres));
+        if (unicos.length !== 1) return;
+        setForm((actual) => (actual.beneficiario.trim() ? actual : { ...actual, beneficiario: unicos[0] }));
+    }
+
+    function fijarDivisa(divisa: Divisa | null) {
+        if (!divisa) return;
+        setForm((actual) => ({
+            ...actual,
+            divisas: [{ divisa: divisa.id, cantidad: actual.divisas[0]?.cantidad ?? "" }],
+        }));
+    }
+
+    /** Egreso: cargo a una sola deuda (existente o nueva). */
     function seleccionarDeuda(eleccion: DeudaElegida) {
         const ligada: DeudaLigada = eleccion.tipo === "existente"
             ? ligadaDe(eleccion.deuda)
-            : { id: null, deudorId: eleccion.deudor.id, deudor: eleccion.deudor.nombre, concepto: eleccion.concepto, divisa: null, saldo: null };
-        setDeuda(ligada);
-        // La información base de la deuda llena el movimiento; la cantidad la captura el usuario.
-        setForm((actual) => ({
-            ...actual,
-            beneficiario: ligada.deudor,
-            concepto: actual.tipo === "I" ? `Abono: ${ligada.concepto}` : ligada.concepto,
-            divisas: [{ divisa: ligada.divisa?.id ?? actual.divisas[0]?.divisa ?? 0, cantidad: actual.divisas[0]?.cantidad ?? "" }],
-        }));
+            : { id: null, deudorId: eleccion.deudor.id, deudor: eleccion.deudor.nombre, concepto: eleccion.concepto, divisa: null, saldo: null, monto: "", fecha: null };
         setMostrarDeudas(false);
+        setDeudasLigadas([ligada]);
+        proponerBeneficiario([ligada.deudor]);
+        fijarDivisa(ligada.divisa);
     }
+
+    /** Ingreso: abono a una o varias deudas elegidas en el modal (misma divisa). */
+    function agregarDeudas(elegidas: Deuda[]) {
+        setMostrarDeudas(false);
+        setError(null);
+        const nuevas = elegidas.map((d) => ligadaDe(d));
+        setDeudasLigadas((actuales) => [...actuales, ...nuevas]);
+        proponerBeneficiario([...deudasLigadas, ...nuevas].map((d) => d.deudor));
+        fijarDivisa(nuevas[0]?.divisa ?? null);
+    }
+
+    function quitarDeuda(indice: number) {
+        setDeudasLigadas((actuales) => actuales.filter((_, i) => i !== indice));
+    }
+
+    function cambiarMonto(indice: number, monto: string) {
+        setDeudasLigadas((actuales) => actuales.map((d, i) => (i === indice ? { ...d, monto } : d)));
+    }
+
+    const totalMovimiento = Number(form.divisas[0]?.cantidad) || 0;
+    const repartido = form.tipo === "I" && deudasLigadas.length > 1;
+    const asignado = deudasLigadas.reduce((acc, d) => acc + (Number(d.monto) || 0), 0);
+    const divisaDeudas = deudasLigadas.find((d) => d.divisa)?.divisa ?? null;
 
     function validarFormulario(): string | null {
         if (!form.fecha) return "La fecha es obligatoria.";
@@ -215,9 +275,19 @@ function MovimientoForm({
             const cantidad = Number(item.cantidad);
             if (Number.isNaN(cantidad) || cantidad <= 0) return "Ingrese una cantidad válida mayor que cero.";
         }
-        if (deuda && form.tipo === "I" && deuda.divisa && deuda.saldo !== null) {
-            if (Number(form.divisas[0]?.cantidad) > deuda.saldo + 0.001) {
-                return `El abono excede el saldo pendiente de la deuda (${formatearDineroDivisa(deuda.divisa.simbolo, deuda.saldo)}).`;
+        if (form.tipo === "I") {
+            for (const d of deudasLigadas) {
+                if (d.fecha && form.fecha < d.fecha) {
+                    return `El abono (${formatearFechaNumerica(fechaDeISO(form.fecha))}) no puede ser anterior a la deuda "${d.concepto}" (${formatearFechaNumerica(fechaDeISO(d.fecha))}). Corrige la fecha de la deuda en Deudas o la del movimiento.`;
+                }
+                const parte = repartido ? Number(d.monto) : totalMovimiento;
+                if (repartido && (Number.isNaN(parte) || parte <= 0)) return `Indica cuánto se abona a "${d.concepto}".`;
+                if (d.divisa && d.saldo !== null && parte > d.saldo + TOLERANCIA) {
+                    return `El abono a "${d.concepto}" excede su saldo pendiente (${formatearDineroDivisa(d.divisa.simbolo, d.saldo)}).`;
+                }
+            }
+            if (repartido && Math.abs(asignado - totalMovimiento) > TOLERANCIA) {
+                return `El reparto entre deudas (${formatearDineroDivisa("$", asignado)}) debe sumar el total del movimiento (${formatearDineroDivisa("$", totalMovimiento)}).`;
             }
         }
         return null;
@@ -244,8 +314,12 @@ function MovimientoForm({
                 divisa_id: item.divisa,
                 cantidad: Number(item.cantidad),
             })),
-            deuda_id: deuda?.id ?? null,
-            ...(deuda && deuda.id === null ? { nueva_deuda: { deudor_id: deuda.deudorId, concepto: deuda.concepto } } : {}),
+            aplicaciones: deudasLigadas
+                .filter((d) => d.id !== null)
+                .map((d) => ({ deuda_id: d.id as number, ...(repartido ? { monto: Number(d.monto) } : {}) })),
+            ...(deudasLigadas[0]?.id === null
+                ? { nueva_deuda: { deudor_id: deudasLigadas[0].deudorId, concepto: deudasLigadas[0].concepto } }
+                : {}),
         };
 
         setIsLoading(true);
@@ -269,7 +343,7 @@ function MovimientoForm({
             concepto: "",
             divisas: [{ divisa: divisas[0]?.id ?? 0, cantidad: "" }],
         }));
-        setDeuda(null);
+        setDeudasLigadas([]);
         setError(null);
         // El tipo siempre vuelve a "I": si ya estaba en "I" (ingresos consecutivos),
         // el useEffect que depende de form.tipo no se dispara de nuevo (mismo valor),
@@ -345,13 +419,13 @@ function MovimientoForm({
                                 <label className="form-label small text-muted mb-1 fw-bold">Tipo</label>
                                 <div className="btn-group w-100" role="group">
                                     <input type="radio" className="btn-check" id="btn-ingreso" autoComplete="off"
-                                        checked={form.tipo === "I"} onChange={() => { setForm({ ...form, tipo: "I" }); setDeuda(null); }} />
+                                        checked={form.tipo === "I"} onChange={() => { setForm({ ...form, tipo: "I" }); setDeudasLigadas([]); }} />
                                     <label className="btn btn-sm btn-outline-success text-nowrap" htmlFor="btn-ingreso">
                                         <i className="bi bi-arrow-up-circle me-1"></i> Ingreso
                                     </label>
 
                                     <input type="radio" className="btn-check" id="btn-egreso" autoComplete="off"
-                                        checked={form.tipo === "E"} onChange={() => { setForm({ ...form, tipo: "E" }); setDeuda(null); }} />
+                                        checked={form.tipo === "E"} onChange={() => { setForm({ ...form, tipo: "E" }); setDeudasLigadas([]); }} />
                                     <label className="btn btn-sm btn-outline-danger text-nowrap" htmlFor="btn-egreso">
                                         <i className="bi bi-arrow-down-circle me-1"></i> Egreso
                                     </label>
@@ -390,31 +464,82 @@ function MovimientoForm({
                         </div>
 
                         <div className="mb-3">
-                            {deuda ? (
-                                <div className="alert alert-info d-flex flex-wrap align-items-center gap-3 py-2 mb-0">
-                                    <i className="bi bi-person-lines-fill fs-5" aria-hidden="true"></i>
-                                    <div>
-                                        <div className="small text-body-secondary">
-                                            {form.tipo === "I" ? "Abono a deuda" : deuda.id === null ? "Cargo a nueva deuda" : "Cargo a deuda"}
-                                        </div>
-                                        <div className="fw-semibold">{deuda.deudor} — {deuda.concepto}</div>
+                            {deudasLigadas.length > 0 ? (
+                                <div className="alert alert-info py-2 mb-0">
+                                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                        <i className="bi bi-person-lines-fill fs-5" aria-hidden="true"></i>
+                                        <span className="small fw-semibold text-body-secondary">
+                                            {form.tipo === "E"
+                                                ? deudasLigadas[0].id === null ? "Cargo a nueva deuda" : "Cargo a deuda"
+                                                : repartido ? "Abono repartido entre deudas" : "Abono a deuda"}
+                                        </span>
+                                        {repartido && (
+                                            <span
+                                                className={`badge ms-auto border ${Math.abs(asignado - totalMovimiento) <= TOLERANCIA
+                                                    ? "bg-success-subtle text-success-emphasis border-success-subtle"
+                                                    : "bg-warning-subtle text-warning-emphasis border-warning-subtle"}`}
+                                            >
+                                                Asignado {formatearDineroDivisa(divisaDeudas?.simbolo ?? "$", asignado)} de{" "}
+                                                {formatearDineroDivisa(divisaDeudas?.simbolo ?? "$", totalMovimiento)}
+                                                {asignado < totalMovimiento - TOLERANCIA &&
+                                                    ` · faltan ${formatearDineroDivisa(divisaDeudas?.simbolo ?? "$", totalMovimiento - asignado)}`}
+                                                {asignado > totalMovimiento + TOLERANCIA &&
+                                                    ` · sobran ${formatearDineroDivisa(divisaDeudas?.simbolo ?? "$", asignado - totalMovimiento)}`}
+                                            </span>
+                                        )}
                                     </div>
-                                    {deuda.divisa && deuda.saldo !== null && (
-                                        <div>
-                                            <div className="small text-body-secondary">{form.tipo === "I" ? "Saldo pendiente" : "Debe actualmente"}</div>
-                                            <div className="fw-bold">
-                                                {formatearDineroDivisa(deuda.divisa.simbolo, deuda.saldo)} {deuda.divisa.codigo}
+                                    {deudasLigadas.map((d, indice) => (
+                                        <div key={d.id ?? `nueva-${indice}`} className="d-flex flex-wrap align-items-center gap-3 py-1 border-top border-info-subtle">
+                                            <div className="me-auto">
+                                                <span className="fw-semibold">{d.deudor} — {d.concepto}</span>
+                                                {d.fecha && (
+                                                    <span className={`small ms-2 ${form.tipo === "I" && form.fecha < d.fecha ? "text-danger fw-semibold" : "text-body-secondary"}`}>
+                                                        desde {formatearFechaNumerica(fechaDeISO(d.fecha))}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {d.divisa && d.saldo !== null && (
+                                                <div className="small text-nowrap">
+                                                    <span className="text-body-secondary">{form.tipo === "I" ? "Saldo " : "Debe "}</span>
+                                                    <span className="fw-bold">{formatearDineroDivisa(d.divisa.simbolo, d.saldo)} {d.divisa.codigo}</span>
+                                                </div>
+                                            )}
+                                            {repartido && (
+                                                <div className="input-group input-group-sm" style={{ width: "150px" }}>
+                                                    <span className="input-group-text">{d.divisa?.simbolo ?? "$"}</span>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control"
+                                                        min="0"
+                                                        max={d.saldo ?? undefined}
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        aria-label={`Abono a ${d.concepto}`}
+                                                        value={d.monto}
+                                                        onChange={(e) => cambiarMonto(indice, e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="d-flex gap-2">
+                                                {form.tipo === "E" && (
+                                                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setMostrarDeudas(true)}>
+                                                        Cambiar
+                                                    </button>
+                                                )}
+                                                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => quitarDeuda(indice)}>
+                                                    Quitar
+                                                </button>
                                             </div>
                                         </div>
+                                    ))}
+                                    {form.tipo === "I" && (
+                                        <div className="pt-1 border-top border-info-subtle">
+                                            <button type="button" className="btn btn-sm btn-link px-0" onClick={() => setMostrarDeudas(true)}>
+                                                <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                                Repartir con otra deuda
+                                            </button>
+                                        </div>
                                     )}
-                                    <div className="ms-auto d-flex gap-2">
-                                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setMostrarDeudas(true)}>
-                                            Cambiar
-                                        </button>
-                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setDeuda(null)}>
-                                            Quitar
-                                        </button>
-                                    </div>
                                 </div>
                             ) : (
                                 <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setMostrarDeudas(true)}>
@@ -438,8 +563,8 @@ function MovimientoForm({
                                                     <select
                                                         className="form-select form-select-sm"
                                                         value={item.divisa}
-                                                        disabled={!!deuda?.divisa}
-                                                        title={deuda?.divisa ? "El movimiento va en la divisa de la deuda" : undefined}
+                                                        disabled={!!divisaDeudas}
+                                                        title={divisaDeudas ? "El movimiento va en la divisa de la deuda" : undefined}
                                                         onChange={(e) => actualizarDivisa(index, "divisa", e.target.value)}
                                                         style={{ minWidth: "180px" }}
                                                     >
@@ -458,7 +583,7 @@ function MovimientoForm({
                                                             type="number"
                                                             className="form-control"
                                                             min="0"
-                                                            max={deuda && form.tipo === "I" && deuda.saldo !== null ? deuda.saldo : undefined}
+                                                            max={form.tipo === "I" && deudasLigadas.length === 1 && deudasLigadas[0].saldo !== null ? deudasLigadas[0].saldo : undefined}
                                                             step="0.01"
                                                             placeholder="0.00"
                                                             value={item.cantidad}
@@ -509,12 +634,22 @@ function MovimientoForm({
                 </form>
             )}
 
-            <SeleccionarDeudaModal
-                show={mostrarDeudas}
-                modo={form.tipo === "I" ? "abono" : "cargo"}
-                onClose={() => setMostrarDeudas(false)}
-                onSeleccionar={seleccionarDeuda}
-            />
+            {form.tipo === "I" ? (
+                <SelectorDeudasModal
+                    show={mostrarDeudas}
+                    yaAgregadas={deudasLigadas.flatMap((d) => (d.id === null ? [] : [d.id]))}
+                    divisaId={divisaDeudas?.id ?? null}
+                    onAgregar={agregarDeudas}
+                    onCerrar={() => setMostrarDeudas(false)}
+                />
+            ) : (
+                <SeleccionarDeudaModal
+                    show={mostrarDeudas}
+                    modo="cargo"
+                    onClose={() => setMostrarDeudas(false)}
+                    onSeleccionar={seleccionarDeuda}
+                />
+            )}
         </div>
     );
 }

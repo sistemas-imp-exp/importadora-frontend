@@ -7,3 +7,7 @@ export function formatearDineroDivisa(simbolo: string, valor: string | number): 
 export function fechaDeISO(iso: string): Date {
     return new Date(iso + "T12:00:00");
 }
+
+export function rutaDetalleDeuda(id: number): string {
+    return `/tesoreria/deudas/detalle/${id}`;
+}

@@ -26,7 +26,7 @@ export async function actualizarDeudor(id: number, deudor: DeudorRequest): Promi
     return data;
 }
 
-export async function descargarEstadoCuenta(deudor: Deudor, formato: "pdf" | "excel"): Promise<void> {
+export async function descargarEstadoCuenta(deudor: Pick<Deudor, "id">, formato: "pdf" | "excel"): Promise<void> {
     const pdf = formato === "pdf";
     await descargarBlob(
         `${URL_DEUDORES}${deudor.id}/estado-cuenta/${formato}/`,
