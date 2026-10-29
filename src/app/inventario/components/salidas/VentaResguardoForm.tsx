@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
-import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import { formatearKg } from "../../../../shared/utils/numeros";
 import { formatearDinero } from "../../utils/existencias";
+import { totalesPorProducto } from "../../utils/totalesProducto";
+import SelectorProductosModal from "./SelectorProductosModal";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Producto } from "../../interfaces/productos/Producto";
@@ -35,9 +36,9 @@ const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-se
 
 let contadorUid = 0;
 
-function lineaVacia(): LineaForm {
+function lineaDeProducto(productoId: number): LineaForm {
     return {
-        uid: ++contadorUid, producto_id: 0, cajas: "", total_kilos: "", precio_x_kilo: "", total_venta: "", notas: "",
+        uid: ++contadorUid, producto_id: productoId, cajas: "", total_kilos: "", precio_x_kilo: "", total_venta: "", notas: "",
         kilos_retirados: 0,
     };
 }
@@ -66,25 +67,14 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
     const [clienteId, setClienteId] = useState<number>(salida?.cliente?.id ?? 0);
     const [fecha, setFecha] = useState(salida?.fecha ?? "");
     const [nota, setNota] = useState(salida?.notas ?? "");
-    const [lineas, setLineas] = useState<LineaForm[]>(() => (salida ? lineasDesdeSalida(salida) : [lineaVacia()]));
+    const [lineas, setLineas] = useState<LineaForm[]>(() => (salida ? lineasDesdeSalida(salida) : []));
+    const [modalAbierto, setModalAbierto] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
     // Existencia de cada producto sumando todos sus lotes (sin importar IMP, factura ni lote).
-    const existenciaPorProducto = useMemo(() => {
-        const mapa = new Map<number, number>();
-        for (const e of existencias) mapa.set(e.producto_id, (mapa.get(e.producto_id) ?? 0) + Number(e.kilos_disponibles));
-        return mapa;
-    }, [existencias]);
-
-    const opcionesProducto = useMemo(
-        () => productos.map((p) => ({
-            value: p.id,
-            label: `${p.talla} ${p.tipo} · ${formatearKg(existenciaPorProducto.get(p.id) ?? 0)} kg en existencia`,
-            disabled: !p.activo,
-        })),
-        [productos, existenciaPorProducto]
-    );
+    const totales = useMemo(() => totalesPorProducto(productos, existencias), [productos, existencias]);
+    const totalDe = (productoId: number) => totales.find((t) => t.producto.id === productoId);
 
     function actualizar(uid: number, cambios: Partial<LineaForm>) {
         setLineas((actual) => actual.map((l) => {
@@ -104,9 +94,8 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
         if (!clienteId) return "Selecciona el cliente.";
         if (!fecha) return "La fecha es obligatoria.";
         if (!nota.trim()) return "La nota de venta es obligatoria.";
-        if (lineas.length === 0) return "Agrega al menos un producto.";
+        if (lineas.length === 0) return "Agrega al menos un producto con el buscador.";
         for (const [i, l] of lineas.entries()) {
-            if (!l.producto_id) return `Elige el producto de la línea ${i + 1}.`;
             if (!(Number(l.total_kilos) > 0)) return `Captura los kilos de la línea ${i + 1}.`;
             if (Number(l.total_kilos) < l.kilos_retirados) {
                 return `De la línea ${i + 1} ya se entregaron ${formatearKg(l.kilos_retirados)} kg: no puede quedar con menos.`;
@@ -144,7 +133,7 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                 setClienteId(0);
                 setFecha("");
                 setNota("");
-                setLineas([lineaVacia()]);
+                setLineas([]);
             }
         } catch {
             // El error ya se muestra vía toast en la vista; se conservan los datos para corregir.
@@ -203,12 +192,17 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                             Productos vendidos
                             <span className="badge text-bg-secondary">{lineas.length}</span>
                         </h6>
-                        <button type="button" className="btn btn-sm btn-outline-primary"
-                            onClick={() => setLineas((a) => [...a, lineaVacia()])}>
-                            <i className="bi bi-plus-lg me-1" aria-hidden="true"></i>Agregar producto
+                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setModalAbierto(true)}>
+                            <i className="bi bi-search me-1" aria-hidden="true"></i>Buscar productos
                         </button>
                     </div>
 
+                    {lineas.length === 0 ? (
+                        <div className="text-center text-body-secondary py-4 small">
+                            Aún no hay productos. Usa <strong>Buscar productos</strong> para elegir lo que compró el cliente,
+                            con la existencia total de cada uno.
+                        </div>
+                    ) : (
                     <div className="table-responsive">
                         <table className="table table-sm align-middle mb-0">
                             <thead>
@@ -225,31 +219,16 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                             <tbody>
                                 {lineas.map((l, i) => {
                                     const conRetiros = l.kilos_retirados > 0;
-                                    const existencia = l.producto_id ? existenciaPorProducto.get(l.producto_id) ?? 0 : null;
+                                    const total = totalDe(l.producto_id);
+                                    const existencia = total?.kilos ?? 0;
                                     return (
                                         <tr key={l.uid}>
                                             <td>
-                                                {conRetiros ? (
-                                                    // Ya se entregó parte: el producto ya no cambia.
-                                                    <div className="fw-semibold" title="Ya se entregó parte: el producto no se puede cambiar">
-                                                        {productos.find((p) => p.id === l.producto_id)?.talla}{" "}
-                                                        {productos.find((p) => p.id === l.producto_id)?.tipo}
-                                                    </div>
-                                                ) : (
-                                                    <SearchableSelect
-                                                        className="form-control form-control-sm"
-                                                        placeholder="Buscar producto..."
-                                                        options={opcionesProducto}
-                                                        value={l.producto_id || ""}
-                                                        onChange={(v) => actualizar(l.uid, { producto_id: v === "" ? 0 : v })}
-                                                    />
-                                                )}
-                                                {existencia !== null && (
-                                                    <div className={`small mt-1 ${existencia < Number(l.total_kilos || 0) ? "text-warning-emphasis" : "text-body-secondary"}`}>
-                                                        Existencia total: {formatearKg(existencia)} kg
-                                                        {conRetiros && ` · entregado ${formatearKg(l.kilos_retirados)} kg`}
-                                                    </div>
-                                                )}
+                                                <div className="fw-semibold">{total ? `${total.producto.talla} ${total.producto.tipo}` : "—"}</div>
+                                                <div className={`small ${existencia < Number(l.total_kilos || 0) ? "text-warning-emphasis" : "text-body-secondary"}`}>
+                                                    Existencia: {formatearKg(existencia)} kg · {total?.lotes ?? 0} lote(s)
+                                                    {conRetiros && ` · entregado ${formatearKg(l.kilos_retirados)} kg`}
+                                                </div>
                                             </td>
                                             <td>
                                                 <CampoNumero decimales={0} className="form-control form-control-sm text-end" aria-label={`Cajas línea ${i + 1}`}
@@ -279,7 +258,7 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                                             </td>
                                             <td>
                                                 <button type="button" className="btn btn-sm btn-outline-danger"
-                                                    disabled={conRetiros || lineas.length === 1}
+                                                    disabled={conRetiros}
                                                     title={conRetiros ? "Ya se entregó parte: no se puede quitar" : "Quitar producto"}
                                                     aria-label={`Quitar línea ${i + 1}`}
                                                     onClick={() => setLineas((a) => a.filter((x) => x.uid !== l.uid))}>
@@ -301,6 +280,7 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                             </tfoot>
                         </table>
                     </div>
+                    )}
                 </div>
 
                 {error && (
@@ -322,6 +302,19 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                     )}
                 </div>
             </form>
+
+            {modalAbierto && (
+                <SelectorProductosModal
+                    totales={totales}
+                    yaAgregados={lineas.map((l) => l.producto_id)}
+                    onAgregar={(elegidos) => {
+                        setLineas((a) => [...a, ...elegidos.map((t) => lineaDeProducto(t.producto.id))]);
+                        setModalAbierto(false);
+                        setError(null);
+                    }}
+                    onCerrar={() => setModalAbierto(false)}
+                />
+            )}
         </div>
     );
 }
