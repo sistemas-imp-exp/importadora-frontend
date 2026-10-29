@@ -275,3 +275,13 @@ export async function crearGastoOperativo(gasto: { por_kilo: number; vigente_des
     const { data } = await api.post<GastoOperativo>(`${BASE}utilidad/gastos-operativos/`, gasto);
     return data;
 }
+
+/** Los pagos de la pantalla (mismos filtros) en PDF o Excel. */
+export async function descargarPagos(formato: "pdf" | "excel", filtro: FiltroMovimientos): Promise<void> {
+    const params = new URLSearchParams();
+    for (const [clave, valor] of Object.entries(filtro)) {
+        if (valor !== undefined && valor !== "") params.set(clave, String(valor));
+    }
+    await descargarBlob(`${BASE}pagos/${formato}/`, formato === "pdf" ? PDF : XLSX,
+        `pagos_clientes.${formato === "pdf" ? "pdf" : "xlsx"}`, params);
+}

@@ -17,8 +17,9 @@ import { formatearFechaNumerica, hoyISO, primerYUltimoDiaDelMesActualISO } from 
 import CancelarMovimientoModal from "../components/CancelarMovimientoModal";
 import PagoForm from "../components/PagoForm";
 import { useCatalogosCartera } from "../hooks/useCatalogosCartera";
-import { TIPOS_PAGO, type ClienteCartera, type PagoCliente, type PagoClienteRequest } from "../interfaces/Cartera";
-import { actualizarPago, cancelarPago, crearPago, identificarPago, obtenerPagos } from "../services/cartera.service";
+import { TIPOS_PAGO, type ClienteCartera, type PagoCliente, type PagoClienteRequest, type TipoPago } from "../interfaces/Cartera";
+import { actualizarPago, cancelarPago, crearPago, descargarPagos, identificarPago, obtenerPagos } from "../services/cartera.service";
+import BotonDescargaExcel from "../../../shared/components/BotonDescargaExcel";
 import { dinero, fecha, rutaClienteCartera } from "../utils/cartera";
 
 const POR_PAGINA = 50;
@@ -67,6 +68,7 @@ function PagosView() {
     );
     const [aCancelar, setACancelar] = useState<PagoCliente | null>(null);
     const [aIdentificar, setAIdentificar] = useState<PagoCliente | null>(null);
+    const [descargandoPdf, setDescargandoPdf] = useState(false);
 
     async function cargar() {
         try {
@@ -122,6 +124,26 @@ function PagosView() {
         } catch (err) {
             mostrarToast("Error al guardar", obtenerMensajeError(err), "danger");
             throw err;
+        }
+    }
+
+    // La descarga lleva los mismos filtros que la tabla (pestaña, fechas, búsqueda, tipo, empresa y estado).
+    const filtroDescarga = pestana === "por_identificar"
+        ? { por_identificar: true, estado: "activo" as const, q: busqueda.trim() || undefined, tipo: (tipo || undefined) as TipoPago | undefined, empresa: Number(empresa) || undefined }
+        : {
+            por_identificar: false, desde: desde || undefined, hasta: hasta || undefined, cliente: clienteParam,
+            estado: (estado || undefined) as "activo" | "cancelado" | undefined, q: busqueda.trim() || undefined,
+            tipo: (tipo || undefined) as TipoPago | undefined, empresa: Number(empresa) || undefined,
+        };
+
+    async function descargarPdf() {
+        setDescargandoPdf(true);
+        try {
+            await descargarPagos("pdf", filtroDescarga);
+        } catch (err) {
+            mostrarToast("No se pudo descargar", obtenerMensajeError(err), "danger");
+        } finally {
+            setDescargandoPdf(false);
         }
     }
 
@@ -209,6 +231,12 @@ function PagosView() {
                             <span className="text-body-secondary">{filtrados.length} pago(s) · Total </span>
                             <span className="fw-bold">{dinero(total)}</span>
                         </span>
+                        <BotonDescargaExcel onDescargar={() => descargarPagos("excel", filtroDescarga)}
+                            titulo="Descargar en Excel los pagos con estos filtros" disabled={filtrados.length === 0} />
+                        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={filtrados.length === 0 || descargandoPdf}
+                            title="Descargar en PDF los pagos con estos filtros" onClick={descargarPdf}>
+                            <i className={`bi ${descargandoPdf ? "bi-hourglass-split" : "bi-file-earmark-pdf"} me-1`} aria-hidden="true"></i>PDF
+                        </button>
                     </div>
                     <div className="card-body p-0">
                         {error ? (
