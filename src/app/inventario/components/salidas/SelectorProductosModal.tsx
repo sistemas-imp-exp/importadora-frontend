@@ -14,7 +14,8 @@ interface Props {
 
 /**
  * Elegir uno o varios productos para una venta en resguardo, viendo cuánto hay de
- * cada uno en total: el cliente compra producto, no un lote en particular.
+ * cada uno en total. Sin proveedor, cámara ni lote: todavía no se sabe de dónde se
+ * va a surtir (eso se decide en cada retiro).
  */
 function SelectorProductosModal({ totales, yaAgregados, onAgregar, onCerrar }: Props) {
     const [busqueda, setBusqueda] = useState("");
@@ -25,8 +26,7 @@ function SelectorProductosModal({ totales, yaAgregados, onAgregar, onCerrar }: P
         const t = busqueda.trim().toLowerCase();
         return totales
             .filter((tp) => tp.producto.activo && (verSinExistencia || tp.kilos > 0))
-            .filter((tp) => !t || `${tp.producto.talla} ${tp.producto.tipo} ${tp.proveedores.join(" ")} ${tp.camaras.join(" ")}`
-                .toLowerCase().includes(t))
+            .filter((tp) => !t || `${tp.producto.talla} ${tp.producto.tipo}`.toLowerCase().includes(t))
             .sort((a, b) => `${a.producto.tipo} ${a.producto.talla}`.localeCompare(`${b.producto.tipo} ${b.producto.talla}`, "es", { numeric: true }));
     }, [totales, busqueda, verSinExistencia]);
 
@@ -47,7 +47,7 @@ function SelectorProductosModal({ totales, yaAgregados, onAgregar, onCerrar }: P
     return (
         <Modal show onClose={onCerrar} title="Agregar productos a la venta en resguardo" size="modal-xl">
             <div className="d-flex flex-wrap gap-3 align-items-center mb-3">
-                <BuscadorTabla valor={busqueda} onChange={setBusqueda} placeholder="Buscar por talla, tipo, proveedor o cámara..." />
+                <BuscadorTabla valor={busqueda} onChange={setBusqueda} placeholder="Buscar por talla o tipo..." />
                 <div className="form-check mb-0">
                     <input id="ver-sin-existencia" type="checkbox" className="form-check-input" checked={verSinExistencia}
                         onChange={(e) => setVerSinExistencia(e.target.checked)} />
@@ -68,15 +68,12 @@ function SelectorProductosModal({ totales, yaAgregados, onAgregar, onCerrar }: P
                             <th>Producto</th>
                             <th className="text-end">Kg en existencia</th>
                             <th className="text-end">Cajas</th>
-                            <th className="text-end">Lotes</th>
-                            <th>Proveedores</th>
-                            <th>Cámaras</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filtrados.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="text-center text-body-secondary py-4">Ningún producto coincide con la búsqueda.</td>
+                                <td colSpan={4} className="text-center text-body-secondary py-4">Ningún producto coincide con la búsqueda.</td>
                             </tr>
                         ) : filtrados.map((tp) => {
                             const agregado = yaAgregados.includes(tp.producto.id);
@@ -97,9 +94,6 @@ function SelectorProductosModal({ totales, yaAgregados, onAgregar, onCerrar }: P
                                     </td>
                                     <td className={`text-end fw-bold ${tp.kilos > 0 ? "" : "text-body-secondary"}`}>{formatearKg(tp.kilos)}</td>
                                     <td className="text-end">{tp.cajas.toLocaleString("es-MX")}</td>
-                                    <td className="text-end">{tp.lotes}</td>
-                                    <td className="small text-wrap">{tp.proveedores.join(", ") || "—"}</td>
-                                    <td className="small text-wrap">{tp.camaras.join(", ") || "—"}</td>
                                 </tr>
                             );
                         })}

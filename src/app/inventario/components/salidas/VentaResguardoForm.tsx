@@ -226,7 +226,7 @@ function VentaResguardoForm({ clientes, productos, existencias, salida, onGuarda
                                             <td>
                                                 <div className="fw-semibold">{total ? `${total.producto.talla} ${total.producto.tipo}` : "—"}</div>
                                                 <div className={`small ${existencia < Number(l.total_kilos || 0) ? "text-warning-emphasis" : "text-body-secondary"}`}>
-                                                    Existencia: {formatearKg(existencia)} kg · {total?.lotes ?? 0} lote(s)
+                                                    Existencia: {formatearKg(existencia)} kg · {(total?.cajas ?? 0).toLocaleString("es-MX")} cajas
                                                     {conRetiros && ` · entregado ${formatearKg(l.kilos_retirados)} kg`}
                                                 </div>
                                             </td>
