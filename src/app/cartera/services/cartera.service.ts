@@ -178,3 +178,100 @@ export async function descargarReporteSaldos(formato: "pdf" | "excel", filtro: F
         params,
     );
 }
+
+// --- Utilidad real ----------------------------------------------------------
+
+export type EstadoUtilidad = "completa" | "sin_precio" | "sin_costo";
+
+/** Una línea de venta como en la hoja Registro del área. */
+export interface FilaUtilidad {
+    linea_id: number;
+    fecha: string;
+    lote: string;
+    nota: string;
+    folio_salida: string;
+    proveedor: string;
+    cliente: string;
+    producto: string;
+    kilos: string;
+    precio: string | null;
+    venta: string | null;
+    /** El capturado por Cartera o, si falta, el del lote (costo_capturado = false). */
+    costo_unitario: string | null;
+    costo_capturado: boolean;
+    costo: string | null;
+    utilidad: string | null;
+    margen: string | null;
+    /** Gasto operativo vigente en la fecha de la venta. */
+    gasto_por_kilo: string;
+    estado: EstadoUtilidad;
+}
+
+export interface ResumenUtilidad {
+    lineas: number;
+    kilos: string;
+    venta: string;
+    costo: string;
+    utilidad: string;
+    margen: string | null;
+    gasto_operativo: string;
+    utilidad_real: string;
+    margen_real: string | null;
+    sin_precio: number;
+    sin_costo: number;
+    costo_propuesto: number;
+}
+
+export interface UtilidadReal {
+    desde: string;
+    hasta: string;
+    gasto_por_kilo: string;
+    filas: FilaUtilidad[];
+    resumen: ResumenUtilidad;
+}
+
+export interface FiltroUtilidad {
+    desde: string;
+    hasta: string;
+    cliente?: number;
+}
+
+export interface GastoOperativo {
+    id: number;
+    por_kilo: string;
+    vigente_desde: string;
+    usuario: string | null;
+    creado: string;
+}
+
+export async function obtenerUtilidadReal(filtro: FiltroUtilidad): Promise<UtilidadReal> {
+    const { data } = await api.get<UtilidadReal>(`${BASE}utilidad/`, { params: filtro });
+    return data;
+}
+
+export async function descargarUtilidadReal(filtro: FiltroUtilidad): Promise<void> {
+    const params = new URLSearchParams({ desde: filtro.desde, hasta: filtro.hasta });
+    if (filtro.cliente) params.set("cliente", String(filtro.cliente));
+    await descargarBlob(`${BASE}utilidad/excel/`, XLSX, `utilidad_real_${filtro.desde}_${filtro.hasta}.xlsx`, params);
+}
+
+/** Costo por venta; null vuelve al propuesto del lote. */
+export async function guardarCostosVenta(costos: { linea_id: number; costo_unitario: number | null }[]): Promise<number> {
+    const { data } = await api.post<{ cambios: number }>(`${BASE}utilidad/costos/`, { costos });
+    return data.cambios;
+}
+
+export async function obtenerHistorialCosto(lineaId: number): Promise<{ fecha: string; anterior: string | null; nuevo: string | null; usuario: string }[]> {
+    const { data } = await api.get(`${BASE}utilidad/costos/${lineaId}/historial/`);
+    return data;
+}
+
+export async function obtenerGastosOperativos(): Promise<GastoOperativo[]> {
+    const { data } = await api.get<GastoOperativo[]>(`${BASE}utilidad/gastos-operativos/`);
+    return data;
+}
+
+export async function crearGastoOperativo(gasto: { por_kilo: number; vigente_desde: string }): Promise<GastoOperativo> {
+    const { data } = await api.post<GastoOperativo>(`${BASE}utilidad/gastos-operativos/`, gasto);
+    return data;
+}

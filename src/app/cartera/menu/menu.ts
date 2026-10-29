@@ -34,6 +34,11 @@ export const carteraMenu: SidebarMenuItem[] = [
                 icon: "bi bi-safe",
             },
             {
+                label: "Utilidad real",
+                to: "/cartera/utilidad",
+                icon: "bi bi-graph-up-arrow",
+            },
+            {
                 label: "Reportes",
                 icon: "bi bi-file-earmark-bar-graph",
                 children: [
