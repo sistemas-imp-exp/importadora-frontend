@@ -143,7 +143,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                             // Sin precio en alguna línea el total estaría incompleto: se avisa en vez de sumar de menos.
                             const sinPrecio = salida.detalles.some((d) => !d.total_venta);
                             const totalVenta = salida.detalles.reduce((acc, d) => acc + Number(d.total_venta ?? 0), 0);
-                            const conResguardo = salida.detalles.some((d) => Number(d.kilos_resguardo) > 0);
+                            const conResguardo = salida.es_resguardo;
                             // Un retiro de resguardo se registra y cancela desde Resguardos; una venta
                             // cuyo resguardo ya se empezó a entregar no se puede eliminar.
                             const conRetiros = salida.detalles.some((d) => Number(d.kilos_retirados) > 0);
@@ -188,9 +188,9 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                                 <div className="small fw-normal">
                                                     <span
                                                         className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle"
-                                                        title="El cliente dejó parte de esta venta guardada en la cámara"
+                                                        title="Venta en resguardo: el producto se queda guardado y se entrega con retiros"
                                                     >
-                                                        <i className="bi bi-safe me-1" aria-hidden="true"></i>Resguardo
+                                                        <i className="bi bi-safe me-1" aria-hidden="true"></i>En resguardo
                                                     </span>
                                                 </div>
                                             )}

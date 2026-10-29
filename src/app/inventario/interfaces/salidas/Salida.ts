@@ -4,7 +4,8 @@ import type { Producto } from "../productos/Producto";
 export interface SalidaDetalleApi {
     id: number;
     producto: Producto;
-    entrada_detalle: number;
+    // null en una venta en resguardo: se vende por producto, sin lote.
+    entrada_detalle: number | null;
     camara: number | null;
     cajas: number;
     total_kilos: string;
@@ -18,8 +19,7 @@ export interface SalidaDetalleApi {
     proveedor_nombre: string;
     // Diferencia que Cartera encontró contra la nota en papel; se va sola al corregir la línea.
     aviso_cartera?: { comentario: string; usuario: string; fecha: string } | null;
-    // Parte de lo vendido que el cliente deja guardado (se cobra todo; del lote
-    // solo sale lo entregado) y lo que ya se llevó de eso con retiros.
+    // En una venta en resguardo, todo lo vendido; y lo que ya se llevó con retiros.
     cajas_resguardo: number;
     kilos_resguardo: string;
     kilos_retirados: string;
@@ -29,8 +29,10 @@ export interface SalidaDetalleApi {
 
 export interface SalidaApi {
     id: number;
-    // null en una venta que se quedó completa en resguardo: no salió de cámara.
+    // null en una venta en resguardo: no sale de cámara.
     folio_de_salida: string | null;
+    // Venta por producto que el cliente deja guardada; se entrega con retiros.
+    es_resguardo: boolean;
     // null cuando la salida es la mitad "salida" de un Movimiento entre cámaras,
     // no una venta real — ver MovimientoCamaraCrearSerializer en el backend.
     cliente: Cliente | null;
@@ -53,7 +55,8 @@ export interface CrearSalidaLineaRequest {
     // Ausente = línea nueva.
     id?: number;
     producto_id: number;
-    entrada_detalle: number;
+    // Ausente en una venta en resguardo (sin lote).
+    entrada_detalle?: number;
     cajas: number;
     total_kilos: number;
     // factura_proveedor y camara NO se envían: el backend los calcula heredándolos
@@ -62,11 +65,11 @@ export interface CrearSalidaLineaRequest {
     precio_x_kilo: number | null;
     total_venta: number | null;
     notas: string;
-    cajas_resguardo: number;
-    kilos_resguardo: number;
 }
 
 export interface CrearSalidaRequest {
+    // true: venta en resguardo (por producto, sin lote ni folio de salida).
+    es_resguardo: boolean;
     folio_de_salida: string;
     cliente_id: number;
     fecha: string;

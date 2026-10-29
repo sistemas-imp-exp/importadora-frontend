@@ -4,6 +4,9 @@ import { useSearchParams } from "react-router-dom";
 import { actualizarSalida, crearSalida, descargarSalidasExcel, eliminarSalida, obtenerSalidas } from "../../services/salida.service";
 import { obtenerClientes } from "../../services/cliente.service";
 import { obtenerCamaras } from "../../services/camara.service";
+import { obtenerProductos } from "../../services/producto.service";
+import type { Producto } from "../../interfaces/productos/Producto";
+import VentaResguardoForm from "../../components/salidas/VentaResguardoForm";
 import { obtenerExistencias } from "../../services/existencia.service";
 import { referenciaSalida, type SalidaApi, type CrearSalidaRequest } from "../../interfaces/salidas/Salida";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
@@ -31,6 +34,9 @@ function SalidasView() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [existencias, setExistencias] = useState<ExistenciaApi[]>([]);
+    const [productos, setProductos] = useState<Producto[]>([]);
+    // Tipo de la salida nueva: de cámara (por lote, con folio) o venta en resguardo (por producto).
+    const [tipoNueva, setTipoNueva] = useState<"camara" | "resguardo">("camara");
     const [total, setTotal] = useState(0);
     // Los avisos de Cartera enlazan con ?busqueda=<folio>.
     const [searchParams] = useSearchParams();
@@ -83,16 +89,18 @@ function SalidasView() {
 
     async function cargarApoyo() {
         try {
-            const [datosClientes, datosCamaras, datosExistencias] = await Promise.all([
+            const [datosClientes, datosCamaras, datosExistencias, datosProductos] = await Promise.all([
                 obtenerClientes(),
                 obtenerCamaras(),
                 // Solo los lotes con existencia (más los de la salida en edición):
                 // antes esta pantalla bajaba todas las entradas para armar el modal.
                 obtenerExistencias(salidaEditando?.id),
+                obtenerProductos(),
             ]);
             setClientes(datosClientes);
             setCamaras(datosCamaras);
             setExistencias(datosExistencias);
+            setProductos(datosProductos);
         } catch (error) {
             mostrarToast("Error al cargar", obtenerMensajeError(error), "danger");
         }
@@ -160,7 +168,34 @@ function SalidasView() {
                     <div className="alert alert-danger" role="alert">{error}</div>
                 ) : (
                     <>
-                        {editable && (
+                        {editable && !salidaEditando && (
+                            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                <span className="small fw-semibold text-uppercase text-body-secondary" id="tipo-salida">Tipo de salida</span>
+                                <div className="btn-group btn-group-sm" role="group" aria-labelledby="tipo-salida">
+                                    <button type="button" aria-pressed={tipoNueva === "camara"}
+                                        className={`btn ${tipoNueva === "camara" ? "btn-primary" : "btn-outline-secondary"}`}
+                                        onClick={() => setTipoNueva("camara")}>
+                                        <i className="bi bi-box-arrow-up me-1" aria-hidden="true"></i>Salida de cámara
+                                    </button>
+                                    <button type="button" aria-pressed={tipoNueva === "resguardo"}
+                                        className={`btn ${tipoNueva === "resguardo" ? "btn-primary" : "btn-outline-secondary"}`}
+                                        onClick={() => setTipoNueva("resguardo")}>
+                                        <i className="bi bi-safe me-1" aria-hidden="true"></i>Venta en resguardo
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {editable && ((salidaEditando ? salidaEditando.es_resguardo : tipoNueva === "resguardo") ? (
+                            <VentaResguardoForm
+                                key={salidaEditando?.id ?? "nueva-resguardo"}
+                                clientes={clientes}
+                                productos={productos}
+                                existencias={existencias}
+                                salida={salidaEditando}
+                                onGuardar={guardarSalida}
+                                onCancelar={() => setSalidaEditando(null)}
+                            />
+                        ) : (
                             <SalidaForm
                                 key={salidaEditando?.id ?? "nueva"}
                                 clientes={clientes}
@@ -169,7 +204,7 @@ function SalidasView() {
                                 onGuardar={guardarSalida}
                                 onCancelar={() => setSalidaEditando(null)}
                             />
-                        )}
+                        ))}
 
                         <div className="card card-outline card-primary">
                             <div className="card-header d-flex flex-wrap gap-2 align-items-center">

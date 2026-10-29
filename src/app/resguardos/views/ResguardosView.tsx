@@ -154,9 +154,9 @@ function ResguardosView({ area }: Props) {
                 <div className="alert alert-light border small py-2 d-flex gap-2 align-items-start" role="note">
                     <i className="bi bi-info-circle text-body-secondary mt-1" aria-hidden="true"></i>
                     <span>
-                        El resguardo se marca en la salida de venta (columna <strong>Resguardo</strong>): se cobra completo y
-                        de la cámara solo sale lo entregado. Aquí se registra lo que el cliente se va llevando, del mismo
-                        producto aunque sea de otro proveedor.
+                        La venta se registra en Salidas como <strong>Venta en resguardo</strong>: por producto, sin lote ni
+                        folio de salida, y se cobra completa. Aquí se registra lo que el cliente se va llevando, de los lotes
+                        que haya de ese producto (un retiro puede juntar varios lotes y proveedores).
                     </span>
                 </div>
 

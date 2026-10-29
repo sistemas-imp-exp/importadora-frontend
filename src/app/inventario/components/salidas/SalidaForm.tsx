@@ -30,12 +30,6 @@ interface LineaForm {
     precio_x_kilo: string;
     total_venta: string;
     notas: string;
-    // Parte de lo vendido que el cliente deja guardado: se cobra todo, pero del
-    // lote solo sale lo entregado (cajas/kilos − resguardo).
-    cajas_resguardo: string;
-    kilos_resguardo: string;
-    // Lo ya entregado de ese resguardo (retiros): el resguardo no puede bajar de ahí.
-    kilos_retirados: number;
 }
 
 const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-secondary mb-1";
@@ -48,26 +42,12 @@ type Cabecera = ReturnType<typeof cabeceraVacia>;
 interface ErrorLinea {
     cajas?: string;
     total_kilos?: string;
-    resguardo?: string;
 }
 
-/** Lo que sale físicamente del lote en esta línea: lo vendido menos lo que queda en resguardo. */
-function entregado(linea: LineaForm): { cajas: number; kilos: number } {
-    return {
-        cajas: (Number(linea.cajas) || 0) - (Number(linea.cajas_resguardo) || 0),
-        kilos: (Number(linea.total_kilos) || 0) - (Number(linea.kilos_resguardo) || 0),
-    };
-}
-
-/**
- * Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta.
- * Sin folio solo si no sale nada de la cámara (todo queda en resguardo).
- */
-function validarCabeceraCampos(cabecera: Cabecera, todoEnResguardo: boolean): Partial<Record<keyof Cabecera, string>> {
+/** Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta. */
+function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecera, string>> {
     const errores: Partial<Record<keyof Cabecera, string>> = {};
-    if (!cabecera.folio_de_salida.trim() && !todoEnResguardo) {
-        errores.folio_de_salida = "El folio de salida es obligatorio si sale producto de la cámara.";
-    }
+    if (!cabecera.folio_de_salida.trim()) errores.folio_de_salida = "El folio de salida es obligatorio.";
     if (!cabecera.cliente_id) errores.cliente_id = "Selecciona un cliente.";
     if (!cabecera.fecha) errores.fecha = "La fecha es obligatoria.";
     if (!cabecera.notas.trim()) errores.notas = "La nota de salida es obligatoria.";
@@ -77,22 +57,15 @@ function validarCabeceraCampos(cabecera: Cabecera, todoEnResguardo: boolean): Pa
 function validarLineaCampos(linea: LineaForm, lote: LoteDisponible | null): ErrorLinea {
     const errores: ErrorLinea = {};
     // 0 es válido: es peso suelto de una caja ya abierta, no una venta por caja.
-    const sale = entregado(linea);
     if (linea.cajas === "" || Number(linea.cajas) < 0) {
         errores.cajas = "Ingresa las cajas (0 si es peso suelto).";
-    } else if (lote && sale.cajas > lote.cajasDisponibles) {
-        errores.cajas = `Solo hay ${lote.cajasDisponibles} disponibles para entregar.`;
+    } else if (lote && Number(linea.cajas) > lote.cajasDisponibles) {
+        errores.cajas = `Solo hay ${lote.cajasDisponibles} disponibles.`;
     }
     if (!linea.total_kilos || Number(linea.total_kilos) <= 0) {
         errores.total_kilos = "Ingresa el total de kilos.";
-    } else if (lote && sale.kilos > Number(lote.kilosDisponibles)) {
-        errores.total_kilos = `Solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles para entregar.`;
-    }
-    const kilosResguardo = Number(linea.kilos_resguardo) || 0;
-    if (sale.kilos < 0 || sale.cajas < 0) {
-        errores.resguardo = "El resguardo no puede ser mayor que lo vendido.";
-    } else if (kilosResguardo < linea.kilos_retirados) {
-        errores.resguardo = `Ya se entregaron ${formatearKg(linea.kilos_retirados)} kg de este resguardo.`;
+    } else if (lote && Number(linea.total_kilos) > Number(lote.kilosDisponibles)) {
+        errores.total_kilos = `Solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles.`;
     }
     return errores;
 }
@@ -110,16 +83,14 @@ function cabeceraDesdeSalida(salida?: SalidaApi | null): Cabecera {
 function lineasDesdeSalida(salida: SalidaApi): LineaForm[] {
     return salida.detalles.map((d) => ({
         id: d.id,
-        entrada_detalle: d.entrada_detalle,
+        // Una salida de cámara siempre tiene lote (las ventas en resguardo van en su propio formulario).
+        entrada_detalle: d.entrada_detalle ?? 0,
         producto_id: d.producto.id,
         cajas: String(d.cajas),
         total_kilos: d.total_kilos,
         precio_x_kilo: d.precio_x_kilo ?? "",
         total_venta: d.total_venta ?? "",
         notas: d.notas ?? "",
-        cajas_resguardo: d.cajas_resguardo ? String(d.cajas_resguardo) : "",
-        kilos_resguardo: Number(d.kilos_resguardo) ? d.kilos_resguardo : "",
-        kilos_retirados: Number(d.kilos_retirados) || 0,
     }));
 }
 
@@ -134,17 +105,17 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     const [erroresCabecera, setErroresCabecera] = useState<Partial<Record<keyof Cabecera, string>>>({});
     const [erroresLineas, setErroresLineas] = useState<Record<number, ErrorLinea>>({});
 
-    // Al editar, esta salida ya tenía tomadas ciertas cajas y kilos de sus lotes
-    // (solo lo entregado: el resguardo sigue en la cámara): se le suman de vuelta
-    // a lo disponible, porque al guardar se reemplazan, no se suman.
+    // Al editar, esta salida ya tenía reservadas ciertas cajas y kilos de sus lotes:
+    // se le suman de vuelta a lo disponible, porque al guardar se reemplazan, no se suman.
     const yaReservado = useMemo(() => {
         const mapa: Record<number, Reservado> = {};
         if (salida) {
             for (const d of salida.detalles) {
+                if (d.entrada_detalle === null) continue;
                 const actual = mapa[d.entrada_detalle] ?? { cajas: 0, kilos: 0 };
                 mapa[d.entrada_detalle] = {
-                    cajas: actual.cajas + d.cajas - d.cajas_resguardo,
-                    kilos: actual.kilos + Number(d.total_kilos) - Number(d.kilos_resguardo),
+                    cajas: actual.cajas + d.cajas,
+                    kilos: actual.kilos + Number(d.total_kilos),
                 };
             }
         }
@@ -177,17 +148,12 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 if (i !== index) return linea;
                 const nueva = { ...linea, ...cambios };
 
-                const pesoPorCaja = Number(loteDe(nueva.entrada_detalle)?.pesoPorCaja);
                 if ("cajas" in cambios) {
                     const cajas = Number(nueva.cajas);
+                    const pesoPorCaja = Number(loteDe(nueva.entrada_detalle)?.pesoPorCaja);
                     if (cajas > 0 && pesoPorCaja > 0) {
                         nueva.total_kilos = (cajas * pesoPorCaja).toFixed(3);
                     }
-                }
-                if ("cajas_resguardo" in cambios) {
-                    const cajas = Number(nueva.cajas_resguardo);
-                    if (cajas > 0 && pesoPorCaja > 0) nueva.kilos_resguardo = (cajas * pesoPorCaja).toFixed(3);
-                    if (nueva.cajas_resguardo === "") nueva.kilos_resguardo = "";
                 }
 
                 // Las cajas también cambian los kilos (arriba): sin recalcular aquí,
@@ -203,16 +169,14 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
             })
         );
 
-        const tocaResguardo = "cajas_resguardo" in cambios || "kilos_resguardo" in cambios;
-        if ("cajas" in cambios || "total_kilos" in cambios || tocaResguardo) {
+        if ("cajas" in cambios || "total_kilos" in cambios) {
             const entradaDetalle = lineas[index]?.entrada_detalle;
             if (entradaDetalle !== undefined) {
                 setErroresLineas((actual) => {
                     if (!actual[entradaDetalle]) return actual;
                     const copiaLinea = { ...actual[entradaDetalle] };
-                    if ("cajas" in cambios || tocaResguardo) delete copiaLinea.cajas;
-                    if ("total_kilos" in cambios || tocaResguardo) delete copiaLinea.total_kilos;
-                    if (tocaResguardo || "cajas" in cambios || "total_kilos" in cambios) delete copiaLinea.resguardo;
+                    if ("cajas" in cambios) delete copiaLinea.cajas;
+                    if ("total_kilos" in cambios) delete copiaLinea.total_kilos;
                     return { ...actual, [entradaDetalle]: copiaLinea };
                 });
             }
@@ -220,21 +184,18 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     }
 
     /**
-     * Las cajas se topan a la existencia del lote (más lo que quede en resguardo,
-     * que no sale de la cámara). Se avisa en vez de recortar en silencio: capear
-     * sin decirlo hace creer que se registró lo tecleado.
+     * Las cajas se topan a la existencia del lote. Se avisa en vez de recortar
+     * en silencio: capear sin decirlo hace creer que se registró lo tecleado.
      */
     function cambiarCajas(index: number, valor: string) {
-        const linea = lineas[index];
-        const lote = loteDe(linea.entrada_detalle);
-        const maximo = lote ? lote.cajasDisponibles + (Number(linea.cajas_resguardo) || 0) : Infinity;
+        const lote = loteDe(lineas[index].entrada_detalle);
 
-        if (lote && Number(valor) > maximo) {
+        if (lote && Number(valor) > lote.cajasDisponibles) {
             setError(
                 `${lote.productoNombre} (lote ${lote.loteProveedor}): ` +
-                `solo hay ${lote.cajasDisponibles} cajas disponibles para entregar, se ajustó a ese máximo.`
+                `solo hay ${lote.cajasDisponibles} cajas disponibles, se ajustó a ese máximo.`
             );
-            actualizarLinea(index, { cajas: String(maximo) });
+            actualizarLinea(index, { cajas: String(lote.cajasDisponibles) });
             return;
         }
 
@@ -244,16 +205,14 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
 
     /** Mismo criterio que cambiarCajas, pero contra los kilos disponibles del lote. */
     function cambiarTotalKilos(index: number, valor: string) {
-        const linea = lineas[index];
-        const lote = loteDe(linea.entrada_detalle);
-        const maximo = lote ? Number(lote.kilosDisponibles) + (Number(linea.kilos_resguardo) || 0) : Infinity;
+        const lote = loteDe(lineas[index].entrada_detalle);
 
-        if (lote && Number(valor) > maximo) {
+        if (lote && Number(valor) > Number(lote.kilosDisponibles)) {
             setError(
                 `${lote.productoNombre} (lote ${lote.loteProveedor}): ` +
-                `solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles para entregar, se ajustó a ese máximo.`
+                `solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles, se ajustó a ese máximo.`
             );
-            actualizarLinea(index, { total_kilos: maximo.toFixed(3) });
+            actualizarLinea(index, { total_kilos: lote.kilosDisponibles });
             return;
         }
 
@@ -275,9 +234,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 precio_x_kilo: lote.precioVentaPlaneado ?? "",
                 total_venta: "",
                 notas: "",
-                cajas_resguardo: "",
-                kilos_resguardo: "",
-                kilos_retirados: 0,
             })),
         ]);
         setModalAbierto(false);
@@ -288,14 +244,8 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         setLineas((actual) => actual.filter((_, i) => i !== index));
     }
 
-    // Nada sale de la cámara: la venta queda completa en resguardo y no lleva folio de salida.
-    const todoEnResguardo = lineas.length > 0 && lineas.every((l) => {
-        const sale = entregado(l);
-        return sale.kilos === 0 && sale.cajas === 0;
-    });
-
     function validar(): string | null {
-        const erroresCab = validarCabeceraCampos(cabecera, todoEnResguardo);
+        const erroresCab = validarCabeceraCampos(cabecera);
         setErroresCabecera(erroresCab);
         if (Object.keys(erroresCab).length > 0) {
             return "Revisa los campos marcados en rojo en los datos de la salida.";
@@ -326,6 +276,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         }
 
         const payload: CrearSalidaRequest = {
+            es_resguardo: false,
             folio_de_salida: cabecera.folio_de_salida.trim().toUpperCase(),
             cliente_id: cabecera.cliente_id,
             fecha: cabecera.fecha,
@@ -339,8 +290,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 precio_x_kilo: linea.precio_x_kilo === "" ? null : Number(linea.precio_x_kilo),
                 total_venta: linea.total_venta === "" ? null : Number(linea.total_venta),
                 notas: linea.notas.trim().toUpperCase(),
-                cajas_resguardo: Number(linea.cajas_resguardo) || 0,
-                kilos_resguardo: Number(linea.kilos_resguardo) || 0,
             })),
         };
 
@@ -363,7 +312,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     const totalCajas = lineas.reduce((acc, l) => acc + (Number(l.cajas) || 0), 0);
     const totalKilos = lineas.reduce((acc, l) => acc + (Number(l.total_kilos) || 0), 0);
     const totalVenta = lineas.reduce((acc, l) => acc + (Number(l.total_venta) || 0), 0);
-    const totalResguardo = lineas.reduce((acc, l) => acc + (Number(l.kilos_resguardo) || 0), 0);
 
     return (
         <div className={`card card-outline mb-3 ${salida ? "card-warning" : "card-primary"}`}>
@@ -385,12 +333,10 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                         <div className="row g-3">
                             <div className="col-12 col-sm-6 col-lg-3">
                                 <label className={CLASE_ETIQUETA}>
-                                    Folio de salida {!todoEnResguardo && <span className="text-danger">*</span>}
+                                    Folio de salida <span className="text-danger">*</span>
                                 </label>
                                 <input
                                     className={`form-control form-control-sm ${erroresCabecera.folio_de_salida ? "is-invalid" : ""}`}
-                                    placeholder={todoEnResguardo ? "No aplica: no sale de cámara" : undefined}
-                                    title={todoEnResguardo ? "Todo queda en resguardo: no hay salida de cámara. Cada retiro llevará su folio." : undefined}
                                     value={cabecera.folio_de_salida}
                                     onChange={(e) => actualizarCabecera({ folio_de_salida: e.target.value })}
                                 />
@@ -467,8 +413,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                             <div className="small text-body-secondary mb-2">
                                 <i className="bi bi-info-circle me-1" aria-hidden="true"></i>
                                 Deja <strong>Cajas</strong> en 0 si vendes peso suelto de una caja ya abierta,
-                                sin sacar una caja completa. Si el cliente deja parte guardada, captúrala en
-                                {" "}<strong>Resguardo</strong>: se cobra todo y de la cámara solo sale lo entregado.
+                                sin sacar una caja completa.
                             </div>
                             <div className="table-responsive">
                                 <table className="table table-sm align-middle mb-0">
@@ -482,9 +427,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                             <th className="text-end" style={{ minWidth: "95px" }}>Peso/caja</th>
                                             <th className="text-end" style={{ minWidth: "90px" }}>Cajas</th>
                                             <th className="text-end" style={{ minWidth: "110px" }}>Total kilos</th>
-                                            <th className="text-end" style={{ minWidth: "150px" }} title="Lo que el cliente deja guardado: cajas y kg">
-                                                Resguardo
-                                            </th>
                                             <th className="text-end" style={{ minWidth: "115px" }}>Precio/kg</th>
                                             <th className="text-end" style={{ minWidth: "120px" }}>Total venta</th>
                                             <th style={{ minWidth: "150px" }}>Nota</th>
@@ -494,7 +436,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                     <tbody>
                                         {lineas.map((linea, index) => {
                                             const lote = loteDe(linea.entrada_detalle);
-                                            const excedida = lote !== null && entregado(linea).cajas > lote.cajasDisponibles;
+                                            const excedida = lote !== null && Number(linea.cajas) > lote.cajasDisponibles;
                                             const erroresLinea = erroresLineas[linea.entrada_detalle] ?? {};
                                             return (
                                                 <tr key={linea.entrada_detalle} className={excedida ? "table-danger" : undefined}>
@@ -538,35 +480,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                                         />
                                                         {erroresLinea.total_kilos && (
                                                             <div className="invalid-feedback d-block">{erroresLinea.total_kilos}</div>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <div className="d-flex gap-1">
-                                                            <CampoNumero
-                                                                decimales={0}
-                                                                className={`form-control form-control-sm text-end ${erroresLinea.resguardo ? "is-invalid" : ""}`}
-                                                                style={{ maxWidth: "4.5rem" }}
-                                                                placeholder="cj"
-                                                                aria-label="Cajas en resguardo"
-                                                                value={linea.cajas_resguardo}
-                                                                onChange={(valor) => actualizarLinea(index, { cajas_resguardo: valor })}
-                                                            />
-                                                            <CampoNumero
-                                                                decimales={3}
-                                                                className={`form-control form-control-sm text-end ${erroresLinea.resguardo ? "is-invalid" : ""}`}
-                                                                placeholder="kg"
-                                                                aria-label="Kilos en resguardo"
-                                                                value={linea.kilos_resguardo}
-                                                                onChange={(valor) => actualizarLinea(index, { kilos_resguardo: valor })}
-                                                            />
-                                                        </div>
-                                                        {linea.kilos_retirados > 0 && (
-                                                            <div className="small text-body-secondary mt-1">
-                                                                Entregado: {formatearKg(linea.kilos_retirados)} kg
-                                                            </div>
-                                                        )}
-                                                        {erroresLinea.resguardo && (
-                                                            <div className="invalid-feedback d-block">{erroresLinea.resguardo}</div>
                                                         )}
                                                     </td>
                                                     <td>
@@ -619,9 +532,6 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                             </td>
                                             <td className="text-end fw-bold">{totalCajas}</td>
                                             <td className="text-end fw-bold">{formatearKg(totalKilos)} kg</td>
-                                            <td className="text-end fw-semibold">
-                                                {totalResguardo > 0 ? `${formatearKg(totalResguardo)} kg` : ""}
-                                            </td>
                                             <td></td>
                                             <td className="text-end fw-bold">${formatearDinero(totalVenta)}</td>
                                             <td colSpan={2}></td>
