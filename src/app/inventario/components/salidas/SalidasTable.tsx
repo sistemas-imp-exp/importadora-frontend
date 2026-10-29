@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import type { SalidaApi, SalidaDetalleApi } from "../../interfaces/salidas/Salida";
+import { referenciaSalida, type SalidaApi, type SalidaDetalleApi } from "../../interfaces/salidas/Salida";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import { formatearDinero } from "../../utils/existencias";
@@ -157,7 +157,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                             <BotonExpandir
                                                 expandido={abierta}
                                                 onClick={() => alternar(salida.id)}
-                                                etiqueta={`líneas de la salida ${salida.folio_de_salida}`}
+                                                etiqueta={`líneas de la salida ${referenciaSalida(salida)}`}
                                                 controla={idDetalle}
                                             />
                                         </td>
@@ -165,7 +165,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                             {formatearFechaNumerica(new Date(salida.fecha + "T00:00:00"))}
                                         </td>
                                         <td className="fija-izq fija-izq-borde text-nowrap fw-semibold" style={FIJA_FOLIO}>
-                                            {salida.folio_de_salida}
+                                            {salida.folio_de_salida ?? <span className="badge border bg-secondary-subtle text-secondary-emphasis border-secondary-subtle fw-normal" title="No salió nada de cámara: todo quedó en resguardo">Sin salida</span>}
                                             {salida.detalles.some((d) => d.aviso_cartera) && (
                                                 <span
                                                     className="badge border bg-danger-subtle text-danger-emphasis border-danger-subtle ms-1"
@@ -178,7 +178,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                                 <div className="small fw-normal">
                                                     <span
                                                         className="badge border bg-info-subtle text-info-emphasis border-info-subtle"
-                                                        title={salida.venta_resguardo ? `Entrega del resguardo de la venta ${salida.venta_resguardo.folio_de_salida}` : undefined}
+                                                        title={salida.venta_resguardo ? `Entrega del resguardo de la venta ${salida.venta_resguardo.referencia}` : undefined}
                                                     >
                                                         <i className="bi bi-box-arrow-right me-1" aria-hidden="true"></i>{salida.folio_retiro}
                                                     </span>
@@ -200,7 +200,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                             {salida.notas || <span className="text-body-secondary">—</span>}
                                             {salida.venta_resguardo && (
                                                 <div className="small text-body-secondary">
-                                                    De la venta {salida.venta_resguardo.folio_de_salida}
+                                                    De la venta {salida.venta_resguardo.folio_de_salida ?? `nota ${salida.venta_resguardo.notas}`}
                                                 </div>
                                             )}
                                         </td>
@@ -223,13 +223,13 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                             <td className="fija-der text-end text-nowrap">
                                                 <BotonAccionFila
                                                     icono="bi-pencil"
-                                                    etiqueta={`Editar salida ${salida.folio_de_salida}`}
+                                                    etiqueta={`Editar salida ${referenciaSalida(salida)}`}
                                                     motivoBloqueo={bloqueoEditar}
                                                     onClick={() => onEditar?.(salida)}
                                                 />{" "}
                                                 <BotonAccionFila
                                                     icono="bi-trash"
-                                                    etiqueta={`Eliminar salida ${salida.folio_de_salida}`}
+                                                    etiqueta={`Eliminar salida ${referenciaSalida(salida)}`}
                                                     variante="danger"
                                                     motivoBloqueo={bloqueoEliminar}
                                                     onClick={() => onEliminar?.(salida)}

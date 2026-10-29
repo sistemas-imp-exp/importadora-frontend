@@ -155,10 +155,12 @@ function ResguardosTabla({ resguardos, densidad, onRetirar, onCancelarRetiro }: 
                                     <tr className={`fila-principal ${abierta ? "expandida" : ""}`}>
                                         <td className="fija-izq text-center" style={FIJA_EXPANDIR}>
                                             <BotonExpandir expandido={abierta} onClick={() => alternar(r.id)}
-                                                etiqueta={`detalle del resguardo de la venta ${r.folio_de_salida}`} controla={idDetalle} />
+                                                etiqueta={`detalle del resguardo de la venta ${r.referencia}`} controla={idDetalle} />
                                         </td>
                                         <td className="fija-izq text-nowrap" style={FIJA_FECHA}>{fecha(r.fecha)}</td>
-                                        <td className="fija-izq fija-izq-borde text-nowrap fw-semibold" style={FIJA_FOLIO}>{r.folio_de_salida}</td>
+                                        <td className="fija-izq fija-izq-borde text-nowrap fw-semibold" style={FIJA_FOLIO}>
+                                            {r.folio_de_salida ?? <span className="badge border bg-secondary-subtle text-secondary-emphasis border-secondary-subtle fw-normal" title="No salió nada de cámara: todo quedó en resguardo">Sin salida</span>}
+                                        </td>
                                         <td className="text-nowrap">{r.notas}</td>
                                         <td className="truncar" title={r.cliente.nombre}>{r.cliente.nombre}</td>
                                         <td className="num">{formatearKg(r.kilos_resguardo)}</td>
@@ -179,7 +181,7 @@ function ResguardosTabla({ resguardos, densidad, onRetirar, onCancelarRetiro }: 
                                             <td className="fija-der text-end text-nowrap">
                                                 <BotonAccionFila
                                                     icono="bi-box-arrow-right"
-                                                    etiqueta={`Registrar retiro de la venta ${r.folio_de_salida}`}
+                                                    etiqueta={`Registrar retiro de la venta ${r.referencia}`}
                                                     motivoBloqueo={pendiente ? undefined : "Ya se entregó todo el resguardo."}
                                                     onClick={() => onRetirar?.(r)}
                                                 />

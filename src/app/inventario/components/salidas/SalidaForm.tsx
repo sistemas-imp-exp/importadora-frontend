@@ -3,7 +3,7 @@ import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SelectorLotesModal from "./SelectorLotesModal";
 import { construirLotesDisponibles, type LoteDisponible, type Reservado } from "../../utils/lotesDisponibles";
-import type { CrearSalidaLineaRequest, CrearSalidaRequest, SalidaApi } from "../../interfaces/salidas/Salida";
+import { referenciaSalida, type CrearSalidaLineaRequest, type CrearSalidaRequest, type SalidaApi } from "../../interfaces/salidas/Salida";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
 import { formatearPeso } from "../../utils/existencias";
@@ -59,10 +59,15 @@ function entregado(linea: LineaForm): { cajas: number; kilos: number } {
     };
 }
 
-/** Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta. */
-function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecera, string>> {
+/**
+ * Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta.
+ * Sin folio solo si no sale nada de la cámara (todo queda en resguardo).
+ */
+function validarCabeceraCampos(cabecera: Cabecera, todoEnResguardo: boolean): Partial<Record<keyof Cabecera, string>> {
     const errores: Partial<Record<keyof Cabecera, string>> = {};
-    if (!cabecera.folio_de_salida.trim()) errores.folio_de_salida = "El folio de salida es obligatorio.";
+    if (!cabecera.folio_de_salida.trim() && !todoEnResguardo) {
+        errores.folio_de_salida = "El folio de salida es obligatorio si sale producto de la cámara.";
+    }
     if (!cabecera.cliente_id) errores.cliente_id = "Selecciona un cliente.";
     if (!cabecera.fecha) errores.fecha = "La fecha es obligatoria.";
     if (!cabecera.notas.trim()) errores.notas = "La nota de salida es obligatoria.";
@@ -95,7 +100,7 @@ function validarLineaCampos(linea: LineaForm, lote: LoteDisponible | null): Erro
 function cabeceraDesdeSalida(salida?: SalidaApi | null): Cabecera {
     if (!salida) return cabeceraVacia();
     return {
-        folio_de_salida: salida.folio_de_salida,
+        folio_de_salida: salida.folio_de_salida ?? "",
         cliente_id: salida.cliente?.id ?? 0,
         fecha: salida.fecha,
         notas: salida.notas,
@@ -283,8 +288,14 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         setLineas((actual) => actual.filter((_, i) => i !== index));
     }
 
+    // Nada sale de la cámara: la venta queda completa en resguardo y no lleva folio de salida.
+    const todoEnResguardo = lineas.length > 0 && lineas.every((l) => {
+        const sale = entregado(l);
+        return sale.kilos === 0 && sale.cajas === 0;
+    });
+
     function validar(): string | null {
-        const erroresCab = validarCabeceraCampos(cabecera);
+        const erroresCab = validarCabeceraCampos(cabecera, todoEnResguardo);
         setErroresCabecera(erroresCab);
         if (Object.keys(erroresCab).length > 0) {
             return "Revisa los campos marcados en rojo en los datos de la salida.";
@@ -358,7 +369,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         <div className={`card card-outline mb-3 ${salida ? "card-warning" : "card-primary"}`}>
             <div className="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
                 <h3 className="card-title fs-6 fw-bold m-0">
-                    {salida ? `Editando salida ${salida.folio_de_salida}` : "Registrar salida"}
+                    {salida ? `Editando salida ${referenciaSalida(salida)}` : "Registrar salida"}
                 </h3>
             </div>
 
@@ -374,10 +385,12 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                         <div className="row g-3">
                             <div className="col-12 col-sm-6 col-lg-3">
                                 <label className={CLASE_ETIQUETA}>
-                                    Folio de salida <span className="text-danger">*</span>
+                                    Folio de salida {!todoEnResguardo && <span className="text-danger">*</span>}
                                 </label>
                                 <input
                                     className={`form-control form-control-sm ${erroresCabecera.folio_de_salida ? "is-invalid" : ""}`}
+                                    placeholder={todoEnResguardo ? "No aplica: no sale de cámara" : undefined}
+                                    title={todoEnResguardo ? "Todo queda en resguardo: no hay salida de cámara. Cada retiro llevará su folio." : undefined}
                                     value={cabecera.folio_de_salida}
                                     onChange={(e) => actualizarCabecera({ folio_de_salida: e.target.value })}
                                 />

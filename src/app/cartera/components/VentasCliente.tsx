@@ -128,7 +128,7 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
                                         <tr className="table-light">
                                             <td colSpan={5}>
                                                 <span className="fw-semibold">{fecha(v.fecha)}</span>
-                                                <span className="mx-2">·</span>Salida <span className="fw-semibold">{v.folio_salida}</span>
+                                                <span className="mx-2">·</span>Salida <span className="fw-semibold">{v.folio_salida || "sin salida (todo en resguardo)"}</span>
                                                 <span className="mx-2">·</span>Nota <span className="fw-semibold">{v.nota_salida || "—"}</span>
                                                 <span className="small text-body-secondary ms-2">{v.empresa.nombre}</span>
                                             </td>
@@ -184,7 +184,7 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
                                                             )}
                                                             {(l.estado === "pendiente" || l.estado === "verificada") && (
                                                                 <button type="button" className="btn btn-sm btn-outline-danger me-1" title="No coincide: reportar a Inventario"
-                                                                    onClick={() => setDiferencia({ lineas: [l], folio: v.folio_salida })}>
+                                                                    onClick={() => setDiferencia({ lineas: [l], folio: v.folio_salida || `nota ${v.nota_salida}` })}>
                                                                     <i className="bi bi-exclamation-triangle" aria-hidden="true"></i>
                                                                     <span className="visually-hidden">Reportar diferencia en {l.producto}</span>
                                                                 </button>

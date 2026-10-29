@@ -37,7 +37,9 @@ export type EstadoResguardo = "pendiente" | "entregado";
 /** Una venta con resguardo (una nota), con lo pendiente por producto y sus retiros. */
 export interface Resguardo {
     id: number;
-    folio_de_salida: string;
+    // null si la venta se quedó completa en resguardo (no salió de cámara).
+    folio_de_salida: string | null;
+    referencia: string;
     notas: string;
     fecha: string;
     cliente: { id: number; nombre: string };

@@ -5,7 +5,7 @@ import { actualizarSalida, crearSalida, descargarSalidasExcel, eliminarSalida, o
 import { obtenerClientes } from "../../services/cliente.service";
 import { obtenerCamaras } from "../../services/camara.service";
 import { obtenerExistencias } from "../../services/existencia.service";
-import type { SalidaApi, CrearSalidaRequest } from "../../interfaces/salidas/Salida";
+import { referenciaSalida, type SalidaApi, type CrearSalidaRequest } from "../../interfaces/salidas/Salida";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
@@ -237,7 +237,7 @@ function SalidasView() {
                 <div className="text-center">
                     <i className="bi bi-exclamation-triangle-fill text-warning fs-1"></i>
                     <h3 className="text-slate-900 text-base font-semibold dark:text-slate-50">
-                        ¿Eliminar la salida {salidaEliminar?.folio_de_salida}?
+                        ¿Eliminar la salida {salidaEliminar ? referenciaSalida(salidaEliminar) : ""}?
                     </h3>
                     <p className="text-slate-600 text-sm mt-2 leading-relaxed dark:text-slate-400">
                         Se eliminan también todas sus líneas, y las cajas que descontaban vuelven a estar disponibles en sus lotes de origen.

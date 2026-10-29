@@ -165,7 +165,7 @@ function RetiroResguardoModal({ resguardo, onCerrar, onRegistrar }: Props) {
                 title={`Registrar retiro · ${resguardo.cliente.nombre}`}
             >
                 <p className="small text-body-secondary mb-3">
-                    Venta <strong>{resguardo.folio_de_salida}</strong> · nota <strong>{resguardo.notas}</strong>. El producto
+                    Venta <strong>{resguardo.folio_de_salida ?? "sin salida"}</strong> · nota <strong>{resguardo.notas}</strong>. El producto
                     puede salir de cualquier lote del mismo producto, aunque sea de otro proveedor. No se cobra de nuevo:
                     ya se cobró en la venta.
                 </p>

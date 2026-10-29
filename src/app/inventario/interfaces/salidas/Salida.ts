@@ -29,7 +29,8 @@ export interface SalidaDetalleApi {
 
 export interface SalidaApi {
     id: number;
-    folio_de_salida: string;
+    // null en una venta que se quedó completa en resguardo: no salió de cámara.
+    folio_de_salida: string | null;
     // null cuando la salida es la mitad "salida" de un Movimiento entre cámaras,
     // no una venta real — ver MovimientoCamaraCrearSerializer en el backend.
     cliente: Cliente | null;
@@ -39,7 +40,12 @@ export interface SalidaApi {
     // Retiro de resguardo: folio propio (RES-0001) y la venta que entrega. Se
     // registra y cancela desde Resguardos, no desde Salidas.
     folio_retiro: string | null;
-    venta_resguardo: { id: number; folio_de_salida: string; notas: string } | null;
+    venta_resguardo: { id: number; folio_de_salida: string | null; notas: string; referencia: string } | null;
+}
+
+/** Cómo nombrar una salida: su folio, o su nota si no salió de cámara. */
+export function referenciaSalida(salida: { folio_de_salida: string | null; notas: string }): string {
+    return salida.folio_de_salida ?? `Nota ${salida.notas}`;
 }
 
 export interface CrearSalidaLineaRequest {

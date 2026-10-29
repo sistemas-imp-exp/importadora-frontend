@@ -69,7 +69,7 @@ function EstadoCuentaTabla({ renglones, mostrarEmpresa }: Props) {
                                         return (
                                             <tr key={d.linea_id} className={primera ? "border-top border-secondary-subtle" : undefined}>
                                                 <td className={`text-nowrap fw-semibold ${tachado}`}>{primera ? d.nota || "—" : ""}</td>
-                                                <td className={`text-nowrap ${tachado}`}>{primera ? d.folio_salida : ""}</td>
+                                                <td className={`text-nowrap ${tachado}`}>{primera ? (d.folio_salida || "Sin salida") : ""}</td>
                                                 <td className={`small ${tachado}`}>
                                                     {d.origen || "—"}
                                                     {primera && empresa}
