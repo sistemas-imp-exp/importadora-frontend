@@ -1,8 +1,8 @@
 import type { AlertaCaducidadApi } from "../../interfaces/alertas/AlertaCaducidad";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import { CLASE_BADGE_NIVEL, ETIQUETA_NIVEL, RANGO_NIVEL } from "../../utils/caducidad";
-import { formatearDinero } from "../../utils/existencias";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface AlertasCaducidadTableProps {
     alertas: AlertaCaducidadApi[];
@@ -52,7 +52,7 @@ function AlertasCaducidadTable({ alertas }: AlertasCaducidadTableProps) {
                                 <td className="truncar" title={alerta.proveedor ?? undefined}>{alerta.proveedor ?? "—"}</td>
                                 <td className="text-nowrap">{alerta.lote_proveedor}</td>
                                 <td className="num fw-semibold">{alerta.cajas_disponibles.toLocaleString("es-MX")}</td>
-                                <td className="num">{formatearDinero(Number(alerta.kilos_disponibles))}</td>
+                                <td className="num">{formatearKg(alerta.kilos_disponibles)}</td>
                             </tr>
                         ))
                     )}

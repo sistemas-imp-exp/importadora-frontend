@@ -6,6 +6,7 @@ import { useLayout } from "../../shared/context/LayoutContext";
 import { encontrarAreaActual, obtenerCatalogosDelArea } from "../catalogosDeArea";
 import { sidebarMenu } from "../menu";
 import GlobalSearch from "./GlobalSearch";
+import CampanaNotificaciones from "./CampanaNotificaciones";
 
 function Header() {
     const { user, logout } = useAuth();
@@ -43,8 +44,8 @@ function Header() {
         }
     }
 
-    function cerrarSesion() {
-        logout();
+    async function cerrarSesion() {
+        await logout();
         mostrarToast(
             "Sesión cerrada",
             "Ha cerrado sesión satisfactoriamente",
@@ -123,6 +124,7 @@ function Header() {
 
                 <ul className="navbar-nav ms-auto">
                     <GlobalSearch />
+                    <CampanaNotificaciones />
                     <li className="nav-item">
                         <button
                             className="nav-link"

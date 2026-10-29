@@ -9,6 +9,7 @@ import type { OrdenTabla } from "../../../../shared/hooks/useOrdenTabla";
 import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
 import EncabezadoOrdenable from "../../../../shared/components/tabla/EncabezadoOrdenable";
 import BadgeCaducidad from "../BadgeCaducidad";
+import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros";
 
 interface ExistenciasTableProps {
     filas: FilaExistencia[];
@@ -91,16 +92,16 @@ function ExistenciasTable({
                                 <td className="text-nowrap">{fila.factura}</td>
                                 <td className="num inicio-grupo">{fila.pesoPorCaja ? formatearPeso(Number(fila.pesoPorCaja)) : "—"}</td>
                                 <td className="num fw-semibold">{fila.cajasDisponibles.toLocaleString("es-MX")}</td>
-                                <td className="num">{formatearDinero(Number(fila.totalKilos))}</td>
+                                <td className="num">{formatearKg(fila.totalKilos)}</td>
                                 <td className="num">
                                     {fila.kilosVendidos ? (
-                                        formatearDinero(fila.kilosVendidos)
+                                        formatearKg(fila.kilosVendidos)
                                     ) : (
                                         <span className="text-body-tertiary" title="Sin salidas">—</span>
                                     )}
                                 </td>
-                                <td className="num fw-semibold">{formatearDinero(Number(fila.kilosDisponibles))}</td>
-                                <td className="num inicio-grupo">{fila.costoPorKilo ? `$${formatearDinero(Number(fila.costoPorKilo))}` : "—"}</td>
+                                <td className="num fw-semibold">{formatearKg(fila.kilosDisponibles)}</td>
+                                <td className="num inicio-grupo">{fila.costoPorKilo ? formatearPrecioKg(fila.costoPorKilo) : "—"}</td>
                                 <td className="num">
                                     {fila.totalPesos !== null ? (
                                         `$${formatearDinero(fila.totalPesos)}`
@@ -125,7 +126,7 @@ function ExistenciasTable({
                             <td className="inicio-grupo"></td>
                             <td className="num fw-bold">{totales.totalCajas.toLocaleString("es-MX")}</td>
                             <td colSpan={2}></td>
-                            <td className="num fw-bold">{formatearDinero(totales.totalKilosDisponibles)}</td>
+                            <td className="num fw-bold">{formatearKg(totales.totalKilosDisponibles)}</td>
                             <td className="inicio-grupo"></td>
                             <td className="num fw-bold">${formatearDinero(totales.totalPesos)}</td>
                             <td colSpan={2} className="inicio-grupo"></td>

@@ -30,20 +30,18 @@ export interface EdicionesEntradaResponse {
 /** Campos de línea editables por la vía auditada (ver inventario/auditoria.py). */
 export interface LineaEdicionAuditada {
     id: number;
+    factura?: string;
+    pedimento?: string;
     lote_proveedor?: string;
     precio_venta_planeado?: string;
     fecha_caducidad?: string;
     observaciones?: string;
 }
 
-export interface CabeceraEdicionAuditada {
-    factura?: string;
-    pedimento?: string;
-}
-
+// Factura y pedimento son de cada línea (una entrada puede traer varios
+// proveedores): la cabecera ya no tiene campos corregibles por esta vía.
 export interface EditarEntradaAuditadaRequest {
     motivo: string;
-    cabecera?: CabeceraEdicionAuditada;
     lineas?: LineaEdicionAuditada[];
 }
 

@@ -23,14 +23,15 @@ export interface User {
     email: string;
     is_superuser: boolean;
     areas: string[];
-    // Subconjunto de `areas` en el que solo se consulta y descarga. Opcional
-    // porque un usuario guardado en localStorage antes de este cambio no lo trae.
+    // Subconjunto de `areas` en el que solo se consulta y descarga.
     areas_solo_lectura?: string[];
     foto: string | null;
+    /** Contraseña provisional (la puso el superusuario): hay que cambiarla antes de seguir. */
+    debe_cambiar_password: boolean;
 }
 
-export interface LoginResponse {
+/** Login, renovación y cambio de contraseña: el refresh viaja aparte, en cookie httpOnly. */
+export interface SesionResponse {
     access: string;
-    refresh: string;
     user: User;
 }

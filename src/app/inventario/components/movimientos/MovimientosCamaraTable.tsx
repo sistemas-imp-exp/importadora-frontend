@@ -6,7 +6,7 @@ import TablaResponsive from "../../../../shared/components/TablaResponsive";
 import BotonAccionFila from "../../../../shared/components/tabla/BotonAccionFila";
 import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
 import BadgeCaducidad from "../BadgeCaducidad";
-import { formatearDinero } from "../../utils/existencias";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface MovimientosCamaraTableProps {
     movimientos: MovimientoCamaraApi[];
@@ -68,7 +68,7 @@ function MovimientosCamaraTable({ movimientos, camaras, onEditarRecibo }: Movimi
                                     <span className="fw-semibold">{nombreCamara(movimiento.camara_destino)}</span>
                                 </td>
                                 <td className="num">{movimiento.cajas.toLocaleString("es-MX")}</td>
-                                <td className="num">{formatearDinero(Number(movimiento.kilos))}</td>
+                                <td className="num">{formatearKg(movimiento.kilos)}</td>
                                 <td className="truncar" title={movimiento.proveedor}>{movimiento.proveedor}</td>
                                 <td className="text-nowrap">{movimiento.factura || "—"}</td>
                                 <td className="text-nowrap">{movimiento.empresa}</td>
@@ -88,7 +88,7 @@ function MovimientosCamaraTable({ movimientos, camaras, onEditarRecibo }: Movimi
                                 <td className="num text-nowrap">
                                     <span className="fw-semibold">{movimiento.cajas_disponibles_destino.toLocaleString("es-MX")}</span> cajas
                                     <div className="small text-body-secondary">
-                                        {formatearDinero(Number(movimiento.kilos_disponibles_destino))} kg
+                                        {formatearKg(movimiento.kilos_disponibles_destino)} kg
                                     </div>
                                 </td>
                                 <td><BadgeCaducidad fechaCaducidad={movimiento.fecha_caducidad} /></td>

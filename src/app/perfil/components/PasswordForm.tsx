@@ -33,6 +33,8 @@ function PasswordForm({ onGuardar }: PasswordFormProps) {
                 <input
                     type="password"
                     className="form-control"
+                    autoComplete="current-password"
+                    required
                     value={form.password_actual}
                     onChange={(e) => setForm({ ...form, password_actual: e.target.value })}
                 />
@@ -43,6 +45,9 @@ function PasswordForm({ onGuardar }: PasswordFormProps) {
                 <input
                     type="password"
                     className="form-control"
+                    autoComplete="new-password"
+                    required
+                    minLength={10}
                     value={form.password_nueva}
                     onChange={(e) => setForm({ ...form, password_nueva: e.target.value })}
                 />
@@ -53,6 +58,8 @@ function PasswordForm({ onGuardar }: PasswordFormProps) {
                 <input
                     type="password"
                     className="form-control"
+                    autoComplete="new-password"
+                    required
                     value={form.password_nueva2}
                     onChange={(e) => setForm({ ...form, password_nueva2: e.target.value })}
                 />

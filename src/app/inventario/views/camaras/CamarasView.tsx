@@ -67,7 +67,7 @@ function CamarasView() {
         <>
             <PageHeader
                 title="Cámaras"
-                subtitle="Cámaras de resguardo, propias o de terceros"
+                subtitle="Cámaras de almacenamiento, propias o de terceros"
                 breadcrumbs={[
                     { label: "Inicio", to: "/" },
                     { label: "Inventario", to: "/inventario" },

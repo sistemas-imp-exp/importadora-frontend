@@ -89,9 +89,14 @@ function UsuarioForm({ usuario, areas, onGuardar, onCancelar }: UsuarioFormProps
                     <input
                         type="password"
                         className="form-control"
+                        autoComplete="new-password"
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />
+                    <div className="form-text">
+                        Provisional: el usuario deberá cambiarla al entrar. Mínimo 10 caracteres.
+                        {form.id !== 0 && " Restablecerla cierra sus sesiones abiertas."}
+                    </div>
                 </div>
 
                 <div className="col-md-6 col-sm-12 mt-3">

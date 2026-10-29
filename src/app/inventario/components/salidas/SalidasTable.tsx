@@ -9,6 +9,7 @@ import BotonExpandir from "../../../../shared/components/tabla/BotonExpandir";
 import BotonAccionFila from "../../../../shared/components/tabla/BotonAccionFila";
 import { useFilasExpandibles } from "../../../../shared/components/tabla/useFilasExpandibles";
 import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
+import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros";
 
 interface SalidasTableProps {
     salidas: SalidaApi[];
@@ -37,6 +38,7 @@ function DetalleSalida({ detalles, nombreCamara }: { detalles: SalidaDetalleApi[
                     <th>Factura proveedor</th>
                     <th className="num">Cajas</th>
                     <th className="num">Total kg</th>
+                    <th className="num" title="Lo que el cliente dejó guardado y lo que ya se llevó">Resguardo</th>
                     <th className="num">Precio/kg</th>
                     <th className="num">Total venta</th>
                     <th>Nota</th>
@@ -45,7 +47,16 @@ function DetalleSalida({ detalles, nombreCamara }: { detalles: SalidaDetalleApi[
             <tbody>
                 {detalles.map((d) => (
                     <tr key={d.id}>
-                        <td className="text-nowrap fw-semibold">{d.producto.talla} {d.producto.tipo}</td>
+                        <td className="text-nowrap fw-semibold">
+                            {d.producto.talla} {d.producto.tipo}
+                            {d.aviso_cartera && (
+                                <div className="small fw-normal text-danger-emphasis text-wrap" style={{ maxWidth: "18rem" }}>
+                                    <i className="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                    Cartera: {d.aviso_cartera.comentario}
+                                    <span className="text-body-secondary"> ({d.aviso_cartera.usuario})</span>
+                                </div>
+                            )}
+                        </td>
                         <td className="text-nowrap">{d.lote_proveedor || "—"}</td>
                         <td className="truncar" title={d.proveedor_nombre || undefined}>{d.proveedor_nombre || "—"}</td>
                         <td className="text-nowrap">{nombreCamara(d.camara)}</td>
@@ -57,8 +68,18 @@ function DetalleSalida({ detalles, nombreCamara }: { detalles: SalidaDetalleApi[
                                 d.cajas.toLocaleString("es-MX")
                             )}
                         </td>
-                        <td className="num">{numero(d.total_kilos)}</td>
-                        <td className="num">{d.precio_x_kilo ? `$${numero(d.precio_x_kilo)}` : "—"}</td>
+                        <td className="num">{formatearKg(d.total_kilos)}</td>
+                        <td className="num">
+                            {Number(d.kilos_resguardo) > 0 ? (
+                                <>
+                                    {formatearKg(d.kilos_resguardo)}
+                                    <div className="small text-body-secondary">entregado {formatearKg(d.kilos_retirados)}</div>
+                                </>
+                            ) : (
+                                <span className="text-body-secondary">—</span>
+                            )}
+                        </td>
+                        <td className="num">{d.precio_x_kilo ? formatearPrecioKg(d.precio_x_kilo) : "—"}</td>
                         <td className="num">{d.total_venta ? `$${numero(d.total_venta)}` : "—"}</td>
                         <td className="truncar" title={d.notas || undefined}>
                             {d.notas || <span className="text-body-secondary">—</span>}
@@ -122,6 +143,13 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                             // Sin precio en alguna línea el total estaría incompleto: se avisa en vez de sumar de menos.
                             const sinPrecio = salida.detalles.some((d) => !d.total_venta);
                             const totalVenta = salida.detalles.reduce((acc, d) => acc + Number(d.total_venta ?? 0), 0);
+                            const conResguardo = salida.detalles.some((d) => Number(d.kilos_resguardo) > 0);
+                            // Un retiro de resguardo se registra y cancela desde Resguardos; una venta
+                            // cuyo resguardo ya se empezó a entregar no se puede eliminar.
+                            const conRetiros = salida.detalles.some((d) => Number(d.kilos_retirados) > 0);
+                            const bloqueoEditar = salida.folio_retiro ? "Es un retiro de resguardo: se maneja desde Resguardos." : undefined;
+                            const bloqueoEliminar = bloqueoEditar
+                                ?? (conRetiros ? "Ya se entregó parte de su resguardo: cancela esos retiros en Resguardos." : undefined);
                             return (
                                 <Fragment key={salida.id}>
                                     <tr className={`fila-principal ${abierta ? "expandida" : ""}`}>
@@ -138,16 +166,51 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                         </td>
                                         <td className="fija-izq fija-izq-borde text-nowrap fw-semibold" style={FIJA_FOLIO}>
                                             {salida.folio_de_salida}
+                                            {salida.detalles.some((d) => d.aviso_cartera) && (
+                                                <span
+                                                    className="badge border bg-danger-subtle text-danger-emphasis border-danger-subtle ms-1"
+                                                    title="Cartera reportó una diferencia contra la nota: abre la salida para verla y corrígela"
+                                                >
+                                                    <i className="bi bi-exclamation-triangle" aria-hidden="true"></i> Cartera
+                                                </span>
+                                            )}
+                                            {salida.folio_retiro && (
+                                                <div className="small fw-normal">
+                                                    <span
+                                                        className="badge border bg-info-subtle text-info-emphasis border-info-subtle"
+                                                        title={salida.venta_resguardo ? `Entrega del resguardo de la venta ${salida.venta_resguardo.folio_de_salida}` : undefined}
+                                                    >
+                                                        <i className="bi bi-box-arrow-right me-1" aria-hidden="true"></i>{salida.folio_retiro}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {conResguardo && (
+                                                <div className="small fw-normal">
+                                                    <span
+                                                        className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle"
+                                                        title="El cliente dejó parte de esta venta guardada en la cámara"
+                                                    >
+                                                        <i className="bi bi-safe me-1" aria-hidden="true"></i>Resguardo
+                                                    </span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="truncar" title={salida.cliente!.nombre}>{salida.cliente!.nombre}</td>
                                         <td className="truncar" title={salida.notas || undefined}>
                                             {salida.notas || <span className="text-body-secondary">—</span>}
+                                            {salida.venta_resguardo && (
+                                                <div className="small text-body-secondary">
+                                                    De la venta {salida.venta_resguardo.folio_de_salida}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="num">{salida.detalles.length}</td>
                                         <td className="num">{totalCajas.toLocaleString("es-MX")}</td>
-                                        <td className="num fw-semibold">{numero(totalKilos)}</td>
+                                        <td className="num fw-semibold">{formatearKg(totalKilos)}</td>
                                         <td className="num">
-                                            {totalVenta > 0 ? `$${numero(totalVenta)}` : "—"}
+                                            {salida.folio_retiro ? (
+                                                <span className="text-body-secondary" title="Producto ya cobrado en la venta original">Ya cobrado</span>
+                                            ) : totalVenta > 0 ? `$${numero(totalVenta)}` : "—"}
                                             {sinPrecio && totalVenta > 0 && (
                                                 <i
                                                     className="bi bi-info-circle text-warning ms-1"
@@ -161,12 +224,14 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                                 <BotonAccionFila
                                                     icono="bi-pencil"
                                                     etiqueta={`Editar salida ${salida.folio_de_salida}`}
+                                                    motivoBloqueo={bloqueoEditar}
                                                     onClick={() => onEditar?.(salida)}
                                                 />{" "}
                                                 <BotonAccionFila
                                                     icono="bi-trash"
                                                     etiqueta={`Eliminar salida ${salida.folio_de_salida}`}
                                                     variante="danger"
+                                                    motivoBloqueo={bloqueoEliminar}
                                                     onClick={() => onEliminar?.(salida)}
                                                 />
                                             </td>

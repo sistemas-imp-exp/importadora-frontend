@@ -5,7 +5,7 @@ function Footer() {
                 {/* Tesorería */}
             </div>
             <strong>
-                Importadora y Exportadora de Mariscos del Sur y el Caribe ©2026.
+                Importadora y Exportadora de Mariscos de Centro América y el Caribe ©2026.
             </strong>
         </footer>
     );

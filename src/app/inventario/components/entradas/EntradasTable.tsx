@@ -1,15 +1,15 @@
 import { Fragment } from "react";
-import type { EntradaApi, EntradaDetalleApi } from "../../interfaces/entradas/Entrada";
+import { facturasDe, pedimentosDe, proveedoresDe, type EntradaApi, type EntradaDetalleApi } from "../../interfaces/entradas/Entrada";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import BadgeCaducidad from "../BadgeCaducidad";
-import { formatearDinero } from "../../utils/existencias";
 import TablaResponsive from "../../../../shared/components/TablaResponsive";
 import type { DensidadTabla } from "../../../../shared/hooks/useDensidadTabla";
 import BotonExpandir from "../../../../shared/components/tabla/BotonExpandir";
 import BotonAccionFila from "../../../../shared/components/tabla/BotonAccionFila";
 import { useFilasExpandibles } from "../../../../shared/components/tabla/useFilasExpandibles";
 import { columnasFijas } from "../../../../shared/components/tabla/columnasFijas";
+import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros";
 
 interface EntradasTableProps {
     entradas: EntradaApi[];
@@ -30,7 +30,7 @@ function fecha(iso: string): string {
 }
 
 function kilos(valor: number | string): string {
-    return formatearDinero(Number(valor));
+    return formatearKg(valor);
 }
 
 /** La caducidad más próxima de la entrada: es la que decide si hay que atenderla. */
@@ -44,6 +44,8 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
         <table className="table table-sm tabla-detalle mb-0 border rounded">
             <thead>
                 <tr>
+                    <th>Proveedor</th>
+                    <th>Factura</th>
                     <th>Producto</th>
                     <th>Lote proveedor</th>
                     <th>Cámara</th>
@@ -62,6 +64,11 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
                     const agotada = d.cajas_disponibles < d.cajas;
                     return (
                         <tr key={d.id}>
+                            <td className="truncar" title={d.proveedor_origen?.nombre}>{d.proveedor_origen?.nombre ?? "—"}</td>
+                            <td className="text-nowrap">
+                                {d.factura || "—"}
+                                {d.pedimento && <div className="small text-body-secondary">Ped. {d.pedimento}</div>}
+                            </td>
                             <td className="text-nowrap fw-semibold">{d.producto.talla} {d.producto.tipo}</td>
                             <td className="text-nowrap">{d.lote_proveedor}</td>
                             <td className="text-nowrap">{nombreCamara(d.camara)}</td>
@@ -72,7 +79,7 @@ function DetalleEntrada({ detalles, nombreCamara }: { detalles: EntradaDetalleAp
                             <td className={`num ${agotada ? "text-body-secondary" : ""}`}>
                                 {d.cajas_disponibles.toLocaleString("es-MX")} cj · {kilos(d.kilos_disponibles)} kg
                             </td>
-                            <td className="num">{d.costo_por_kilo ? `$${formatearDinero(Number(d.costo_por_kilo))}` : "—"}</td>
+                            <td className="num">{d.costo_por_kilo ? formatearPrecioKg(d.costo_por_kilo) : "—"}</td>
                             <td><BadgeCaducidad fechaCaducidad={d.fecha_caducidad} /></td>
                             <td className="truncar" title={d.observaciones || undefined}>
                                 {d.observaciones || <span className="text-body-secondary">—</span>}
@@ -92,8 +99,8 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEd
     }
 
     // Los movimientos entre cámaras también crean una Entrada (la mitad "llegada"),
-    // pero sin proveedor real — no pertenecen a esta lista de compras.
-    const reales = entradas.filter((e) => e.proveedor !== null);
+    // que no es una compra — no pertenece a esta lista.
+    const reales = entradas.filter((e) => !e.es_traslado);
 
     // Una línea con menos cajas disponibles que capturadas ya fue vendida o
     // movida a otra cámara. El backend rechaza editar/eliminar esas entradas
@@ -146,6 +153,10 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEd
                             const totalCajas = entrada.detalles.reduce((acc, d) => acc + d.cajas, 0);
                             const totalKilos = entrada.detalles.reduce((acc, d) => acc + Number(d.total_kilos), 0);
                             const idDetalle = `detalle-entrada-${entrada.id}`;
+                            // Una entrada puede traer varios proveedores, cada uno con su factura.
+                            const proveedores = proveedoresDe(entrada);
+                            const facturas = facturasDe(entrada);
+                            const pedimentos = pedimentosDe(entrada);
                             return (
                                 <Fragment key={entrada.id}>
                                     <tr className={`fila-principal ${abierta ? "expandida" : ""}`}>
@@ -161,15 +172,19 @@ function EntradasTable({ entradas, camaras, densidad, onEditar, onEliminar, onEd
                                         <td
                                             className="fija-izq fija-izq-borde truncar fw-semibold"
                                             style={FIJA_PROVEEDOR}
-                                            title={entrada.proveedor!.nombre}
+                                            title={proveedores.join(", ")}
                                         >
-                                            {entrada.proveedor!.nombre}
+                                            {proveedores.length > 1 ? (
+                                                <>Varios <span className="badge text-bg-light border fw-normal">{proveedores.length}</span></>
+                                            ) : (proveedores[0] ?? "—")}
                                         </td>
                                         <td className="text-nowrap">{entrada.empresa?.nombre ?? "—"}</td>
-                                        <td className="text-nowrap">
-                                            {entrada.factura || "—"}
-                                            {entrada.es_internacional && entrada.pedimento && (
-                                                <div className="small text-body-secondary">Ped. {entrada.pedimento}</div>
+                                        <td className="text-nowrap" title={facturas.length > 1 ? facturas.join(", ") : undefined}>
+                                            {facturas.length > 1 ? `${facturas[0]} +${facturas.length - 1}` : (facturas[0] ?? "—")}
+                                            {pedimentos.length > 0 && (
+                                                <div className="small text-body-secondary">
+                                                    Ped. {pedimentos[0]}{pedimentos.length > 1 ? ` +${pedimentos.length - 1}` : ""}
+                                                </div>
                                             )}
                                         </td>
                                         <td className="text-nowrap">{entrada.recibo_ingreso || <span className="text-body-secondary">—</span>}</td>

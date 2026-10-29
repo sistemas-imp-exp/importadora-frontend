@@ -3,15 +3,15 @@ import type {
     ActualizarPerfilRequest,
     CambiarPasswordRequest,
     LoginRequest,
-    LoginResponse,
+    SesionResponse,
     User,
 } from "../interfaces/auth";
 
 
 export const login = async (
     data: LoginRequest
-): Promise<LoginResponse> => {
-    const response = await client.post<LoginResponse>(
+): Promise<SesionResponse> => {
+    const response = await client.post<SesionResponse>(
         "/auth/login/",
         data
     );
@@ -29,8 +29,10 @@ export async function actualizarMe(data: ActualizarPerfilRequest): Promise<User>
     return response.data;
 }
 
-export async function cambiarPassword(data: CambiarPasswordRequest): Promise<void> {
-    await client.post("/auth/me/password/", data);
+/** Cierra las sesiones en otros equipos y devuelve tokens nuevos para esta. */
+export async function cambiarPassword(data: CambiarPasswordRequest): Promise<SesionResponse> {
+    const response = await client.post<SesionResponse>("/auth/me/password/", data);
+    return response.data;
 }
 
 export async function subirFoto(archivo: File): Promise<{ foto: string | null }> {
@@ -48,12 +50,4 @@ export async function subirFoto(archivo: File): Promise<{ foto: string | null }>
 
 export async function eliminarFoto(): Promise<void> {
     await client.delete("/auth/me/foto/");
-}
-
-export async function refresh(refresh: string) {
-    const response = await client.post("/auth/refresh/", {
-        refresh,
-    });
-
-    return response.data;
 }

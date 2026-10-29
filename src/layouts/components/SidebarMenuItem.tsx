@@ -1,6 +1,13 @@
 import { NavLink, useLocation } from "react-router-dom";
 import type { SidebarMenuItem as MenuItem } from "../../shared/interfaces/SidebarMenu";
 import { useState } from "react";
+import { useNotificaciones } from "../../shared/hooks/useNotificaciones";
+
+/** Pendientes de la opción (por su ruta) más los de todas sus hijas. */
+function pendientesDe(item: MenuItem, puntos: Record<string, number>): number {
+    const propios = item.to ? puntos[item.to] ?? 0 : 0;
+    return propios + (item.children ?? []).reduce((acc, hijo) => acc + pendientesDe(hijo, puntos), 0);
+}
 
 function isItemActive(item: MenuItem, pathname: string): boolean {
     if (item.to) {
@@ -25,6 +32,8 @@ export default function SidebarMenuItem({
     level = 0,
 }: Props) {
     const location = useLocation();
+    const { resumen } = useNotificaciones();
+    const pendientes = pendientesDe(item, resumen.puntos);
 
     const active = isItemActive(item, location.pathname);
     const [open, setOpen] = useState(active);
@@ -54,7 +63,15 @@ export default function SidebarMenuItem({
                     }
                 >
                     <i className={`nav-icon ${item.icon ?? "bi bi-circle"}`} />
-                    <p>{item.label}</p>
+                    <p>
+                        {item.label}
+                        {pendientes > 0 && (
+                            <span className="nav-badge badge text-bg-danger rounded-pill menu-pendiente"
+                                title={`${pendientes} pendiente(s) por atender`}>
+                                {pendientes}
+                            </span>
+                        )}
+                    </p>
                 </NavLink>
             </li>
         );
@@ -73,6 +90,11 @@ export default function SidebarMenuItem({
                 <i className={`nav-icon ${item.icon ?? "bi bi-folder"}`} />
                 <p>
                     {item.label}
+                    {pendientes > 0 && (
+                        <span className="menu-punto" title={`${pendientes} pendiente(s) por atender`}>
+                            <span className="visually-hidden">{pendientes} pendientes</span>
+                        </span>
+                    )}
                     <i className="nav-arrow bi bi-chevron-right" />
                 </p>
             </a>

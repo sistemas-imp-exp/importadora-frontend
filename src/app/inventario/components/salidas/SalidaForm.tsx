@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
+import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SelectorLotesModal from "./SelectorLotesModal";
 import { construirLotesDisponibles, type LoteDisponible, type Reservado } from "../../utils/lotesDisponibles";
 import type { CrearSalidaLineaRequest, CrearSalidaRequest, SalidaApi } from "../../interfaces/salidas/Salida";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
+import { formatearPeso } from "../../utils/existencias";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface SalidaFormProps {
     clientes: Cliente[];
@@ -27,6 +30,12 @@ interface LineaForm {
     precio_x_kilo: string;
     total_venta: string;
     notas: string;
+    // Parte de lo vendido que el cliente deja guardado: se cobra todo, pero del
+    // lote solo sale lo entregado (cajas/kilos − resguardo).
+    cajas_resguardo: string;
+    kilos_resguardo: string;
+    // Lo ya entregado de ese resguardo (retiros): el resguardo no puede bajar de ahí.
+    kilos_retirados: number;
 }
 
 const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-secondary mb-1";
@@ -39,6 +48,15 @@ type Cabecera = ReturnType<typeof cabeceraVacia>;
 interface ErrorLinea {
     cajas?: string;
     total_kilos?: string;
+    resguardo?: string;
+}
+
+/** Lo que sale físicamente del lote en esta línea: lo vendido menos lo que queda en resguardo. */
+function entregado(linea: LineaForm): { cajas: number; kilos: number } {
+    return {
+        cajas: (Number(linea.cajas) || 0) - (Number(linea.cajas_resguardo) || 0),
+        kilos: (Number(linea.total_kilos) || 0) - (Number(linea.kilos_resguardo) || 0),
+    };
 }
 
 /** Errores por campo, para marcar en rojo (Bootstrap is-invalid) solo lo que falta. */
@@ -54,15 +72,22 @@ function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecer
 function validarLineaCampos(linea: LineaForm, lote: LoteDisponible | null): ErrorLinea {
     const errores: ErrorLinea = {};
     // 0 es válido: es peso suelto de una caja ya abierta, no una venta por caja.
+    const sale = entregado(linea);
     if (linea.cajas === "" || Number(linea.cajas) < 0) {
         errores.cajas = "Ingresa las cajas (0 si es peso suelto).";
-    } else if (lote && Number(linea.cajas) > lote.cajasDisponibles) {
-        errores.cajas = `Solo hay ${lote.cajasDisponibles} disponibles.`;
+    } else if (lote && sale.cajas > lote.cajasDisponibles) {
+        errores.cajas = `Solo hay ${lote.cajasDisponibles} disponibles para entregar.`;
     }
     if (!linea.total_kilos || Number(linea.total_kilos) <= 0) {
         errores.total_kilos = "Ingresa el total de kilos.";
-    } else if (lote && Number(linea.total_kilos) > Number(lote.kilosDisponibles)) {
-        errores.total_kilos = `Solo hay ${lote.kilosDisponibles} kg disponibles.`;
+    } else if (lote && sale.kilos > Number(lote.kilosDisponibles)) {
+        errores.total_kilos = `Solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles para entregar.`;
+    }
+    const kilosResguardo = Number(linea.kilos_resguardo) || 0;
+    if (sale.kilos < 0 || sale.cajas < 0) {
+        errores.resguardo = "El resguardo no puede ser mayor que lo vendido.";
+    } else if (kilosResguardo < linea.kilos_retirados) {
+        errores.resguardo = `Ya se entregaron ${formatearKg(linea.kilos_retirados)} kg de este resguardo.`;
     }
     return errores;
 }
@@ -87,6 +112,9 @@ function lineasDesdeSalida(salida: SalidaApi): LineaForm[] {
         precio_x_kilo: d.precio_x_kilo ?? "",
         total_venta: d.total_venta ?? "",
         notas: d.notas ?? "",
+        cajas_resguardo: d.cajas_resguardo ? String(d.cajas_resguardo) : "",
+        kilos_resguardo: Number(d.kilos_resguardo) ? d.kilos_resguardo : "",
+        kilos_retirados: Number(d.kilos_retirados) || 0,
     }));
 }
 
@@ -101,16 +129,17 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     const [erroresCabecera, setErroresCabecera] = useState<Partial<Record<keyof Cabecera, string>>>({});
     const [erroresLineas, setErroresLineas] = useState<Record<number, ErrorLinea>>({});
 
-    // Al editar, esta salida ya tenía reservadas ciertas cajas y kilos de sus lotes:
-    // se le suman de vuelta a lo disponible, porque al guardar se reemplazan, no se suman.
+    // Al editar, esta salida ya tenía tomadas ciertas cajas y kilos de sus lotes
+    // (solo lo entregado: el resguardo sigue en la cámara): se le suman de vuelta
+    // a lo disponible, porque al guardar se reemplazan, no se suman.
     const yaReservado = useMemo(() => {
         const mapa: Record<number, Reservado> = {};
         if (salida) {
             for (const d of salida.detalles) {
                 const actual = mapa[d.entrada_detalle] ?? { cajas: 0, kilos: 0 };
                 mapa[d.entrada_detalle] = {
-                    cajas: actual.cajas + d.cajas,
-                    kilos: actual.kilos + Number(d.total_kilos),
+                    cajas: actual.cajas + d.cajas - d.cajas_resguardo,
+                    kilos: actual.kilos + Number(d.total_kilos) - Number(d.kilos_resguardo),
                 };
             }
         }
@@ -143,15 +172,22 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 if (i !== index) return linea;
                 const nueva = { ...linea, ...cambios };
 
+                const pesoPorCaja = Number(loteDe(nueva.entrada_detalle)?.pesoPorCaja);
                 if ("cajas" in cambios) {
                     const cajas = Number(nueva.cajas);
-                    const pesoPorCaja = Number(loteDe(nueva.entrada_detalle)?.pesoPorCaja);
                     if (cajas > 0 && pesoPorCaja > 0) {
-                        nueva.total_kilos = (cajas * pesoPorCaja).toFixed(2);
+                        nueva.total_kilos = (cajas * pesoPorCaja).toFixed(3);
                     }
                 }
+                if ("cajas_resguardo" in cambios) {
+                    const cajas = Number(nueva.cajas_resguardo);
+                    if (cajas > 0 && pesoPorCaja > 0) nueva.kilos_resguardo = (cajas * pesoPorCaja).toFixed(3);
+                    if (nueva.cajas_resguardo === "") nueva.kilos_resguardo = "";
+                }
 
-                if ("total_kilos" in cambios || "precio_x_kilo" in cambios) {
+                // Las cajas también cambian los kilos (arriba): sin recalcular aquí,
+                // el total se quedaba con el de los kilos anteriores.
+                if ("cajas" in cambios || "total_kilos" in cambios || "precio_x_kilo" in cambios) {
                     const kilos = Number(nueva.total_kilos);
                     const precio = Number(nueva.precio_x_kilo);
                     if (kilos > 0 && precio > 0) {
@@ -162,14 +198,16 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
             })
         );
 
-        if ("cajas" in cambios || "total_kilos" in cambios) {
+        const tocaResguardo = "cajas_resguardo" in cambios || "kilos_resguardo" in cambios;
+        if ("cajas" in cambios || "total_kilos" in cambios || tocaResguardo) {
             const entradaDetalle = lineas[index]?.entrada_detalle;
             if (entradaDetalle !== undefined) {
                 setErroresLineas((actual) => {
                     if (!actual[entradaDetalle]) return actual;
                     const copiaLinea = { ...actual[entradaDetalle] };
-                    if ("cajas" in cambios) delete copiaLinea.cajas;
-                    if ("total_kilos" in cambios) delete copiaLinea.total_kilos;
+                    if ("cajas" in cambios || tocaResguardo) delete copiaLinea.cajas;
+                    if ("total_kilos" in cambios || tocaResguardo) delete copiaLinea.total_kilos;
+                    if (tocaResguardo || "cajas" in cambios || "total_kilos" in cambios) delete copiaLinea.resguardo;
                     return { ...actual, [entradaDetalle]: copiaLinea };
                 });
             }
@@ -177,19 +215,21 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     }
 
     /**
-     * Las cajas se topan a la existencia del lote. Se avisa en vez de recortar
-     * en silencio: capear sin decirlo hace creer que se registró lo tecleado.
+     * Las cajas se topan a la existencia del lote (más lo que quede en resguardo,
+     * que no sale de la cámara). Se avisa en vez de recortar en silencio: capear
+     * sin decirlo hace creer que se registró lo tecleado.
      */
     function cambiarCajas(index: number, valor: string) {
-        const lote = loteDe(lineas[index].entrada_detalle);
-        const pedidas = Number(valor);
+        const linea = lineas[index];
+        const lote = loteDe(linea.entrada_detalle);
+        const maximo = lote ? lote.cajasDisponibles + (Number(linea.cajas_resguardo) || 0) : Infinity;
 
-        if (lote && pedidas > lote.cajasDisponibles) {
+        if (lote && Number(valor) > maximo) {
             setError(
                 `${lote.productoNombre} (lote ${lote.loteProveedor}): ` +
-                `solo hay ${lote.cajasDisponibles} cajas disponibles, se ajustó a ese máximo.`
+                `solo hay ${lote.cajasDisponibles} cajas disponibles para entregar, se ajustó a ese máximo.`
             );
-            actualizarLinea(index, { cajas: String(lote.cajasDisponibles) });
+            actualizarLinea(index, { cajas: String(maximo) });
             return;
         }
 
@@ -199,15 +239,16 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
 
     /** Mismo criterio que cambiarCajas, pero contra los kilos disponibles del lote. */
     function cambiarTotalKilos(index: number, valor: string) {
-        const lote = loteDe(lineas[index].entrada_detalle);
-        const pedidos = Number(valor);
+        const linea = lineas[index];
+        const lote = loteDe(linea.entrada_detalle);
+        const maximo = lote ? Number(lote.kilosDisponibles) + (Number(linea.kilos_resguardo) || 0) : Infinity;
 
-        if (lote && pedidos > Number(lote.kilosDisponibles)) {
+        if (lote && Number(valor) > maximo) {
             setError(
                 `${lote.productoNombre} (lote ${lote.loteProveedor}): ` +
-                `solo hay ${lote.kilosDisponibles} kg disponibles, se ajustó a ese máximo.`
+                `solo hay ${formatearKg(lote.kilosDisponibles)} kg disponibles para entregar, se ajustó a ese máximo.`
             );
-            actualizarLinea(index, { total_kilos: lote.kilosDisponibles });
+            actualizarLinea(index, { total_kilos: maximo.toFixed(3) });
             return;
         }
 
@@ -229,6 +270,9 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 precio_x_kilo: lote.precioVentaPlaneado ?? "",
                 total_venta: "",
                 notas: "",
+                cajas_resguardo: "",
+                kilos_resguardo: "",
+                kilos_retirados: 0,
             })),
         ]);
         setModalAbierto(false);
@@ -260,7 +304,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
         return null;
     }
 
-    async function guardar(e: React.FormEvent) {
+    async function guardar(e: React.SyntheticEvent) {
         e.preventDefault();
         setError(null);
 
@@ -284,6 +328,8 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                 precio_x_kilo: linea.precio_x_kilo === "" ? null : Number(linea.precio_x_kilo),
                 total_venta: linea.total_venta === "" ? null : Number(linea.total_venta),
                 notas: linea.notas.trim().toUpperCase(),
+                cajas_resguardo: Number(linea.cajas_resguardo) || 0,
+                kilos_resguardo: Number(linea.kilos_resguardo) || 0,
             })),
         };
 
@@ -306,6 +352,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
     const totalCajas = lineas.reduce((acc, l) => acc + (Number(l.cajas) || 0), 0);
     const totalKilos = lineas.reduce((acc, l) => acc + (Number(l.total_kilos) || 0), 0);
     const totalVenta = lineas.reduce((acc, l) => acc + (Number(l.total_venta) || 0), 0);
+    const totalResguardo = lineas.reduce((acc, l) => acc + (Number(l.kilos_resguardo) || 0), 0);
 
     return (
         <div className={`card card-outline mb-3 ${salida ? "card-warning" : "card-primary"}`}>
@@ -407,7 +454,8 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                             <div className="small text-body-secondary mb-2">
                                 <i className="bi bi-info-circle me-1" aria-hidden="true"></i>
                                 Deja <strong>Cajas</strong> en 0 si vendes peso suelto de una caja ya abierta,
-                                sin sacar una caja completa.
+                                sin sacar una caja completa. Si el cliente deja parte guardada, captúrala en
+                                {" "}<strong>Resguardo</strong>: se cobra todo y de la cámara solo sale lo entregado.
                             </div>
                             <div className="table-responsive">
                                 <table className="table table-sm align-middle mb-0">
@@ -421,6 +469,9 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                             <th className="text-end" style={{ minWidth: "95px" }}>Peso/caja</th>
                                             <th className="text-end" style={{ minWidth: "90px" }}>Cajas</th>
                                             <th className="text-end" style={{ minWidth: "110px" }}>Total kilos</th>
+                                            <th className="text-end" style={{ minWidth: "150px" }} title="Lo que el cliente deja guardado: cajas y kg">
+                                                Resguardo
+                                            </th>
                                             <th className="text-end" style={{ minWidth: "115px" }}>Precio/kg</th>
                                             <th className="text-end" style={{ minWidth: "120px" }}>Total venta</th>
                                             <th style={{ minWidth: "150px" }}>Nota</th>
@@ -430,7 +481,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                     <tbody>
                                         {lineas.map((linea, index) => {
                                             const lote = loteDe(linea.entrada_detalle);
-                                            const excedida = lote !== null && Number(linea.cajas) > lote.cajasDisponibles;
+                                            const excedida = lote !== null && entregado(linea).cajas > lote.cajasDisponibles;
                                             const erroresLinea = erroresLineas[linea.entrada_detalle] ?? {};
                                             return (
                                                 <tr key={linea.entrada_detalle} className={excedida ? "table-danger" : undefined}>
@@ -449,50 +500,80 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                                         {lote?.cajasDisponibles ?? "—"}
                                                     </td>
                                                     <td className="text-end small text-body-secondary">
-                                                        {lote?.kilosDisponibles ?? "—"}
+                                                        {lote ? formatearKg(lote.kilosDisponibles) : "—"}
                                                     </td>
                                                     <td className="text-end small text-body-secondary" title="Peso de fábrica del lote, tal como se registró en la entrada. No es editable aquí.">
-                                                        {lote?.pesoPorCaja ?? "—"}
+                                                        {lote ? formatearPeso(Number(lote.pesoPorCaja)) : "—"}
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="number" min="0" max={lote?.cajasDisponibles}
+                                                        <CampoNumero
+                                                            decimales={0}
                                                             className={`form-control form-control-sm text-end ${erroresLinea.cajas ? "is-invalid" : ""}`}
                                                             value={linea.cajas}
-                                                            onChange={(e) => cambiarCajas(index, e.target.value)}
+                                                            onChange={(valor) => cambiarCajas(index, valor)}
                                                         />
                                                         {erroresLinea.cajas && (
                                                             <div className="invalid-feedback d-block">{erroresLinea.cajas}</div>
                                                         )}
                                                     </td>
                                                     <td>
-                                                        <input
-                                                            type="number" min="0" step="0.01" max={lote?.kilosDisponibles}
+                                                        <CampoNumero
+                                                            decimales={3}
                                                             className={`form-control form-control-sm text-end fw-bold ${erroresLinea.total_kilos ? "is-invalid" : ""}`}
                                                             value={linea.total_kilos}
-                                                            onChange={(e) => cambiarTotalKilos(index, e.target.value)}
+                                                            onChange={(valor) => cambiarTotalKilos(index, valor)}
                                                         />
                                                         {erroresLinea.total_kilos && (
                                                             <div className="invalid-feedback d-block">{erroresLinea.total_kilos}</div>
                                                         )}
                                                     </td>
                                                     <td>
+                                                        <div className="d-flex gap-1">
+                                                            <CampoNumero
+                                                                decimales={0}
+                                                                className={`form-control form-control-sm text-end ${erroresLinea.resguardo ? "is-invalid" : ""}`}
+                                                                style={{ maxWidth: "4.5rem" }}
+                                                                placeholder="cj"
+                                                                aria-label="Cajas en resguardo"
+                                                                value={linea.cajas_resguardo}
+                                                                onChange={(valor) => actualizarLinea(index, { cajas_resguardo: valor })}
+                                                            />
+                                                            <CampoNumero
+                                                                decimales={3}
+                                                                className={`form-control form-control-sm text-end ${erroresLinea.resguardo ? "is-invalid" : ""}`}
+                                                                placeholder="kg"
+                                                                aria-label="Kilos en resguardo"
+                                                                value={linea.kilos_resguardo}
+                                                                onChange={(valor) => actualizarLinea(index, { kilos_resguardo: valor })}
+                                                            />
+                                                        </div>
+                                                        {linea.kilos_retirados > 0 && (
+                                                            <div className="small text-body-secondary mt-1">
+                                                                Entregado: {formatearKg(linea.kilos_retirados)} kg
+                                                            </div>
+                                                        )}
+                                                        {erroresLinea.resguardo && (
+                                                            <div className="invalid-feedback d-block">{erroresLinea.resguardo}</div>
+                                                        )}
+                                                    </td>
+                                                    <td>
                                                         <div className="input-group input-group-sm">
                                                             <span className="input-group-text">$</span>
-                                                            <input
-                                                                type="number" min="0" step="0.01" className="form-control text-end"
+                                                            <CampoNumero
+                                                                decimales={4}
+                                                                className="form-control text-end"
                                                                 value={linea.precio_x_kilo}
-                                                                onChange={(e) => actualizarLinea(index, { precio_x_kilo: e.target.value })}
+                                                                onChange={(valor) => actualizarLinea(index, { precio_x_kilo: valor })}
                                                             />
                                                         </div>
                                                     </td>
                                                     <td>
                                                         <div className="input-group input-group-sm">
                                                             <span className="input-group-text">$</span>
-                                                            <input
-                                                                type="number" min="0" step="0.01" className="form-control text-end"
+                                                            <CampoNumero
+                                                                className="form-control text-end"
                                                                 value={linea.total_venta}
-                                                                onChange={(e) => actualizarLinea(index, { total_venta: e.target.value })}
+                                                                onChange={(valor) => actualizarLinea(index, { total_venta: valor })}
                                                             />
                                                         </div>
                                                     </td>
@@ -520,12 +601,14 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-top">
-                                            <td colSpan={4} className="text-end fw-semibold text-uppercase small text-body-secondary">
+                                            <td colSpan={6} className="text-end fw-semibold text-uppercase small text-body-secondary">
                                                 Totales:
                                             </td>
                                             <td className="text-end fw-bold">{totalCajas}</td>
-                                            <td></td>
-                                            <td className="text-end fw-bold">{totalKilos.toFixed(2)} kg</td>
+                                            <td className="text-end fw-bold">{formatearKg(totalKilos)} kg</td>
+                                            <td className="text-end fw-semibold">
+                                                {totalResguardo > 0 ? `${formatearKg(totalResguardo)} kg` : ""}
+                                            </td>
                                             <td></td>
                                             <td className="text-end fw-bold">${totalVenta.toFixed(2)}</td>
                                             <td colSpan={2}></td>

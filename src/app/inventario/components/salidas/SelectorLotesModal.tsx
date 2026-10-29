@@ -3,6 +3,8 @@ import Modal from "../../../../shared/components/Modal";
 import BuscadorTabla from "../../../../shared/components/BuscadorTabla";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import { loteCoincide, type LoteDisponible } from "../../utils/lotesDisponibles";
+import { formatearPeso } from "../../utils/existencias";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface SelectorLotesModalProps {
     show: boolean;
@@ -67,7 +69,7 @@ function SelectorLotesModal({
                 <BuscadorTabla
                     valor={busqueda}
                     onChange={setBusqueda}
-                    placeholder="Buscar por factura, recibo de ingreso, lote, talla..."
+                    placeholder="Buscar por factura, recibo de ingreso, lote, talla, peso..."
                 />
                 <span className="small text-body-secondary">
                     {filtrados.length} lote(s) con existencia
@@ -93,6 +95,7 @@ function SelectorLotesModal({
                             <th>Factura</th>
                             <th>Recibo</th>
                             <th>Producto</th>
+                            <th className="text-end" title="Peso por caja: distingue el mismo producto en otra presentación">Peso/caja</th>
                             <th>Lote</th>
                             <th>Cámara</th>
                             <th>Proveedor</th>
@@ -104,7 +107,7 @@ function SelectorLotesModal({
                     <tbody>
                         {filtrados.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="text-center text-muted py-4">
+                                <td colSpan={11} className="text-center text-muted py-4">
                                     {lotes.length === 0
                                         ? "No hay lotes con existencia."
                                         : "Ninguna factura, recibo o producto coincide con la búsqueda."}
@@ -140,11 +143,12 @@ function SelectorLotesModal({
                                                 <span className="badge text-bg-secondary ms-2">Ya agregado</span>
                                             )}
                                         </td>
+                                        <td className="text-end fw-semibold text-nowrap">{formatearPeso(Number(lote.pesoPorCaja))} kg</td>
                                         <td className="text-wrap small">{lote.loteProveedor}</td>
                                         <td className="text-wrap small">{lote.camaraNombre}</td>
                                         <td className="text-wrap small">{lote.proveedorNombre}</td>
                                         <td className="text-end fw-bold">{lote.cajasDisponibles}</td>
-                                        <td className="text-end">{lote.kilosDisponibles}</td>
+                                        <td className="text-end">{formatearKg(lote.kilosDisponibles)}</td>
                                         <td className="text-wrap small">
                                             {lote.fechaCaducidad
                                                 ? formatearFechaNumerica(new Date(lote.fechaCaducidad + "T00:00:00"))

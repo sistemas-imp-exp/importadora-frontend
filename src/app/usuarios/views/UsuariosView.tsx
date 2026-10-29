@@ -1,7 +1,14 @@
 import PageHeader from "../../../layouts/components/PageHeader";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { actualizarUsuario, crearUsuario, obtenerUsuarios } from "../services/usuario.service";
+import {
+    actualizarUsuario,
+    cerrarSesionesUsuario,
+    crearUsuario,
+    desbloquearUsuario,
+    obtenerUsuarios,
+} from "../services/usuario.service";
+import ConfirmModal from "../../../shared/components/ConfirmModal";
 import { obtenerAreas } from "../services/area.service";
 import type { Usuario } from "../interfaces/Usuario";
 import type { Area } from "../interfaces/Area";
@@ -23,6 +30,7 @@ function UsuariosView() {
     const [mostrarModal, setMostrarModal] = useState(false);
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
     const [colapsado, setColapsado] = useState(false);
+    const [cerrandoSesiones, setCerrandoSesiones] = useState<Usuario | null>(null);
 
     const { mostrarToast } = useToastContext();
 
@@ -84,6 +92,28 @@ function UsuariosView() {
         }
     }
 
+    async function confirmarCerrarSesiones() {
+        if (!cerrandoSesiones) return;
+        try {
+            await cerrarSesionesUsuario(cerrandoSesiones.id);
+            mostrarToast("Sesiones cerradas", `${cerrandoSesiones.username} tendrá que volver a iniciar sesión en todos sus equipos.`, "success");
+        } catch (error) {
+            mostrarToast("Error del servidor", obtenerMensajeError(error), "danger");
+        } finally {
+            setCerrandoSesiones(null);
+        }
+    }
+
+    async function desbloquear(usuario: Usuario) {
+        try {
+            await desbloquearUsuario(usuario.id);
+            await cargar();
+            mostrarToast("Usuario desbloqueado", `${usuario.username} ya puede intentar iniciar sesión.`, "success");
+        } catch (error) {
+            mostrarToast("Error del servidor", obtenerMensajeError(error), "danger");
+        }
+    }
+
     return (
         <>
             <PageHeader
@@ -110,6 +140,10 @@ function UsuariosView() {
                         <h3 className="card-title mb-0 me-auto">Lista de usuarios</h3>
 
                         <div className="card-tools d-flex gap-2">
+                            <Link className="btn btn-outline-secondary" to="/usuarios/bitacora">
+                                <i className="bi bi-journal-text me-1" aria-hidden="true"></i>
+                                Bitácora de accesos
+                            </Link>
                             <Link className="btn btn-outline-secondary" to="/usuarios/roles">
                                 <i className="bi bi-shield-check me-1" aria-hidden="true"></i>
                                 Gestionar roles
@@ -135,7 +169,7 @@ function UsuariosView() {
                                     <div className="text-center">{error}</div>
                                 </div>
                             ) : loading ? (
-                                <SkeletonTable columnas={6} filas={5} />
+                                <SkeletonTable columnas={7} filas={5} />
                             ) : (
                                 <UsuariosTable
                                     usuarios={usuarios}
@@ -144,6 +178,8 @@ function UsuariosView() {
                                         setMostrarModal(true);
                                     }}
                                     onToggleActivo={alternarActivo}
+                                    onCerrarSesiones={setCerrandoSesiones}
+                                    onDesbloquear={desbloquear}
                                 />
                             )}
                         </div>
@@ -170,6 +206,21 @@ function UsuariosView() {
                     }}
                 />
             </Modal>
+
+            <ConfirmModal
+                show={cerrandoSesiones !== null}
+                onConfirm={confirmarCerrarSesiones}
+                onCancel={() => setCerrandoSesiones(null)}
+                confirmText="Sí, cerrar sesiones"
+                confirmVariant="danger"
+            >
+                <p className="mb-1">
+                    ¿Cerrar las sesiones de <strong>{cerrandoSesiones?.username}</strong> en todos sus equipos?
+                </p>
+                <p className="small text-body-secondary mb-0">
+                    Tendrá que volver a iniciar sesión; lo que no haya guardado se perderá.
+                </p>
+            </ConfirmModal>
         </>
     );
 }

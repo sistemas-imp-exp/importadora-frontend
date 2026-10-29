@@ -11,7 +11,7 @@ function Sidebar() {
                 <Link to="/" className="brand-link">
                     <img
                         src="/logo.png"
-                        alt="Importadora y Exportadora de Mariscos"
+                        alt="Importadora y Exportadora de Mariscos de Centro América y el Caribe"
                         className="brand-image-xl"
                         style={{ objectFit: "contain" }}
                     />

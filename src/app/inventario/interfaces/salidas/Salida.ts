@@ -16,6 +16,15 @@ export interface SalidaDetalleApi {
     // tabla ya no tiene que buscarlos recorriendo todas las entradas.
     lote_proveedor: string;
     proveedor_nombre: string;
+    // Diferencia que Cartera encontró contra la nota en papel; se va sola al corregir la línea.
+    aviso_cartera?: { comentario: string; usuario: string; fecha: string } | null;
+    // Parte de lo vendido que el cliente deja guardado (se cobra todo; del lote
+    // solo sale lo entregado) y lo que ya se llevó de eso con retiros.
+    cajas_resguardo: number;
+    kilos_resguardo: string;
+    kilos_retirados: string;
+    // En un retiro: la línea de venta cuyo resguardo entrega.
+    retiro_de: number | null;
 }
 
 export interface SalidaApi {
@@ -27,6 +36,10 @@ export interface SalidaApi {
     fecha: string;
     notas: string;
     detalles: SalidaDetalleApi[];
+    // Retiro de resguardo: folio propio (RES-0001) y la venta que entrega. Se
+    // registra y cancela desde Resguardos, no desde Salidas.
+    folio_retiro: string | null;
+    venta_resguardo: { id: number; folio_de_salida: string; notas: string } | null;
 }
 
 export interface CrearSalidaLineaRequest {
@@ -43,6 +56,8 @@ export interface CrearSalidaLineaRequest {
     precio_x_kilo: number | null;
     total_venta: number | null;
     notas: string;
+    cajas_resguardo: number;
+    kilos_resguardo: number;
 }
 
 export interface CrearSalidaRequest {

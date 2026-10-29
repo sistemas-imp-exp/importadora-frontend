@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
@@ -7,6 +8,8 @@ import type { Empresa } from "../../interfaces/empresas/Empresa";
 import type { Proveedor } from "../../interfaces/proveedores/Proveedor";
 import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Producto } from "../../interfaces/productos/Producto";
+import { formatearPeso } from "../../utils/existencias";
+import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros";
 
 interface EntradaFormProps {
     empresas: Empresa[];
@@ -24,6 +27,10 @@ interface LineaForm {
     uid: number;
     id?: number;
     producto_id: number;
+    // Proveedor y documentos van por línea: una entrada puede traer mercancía de varios proveedores.
+    proveedor_id: number;
+    factura: string;
+    pedimento: string;
     lote_proveedor: string;
     camara: number | "";
     cajas: string;
@@ -36,10 +43,13 @@ interface LineaForm {
 }
 
 const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-secondary mb-1";
+// Empresa que se propone al registrar una entrada nueva.
+const EMPRESA_POR_OMISION = "IMPORTADORA";
 
 // Ids de los campos con desplegable: se usan para saber si un Enter viene de un
 // SearchableSelect (donde Enter significa "elegir opción", no "agregar línea").
 const ID_PRODUCTO = "borrador-producto";
+const ID_PROVEEDOR = "borrador-proveedor";
 const ID_CAMARA = "borrador-camara";
 
 let contadorUid = 0;
@@ -52,6 +62,9 @@ function lineaVacia(): LineaForm {
     return {
         uid: siguienteUid(),
         producto_id: 0,
+        proveedor_id: 0,
+        factura: "",
+        pedimento: "",
         lote_proveedor: "",
         camara: "",
         cajas: "",
@@ -65,7 +78,8 @@ function lineaVacia(): LineaForm {
 }
 
 function cabeceraVacia() {
-    return { fecha: "", empresa_id: 0, proveedor_id: 0, es_internacional: false, factura: "", pedimento: "", recibo_ingreso: "" };
+    // empresa_id 0 = la de omisión (se resuelve al dibujar: los catálogos pueden llegar después).
+    return { fecha: "", empresa_id: 0, es_internacional: false, recibo_ingreso: "" };
 }
 
 type Cabecera = ReturnType<typeof cabeceraVacia>;
@@ -75,17 +89,15 @@ function validarCabeceraCampos(cabecera: Cabecera): Partial<Record<keyof Cabecer
     const errores: Partial<Record<keyof Cabecera, string>> = {};
     if (!cabecera.empresa_id) errores.empresa_id = "Selecciona la empresa.";
     if (!cabecera.fecha) errores.fecha = "La fecha es obligatoria.";
-    if (!cabecera.proveedor_id) errores.proveedor_id = "Selecciona un proveedor.";
-    if (!cabecera.factura.trim()) errores.factura = "La factura es obligatoria.";
-    if (cabecera.es_internacional && !cabecera.pedimento.trim()) {
-        errores.pedimento = "El pedimento es obligatorio en una entrada internacional.";
-    }
     return errores;
 }
 
-function validarLineaCampos(linea: LineaForm): Partial<Record<keyof LineaForm, string>> {
+function validarLineaCampos(linea: LineaForm, esInternacional: boolean): Partial<Record<keyof LineaForm, string>> {
     const errores: Partial<Record<keyof LineaForm, string>> = {};
     if (!linea.producto_id) errores.producto_id = "Selecciona el producto.";
+    if (!linea.proveedor_id) errores.proveedor_id = "Selecciona el proveedor.";
+    if (!linea.factura.trim()) errores.factura = "La factura es obligatoria.";
+    if (esInternacional && !linea.pedimento.trim()) errores.pedimento = "El pedimento es obligatorio en importación.";
     if (!linea.lote_proveedor.trim()) errores.lote_proveedor = "El lote es obligatorio.";
     if (!linea.cajas || Number(linea.cajas) <= 0) errores.cajas = "Ingresa las cajas.";
     // Obligatorio: es lo que permite calcular cajas disponibles en Salidas a
@@ -100,10 +112,7 @@ function cabeceraDesdeEntrada(entrada?: EntradaApi | null): Cabecera {
     return {
         fecha: entrada.fecha,
         empresa_id: entrada.empresa?.id ?? 0,
-        proveedor_id: entrada.proveedor?.id ?? 0,
         es_internacional: entrada.es_internacional,
-        factura: entrada.factura,
-        pedimento: entrada.pedimento,
         recibo_ingreso: entrada.recibo_ingreso,
     };
 }
@@ -113,6 +122,9 @@ function lineasDesdeEntrada(entrada: EntradaApi): LineaForm[] {
         uid: siguienteUid(),
         id: d.id,
         producto_id: d.producto.id,
+        proveedor_id: d.proveedor_origen?.id ?? 0,
+        factura: d.factura,
+        pedimento: d.pedimento,
         lote_proveedor: d.lote_proveedor,
         camara: d.camara ?? "",
         cajas: String(d.cajas),
@@ -125,11 +137,10 @@ function lineasDesdeEntrada(entrada: EntradaApi): LineaForm[] {
     }));
 }
 
-/** ¿El formulario de captura tiene algo escrito sin agregar todavía? */
+/** ¿El formulario de captura tiene algo escrito sin agregar todavía? (lo heredado no cuenta) */
 function borradorTieneDatos(linea: LineaForm): boolean {
     return (
         linea.producto_id !== 0 ||
-        linea.lote_proveedor.trim() !== "" ||
         linea.cajas !== "" ||
         linea.peso_por_caja !== "" ||
         linea.total_kilos !== "" ||
@@ -150,23 +161,32 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
     const [editandoUid, setEditandoUid] = useState<number | null>(null);
     const [erroresCabecera, setErroresCabecera] = useState<Partial<Record<keyof Cabecera, string>>>({});
     const [erroresLinea, setErroresLinea] = useState<Partial<Record<keyof LineaForm, string>>>({});
-    // El lote de proveedor se hereda de la línea anterior (suele repetirse en la
-    // misma recepción). `destelloLote` remonta el input para repetir la animación
-    // en cada línea nueva, aunque el lote no haya cambiado.
-    const [loteHeredado, setLoteHeredado] = useState(false);
-    const [destelloLote, setDestelloLote] = useState(0);
+    // Proveedor, factura, pedimento y lote se heredan de la línea anterior (suelen
+    // repetirse en la misma recepción). `destello` remonta esos campos para repetir
+    // la animación en cada línea nueva, aunque el valor no haya cambiado.
+    const [heredados, setHeredados] = useState<Set<keyof LineaForm>>(new Set());
+    const [destello, setDestello] = useState(0);
 
     const opcionesProducto = useMemo(
         () => productos.map((p) => ({ value: p.id, label: `${p.talla} ${p.tipo}`, disabled: !p.activo })),
         [productos]
+    );
+    const opcionesProveedor = useMemo(
+        () => proveedores.map((p) => ({ value: p.id, label: p.nombre, disabled: !p.activo })),
+        [proveedores]
     );
     const opcionesCamara = useMemo(
         () => camaras.map((c) => ({ value: c.id, label: c.nombre, disabled: !c.activo })),
         [camaras]
     );
 
+    // Una entrada nueva propone IMPORTADORA mientras no se elija otra.
+    const empresaPorOmision = empresas.find((e) => e.nombre === EMPRESA_POR_OMISION)?.id ?? 0;
+    const empresaId = cabecera.empresa_id || (entrada ? 0 : empresaPorOmision);
+
     const totalCajas = lineas.reduce((acc, l) => acc + (Number(l.cajas) || 0), 0);
     const totalKilos = lineas.reduce((acc, l) => acc + (Number(l.total_kilos) || 0), 0);
+    const proveedoresDistintos = new Set(lineas.map((l) => l.proveedor_id)).size;
 
     const indiceEditando = editandoUid !== null ? lineas.findIndex((l) => l.uid === editandoUid) : -1;
 
@@ -175,13 +195,31 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
         return producto ? `${producto.talla} ${producto.tipo}` : "—";
     }
 
+    function nombreProveedor(id: number): string {
+        return proveedores.find((p) => p.id === id)?.nombre ?? "—";
+    }
+
     function nombreCamara(id: number | ""): string {
         if (id === "") return "Venta directa";
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
     }
 
+    function claseHeredado(campo: keyof LineaForm): string {
+        return heredados.has(campo) ? "campo-heredado" : "";
+    }
+
+    function tituloHeredado(campo: keyof LineaForm, texto: string): string | undefined {
+        return heredados.has(campo) ? `${texto} que la línea anterior: cámbialo si esta línea es distinta.` : undefined;
+    }
+
     function actualizarBorrador(cambios: Partial<LineaForm>) {
-        if ("lote_proveedor" in cambios) setLoteHeredado(false);
+        setHeredados((actual) => {
+            const campos = Object.keys(cambios).filter((c) => actual.has(c as keyof LineaForm));
+            if (campos.length === 0) return actual;
+            const copia = new Set(actual);
+            for (const campo of campos) copia.delete(campo as keyof LineaForm);
+            return copia;
+        });
         setBorrador((actual) => {
             const nueva = { ...actual, ...cambios };
             // Total kilos se recalcula solo mientras cajas y kg/caja tengan valor;
@@ -189,7 +227,7 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
             if ("cajas" in cambios || "peso_por_caja" in cambios) {
                 const cajas = Number(nueva.cajas);
                 const peso = Number(nueva.peso_por_caja);
-                if (cajas > 0 && peso > 0) nueva.total_kilos = (cajas * peso).toFixed(2);
+                if (cajas > 0 && peso > 0) nueva.total_kilos = (cajas * peso).toFixed(3);
             }
             return nueva;
         });
@@ -218,7 +256,7 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
     }
 
     function confirmarLinea() {
-        const errores = validarLineaCampos(borrador);
+        const errores = validarLineaCampos(borrador, cabecera.es_internacional);
         setErroresLinea(errores);
         if (Object.keys(errores).length > 0) {
             setError("Revisa los campos marcados en rojo antes de agregar la línea.");
@@ -233,16 +271,20 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
             setLineas((actual) => [...actual, borrador]);
         }
 
-        // La cámara, la caducidad y el lote de proveedor casi siempre se repiten
+        // Proveedor, documentos, cámara, caducidad y lote casi siempre se repiten
         // dentro de la misma recepción, así que se conservan para la siguiente línea.
         setBorrador({
             ...lineaVacia(),
+            proveedor_id: borrador.proveedor_id,
+            factura: borrador.factura,
+            pedimento: borrador.pedimento,
             camara: borrador.camara,
             fecha_caducidad: borrador.fecha_caducidad,
             lote_proveedor: borrador.lote_proveedor,
         });
-        setLoteHeredado(borrador.lote_proveedor.trim() !== "");
-        setDestelloLote((n) => n + 1);
+        const campos: (keyof LineaForm)[] = ["proveedor_id", "factura", "pedimento", "lote_proveedor"];
+        setHeredados(new Set(campos.filter((c) => String(borrador[c]).trim() !== "" && borrador[c] !== 0)));
+        setDestello((n) => n + 1);
         enfocarProducto();
     }
 
@@ -251,6 +293,7 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
         if (!linea) return;
         setBorrador(linea);
         setEditandoUid(uid);
+        setHeredados(new Set());
         setError(null);
         setErroresLinea({});
         enfocarProducto();
@@ -259,7 +302,7 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
     /** Limpia la sección de captura: cancela una edición en curso o solo borra lo escrito. */
     function cancelarEdicionLinea() {
         setBorrador(lineaVacia());
-        setLoteHeredado(false);
+        setHeredados(new Set());
         setEditandoUid(null);
         setError(null);
         setErroresLinea({});
@@ -273,6 +316,7 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
         delete copia.id;
         setBorrador(copia);
         setEditandoUid(null);
+        setHeredados(new Set());
         setError(null);
         setErroresLinea({});
         enfocarProducto();
@@ -289,14 +333,13 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
         e.preventDefault();
         const id = (e.target as HTMLElement).id;
         // En los desplegables Enter significa "elegir la opción resaltada".
-        if (id === ID_PRODUCTO || id === ID_CAMARA) return;
+        if (id === ID_PRODUCTO || id === ID_PROVEEDOR || id === ID_CAMARA) return;
         confirmarLinea();
     }
 
     function validar(): string | null {
-        const erroresCab = validarCabeceraCampos(cabecera);
+        const erroresCab = validarCabeceraCampos({ ...cabecera, empresa_id: empresaId });
         setErroresCabecera(erroresCab);
-        if (erroresCab.empresa_id) return "Selecciona la empresa (arriba, junto a Nacional/Importación).";
         if (Object.keys(erroresCab).length > 0) {
             return "Revisa los campos marcados en rojo en la información de recepción.";
         }
@@ -305,10 +348,17 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
             return "Tienes una línea capturada sin agregar. Presiona 'Agregar línea' o límpiala antes de guardar.";
         }
         if (lineas.length === 0) return "Agregue al menos una línea.";
+        // Pasar a Importación después de capturar exige el pedimento de cada línea.
+        const sinPedimento = lineas
+            .map((l, i) => (cabecera.es_internacional && !l.pedimento.trim() ? i + 1 : null))
+            .filter((n): n is number => n !== null);
+        if (sinPedimento.length > 0) {
+            return `Falta el pedimento en la(s) línea(s) ${sinPedimento.join(", ")}: es obligatorio en importación.`;
+        }
         return null;
     }
 
-    async function guardar(e: React.FormEvent) {
+    async function guardar(e: React.SyntheticEvent) {
         e.preventDefault();
         setError(null);
 
@@ -320,15 +370,16 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
 
         const payload: CrearEntradaRequest = {
             fecha: cabecera.fecha,
-            empresa_id: cabecera.empresa_id,
-            proveedor_id: cabecera.proveedor_id,
+            empresa_id: empresaId,
             es_internacional: cabecera.es_internacional,
-            factura: cabecera.factura.trim().toUpperCase(),
-            pedimento: cabecera.pedimento.trim().toUpperCase(),
             recibo_ingreso: cabecera.recibo_ingreso.trim().toUpperCase(),
             detalles: lineas.map((linea): CrearEntradaLineaRequest => ({
                 ...(linea.id ? { id: linea.id } : {}),
                 producto_id: linea.producto_id,
+                proveedor_id: linea.proveedor_id,
+                factura: linea.factura.trim().toUpperCase(),
+                // En una compra nacional no hay pedimento.
+                pedimento: cabecera.es_internacional ? linea.pedimento.trim().toUpperCase() : "",
                 lote_proveedor: linea.lote_proveedor.trim().toUpperCase(),
                 camara: linea.camara === "" ? null : Number(linea.camara),
                 cajas: Number(linea.cajas),
@@ -345,11 +396,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
         try {
             await onGuardar(payload);
             if (!entrada) {
-                // La empresa se conserva: las capturas seguidas suelen ser de la misma.
-                setCabecera({ ...cabeceraVacia(), empresa_id: cabecera.empresa_id });
+                // La empresa y el tipo se conservan: las capturas seguidas suelen ser iguales.
+                setCabecera({ ...cabeceraVacia(), empresa_id: empresaId, es_internacional: cabecera.es_internacional });
                 setLineas([]);
                 setBorrador(lineaVacia());
-                setLoteHeredado(false);
+                setHeredados(new Set());
                 setEditandoUid(null);
                 setErroresCabecera({});
                 setErroresLinea({});
@@ -365,45 +416,10 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
 
     return (
         <div className={`card card-outline mb-3 ${entrada ? "card-warning" : "card-primary"}`}>
-            <div className="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <div className="card-header">
                 <h3 className="card-title fs-6 fw-bold m-0">
                     {entrada ? `Editando entrada #${entrada.id}` : "Registrar entrada"}
                 </h3>
-                <div className="d-flex flex-wrap gap-2">
-                    <div
-                        className={`btn-group btn-group-sm ${erroresCabecera.empresa_id ? "border border-danger rounded" : ""}`}
-                        role="group"
-                        aria-label="Empresa"
-                        title={erroresCabecera.empresa_id}
-                    >
-                        {empresas.map((empresa) => (
-                            <button
-                                key={empresa.id}
-                                type="button"
-                                className={`btn ${cabecera.empresa_id === empresa.id ? "btn-primary" : "btn-outline-secondary"}`}
-                                onClick={() => actualizarCabecera({ empresa_id: empresa.id })}
-                            >
-                                {empresa.nombre}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="btn-group btn-group-sm" role="group" aria-label="Tipo de entrada">
-                        <button
-                            type="button"
-                            className={`btn ${cabecera.es_internacional ? "btn-outline-secondary" : "btn-primary"}`}
-                            onClick={() => actualizarCabecera({ es_internacional: false, pedimento: "" })}
-                        >
-                            Nacional
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn ${cabecera.es_internacional ? "btn-primary" : "btn-outline-secondary"}`}
-                            onClick={() => actualizarCabecera({ es_internacional: true })}
-                        >
-                            Importación
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <form onSubmit={guardar}>
@@ -416,11 +432,56 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                         </h6>
 
                         <div className="row g-3">
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>
+                            <div className="col-12 col-md-6 col-xl-4">
+                                <span className={`${CLASE_ETIQUETA} d-block`} id="etiqueta-empresa">
+                                    Empresa <span className="text-danger">*</span>
+                                </span>
+                                <div
+                                    className={`btn-group btn-group-sm flex-wrap ${erroresCabecera.empresa_id ? "border border-danger rounded" : ""}`}
+                                    role="group"
+                                    aria-labelledby="etiqueta-empresa"
+                                >
+                                    {empresas.map((empresa) => (
+                                        <button
+                                            key={empresa.id}
+                                            type="button"
+                                            className={`btn ${empresaId === empresa.id ? "btn-primary" : "btn-outline-secondary"}`}
+                                            aria-pressed={empresaId === empresa.id}
+                                            onClick={() => actualizarCabecera({ empresa_id: empresa.id })}
+                                        >
+                                            {empresa.nombre}
+                                        </button>
+                                    ))}
+                                </div>
+                                {erroresCabecera.empresa_id && <div className="invalid-feedback d-block">{erroresCabecera.empresa_id}</div>}
+                            </div>
+                            <div className="col-12 col-md-6 col-xl-2">
+                                <span className={`${CLASE_ETIQUETA} d-block`} id="etiqueta-tipo">Tipo de compra</span>
+                                <div className="btn-group btn-group-sm" role="group" aria-labelledby="etiqueta-tipo">
+                                    <button
+                                        type="button"
+                                        className={`btn ${cabecera.es_internacional ? "btn-outline-secondary" : "btn-primary"}`}
+                                        aria-pressed={!cabecera.es_internacional}
+                                        onClick={() => actualizarCabecera({ es_internacional: false })}
+                                    >
+                                        Nacional
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn ${cabecera.es_internacional ? "btn-primary" : "btn-outline-secondary"}`}
+                                        aria-pressed={cabecera.es_internacional}
+                                        onClick={() => actualizarCabecera({ es_internacional: true })}
+                                    >
+                                        Importación
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="col-12 col-sm-6 col-xl-3">
+                                <label className={CLASE_ETIQUETA} htmlFor="entrada-fecha">
                                     Fecha de recepción <span className="text-danger">*</span>
                                 </label>
                                 <input
+                                    id="entrada-fecha"
                                     type="date"
                                     className={`form-control form-control-sm ${erroresCabecera.fecha ? "is-invalid" : ""}`}
                                     value={cabecera.fecha}
@@ -428,57 +489,17 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 />
                                 {erroresCabecera.fecha && <div className="invalid-feedback d-block">{erroresCabecera.fecha}</div>}
                             </div>
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>
-                                    Proveedor <span className="text-danger">*</span>
-                                </label>
-                                <select
-                                    className={`form-select form-select-sm ${erroresCabecera.proveedor_id ? "is-invalid" : ""}`}
-                                    value={cabecera.proveedor_id}
-                                    onChange={(e) => actualizarCabecera({ proveedor_id: Number(e.target.value) })}
-                                >
-                                    <option value={0}>Seleccione proveedor...</option>
-                                    {proveedores.map((p) => (
-                                        <option key={p.id} value={p.id} disabled={!p.activo}>{p.nombre}</option>
-                                    ))}
-                                </select>
-                                {erroresCabecera.proveedor_id && <div className="invalid-feedback d-block">{erroresCabecera.proveedor_id}</div>}
-                            </div>
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>
-                                    N° factura / remisión <span className="text-danger">*</span>
-                                </label>
-                                <input
-                                    className={`form-control form-control-sm ${erroresCabecera.factura ? "is-invalid" : ""}`}
-                                    placeholder="Ej. FAC-2026-0891"
-                                    value={cabecera.factura}
-                                    onChange={(e) => actualizarCabecera({ factura: e.target.value })}
-                                />
-                                {erroresCabecera.factura && <div className="invalid-feedback d-block">{erroresCabecera.factura}</div>}
-                            </div>
-                            {cabecera.es_internacional && (
-                                <div className="col-12 col-sm-6 col-lg-3">
-                                    <label className={CLASE_ETIQUETA}>
-                                        Pedimento <span className="text-danger">*</span>
-                                    </label>
-                                    <input
-                                        className={`form-control form-control-sm ${erroresCabecera.pedimento ? "is-invalid" : ""}`}
-                                        value={cabecera.pedimento}
-                                        onChange={(e) => actualizarCabecera({ pedimento: e.target.value })}
-                                    />
-                                    {erroresCabecera.pedimento && <div className="invalid-feedback d-block">{erroresCabecera.pedimento}</div>}
-                                </div>
-                            )}
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>
+                            <div className="col-12 col-sm-6 col-xl-3">
+                                <label className={CLASE_ETIQUETA} htmlFor="entrada-recibo">
                                     Recibo de ingreso
                                     <i
                                         className="bi bi-info-circle ms-1"
-                                        title="Si lo llenas, agrupa las líneas que van a resguardo (misma cámara). Las de venta directa no se ven afectadas."
+                                        title="Agrupa las líneas que van a cámara (todas de la misma cámara). Si el recibo ya existe, estas líneas se suman a él aunque sea de otra entrada."
                                         aria-hidden="true"
                                     ></i>
                                 </label>
                                 <input
+                                    id="entrada-recibo"
                                     className="form-control form-control-sm"
                                     placeholder="Ej. IMP1797 (opcional)"
                                     value={cabecera.recibo_ingreso}
@@ -512,6 +533,53 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                         )}
 
                         <div className="row g-3">
+                            <div className="col-12 col-md-4">
+                                <label className={CLASE_ETIQUETA} htmlFor={ID_PROVEEDOR}>
+                                    Proveedor <span className="text-danger">*</span>
+                                </label>
+                                <SearchableSelect
+                                    key={`proveedor-${destello}`}
+                                    id={ID_PROVEEDOR}
+                                    className={`form-control form-control-sm ${erroresLinea.proveedor_id ? "is-invalid" : ""} ${claseHeredado("proveedor_id")}`}
+                                    placeholder="Buscar proveedor..."
+                                    options={opcionesProveedor}
+                                    value={borrador.proveedor_id === 0 ? "" : borrador.proveedor_id}
+                                    onChange={(v) => actualizarBorrador({ proveedor_id: v === "" ? 0 : v })}
+                                />
+                                {erroresLinea.proveedor_id && <div className="invalid-feedback d-block">{erroresLinea.proveedor_id}</div>}
+                            </div>
+                            <div className={`col-6 ${cabecera.es_internacional ? "col-md-4" : "col-md-8"}`}>
+                                <label className={CLASE_ETIQUETA} htmlFor="borrador-factura">
+                                    N° factura / remisión <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                    key={`factura-${destello}`}
+                                    id="borrador-factura"
+                                    className={`form-control form-control-sm ${erroresLinea.factura ? "is-invalid" : ""} ${claseHeredado("factura")}`}
+                                    placeholder="Ej. FAC-2026-0891"
+                                    title={tituloHeredado("factura", "Misma factura")}
+                                    value={borrador.factura}
+                                    onChange={(e) => actualizarBorrador({ factura: e.target.value })}
+                                />
+                                {erroresLinea.factura && <div className="invalid-feedback d-block">{erroresLinea.factura}</div>}
+                            </div>
+                            {cabecera.es_internacional && (
+                                <div className="col-6 col-md-4">
+                                    <label className={CLASE_ETIQUETA} htmlFor="borrador-pedimento">
+                                        Pedimento <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        key={`pedimento-${destello}`}
+                                        id="borrador-pedimento"
+                                        className={`form-control form-control-sm ${erroresLinea.pedimento ? "is-invalid" : ""} ${claseHeredado("pedimento")}`}
+                                        title={tituloHeredado("pedimento", "Mismo pedimento")}
+                                        value={borrador.pedimento}
+                                        onChange={(e) => actualizarBorrador({ pedimento: e.target.value })}
+                                    />
+                                    {erroresLinea.pedimento && <div className="invalid-feedback d-block">{erroresLinea.pedimento}</div>}
+                                </div>
+                            )}
+
                             <div className="col-12 col-md-5">
                                 <label className={CLASE_ETIQUETA} htmlFor={ID_PRODUCTO}>
                                     Producto <span className="text-danger">*</span>
@@ -527,14 +595,15 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 {erroresLinea.producto_id && <div className="invalid-feedback d-block">{erroresLinea.producto_id}</div>}
                             </div>
                             <div className="col-6 col-md-3">
-                                <label className={CLASE_ETIQUETA}>
+                                <label className={CLASE_ETIQUETA} htmlFor="borrador-lote">
                                     Lote <span className="text-danger">*</span>
                                 </label>
                                 <input
-                                    key={`lote-${destelloLote}`}
-                                    className={`form-control form-control-sm ${erroresLinea.lote_proveedor ? "is-invalid" : ""} ${loteHeredado ? "campo-heredado" : ""}`}
+                                    key={`lote-${destello}`}
+                                    id="borrador-lote"
+                                    className={`form-control form-control-sm ${erroresLinea.lote_proveedor ? "is-invalid" : ""} ${claseHeredado("lote_proveedor")}`}
                                     placeholder="Ej. L-0982-A"
-                                    title={loteHeredado ? "Mismo lote que la línea anterior: cámbialo si esta línea es de otro lote." : undefined}
+                                    title={tituloHeredado("lote_proveedor", "Mismo lote")}
                                     value={borrador.lote_proveedor}
                                     onChange={(e) => actualizarBorrador({ lote_proveedor: e.target.value })}
                                 />
@@ -556,11 +625,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 <label className={CLASE_ETIQUETA}>
                                     Cajas <span className="text-danger">*</span>
                                 </label>
-                                <input
-                                    type="number" min="0"
+                                <CampoNumero
+                                    decimales={0}
                                     className={`form-control form-control-sm text-end ${erroresLinea.cajas ? "is-invalid" : ""}`}
                                     value={borrador.cajas}
-                                    onChange={(e) => actualizarBorrador({ cajas: e.target.value })}
+                                    onChange={(valor) => actualizarBorrador({ cajas: valor })}
                                 />
                                 {erroresLinea.cajas && <div className="invalid-feedback d-block">{erroresLinea.cajas}</div>}
                             </div>
@@ -568,11 +637,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 <label className={CLASE_ETIQUETA}>
                                     Kg / caja <span className="text-danger">*</span>
                                 </label>
-                                <input
-                                    type="number" min="0" step="0.01"
+                                <CampoNumero
+                                    decimales={3}
                                     className={`form-control form-control-sm text-end ${erroresLinea.peso_por_caja ? "is-invalid" : ""}`}
                                     value={borrador.peso_por_caja}
-                                    onChange={(e) => actualizarBorrador({ peso_por_caja: e.target.value })}
+                                    onChange={(valor) => actualizarBorrador({ peso_por_caja: valor })}
                                 />
                                 {erroresLinea.peso_por_caja && (
                                     <div className="invalid-feedback d-block">{erroresLinea.peso_por_caja}</div>
@@ -582,11 +651,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 <label className={CLASE_ETIQUETA}>
                                     Total kg <span className="text-danger">*</span>
                                 </label>
-                                <input
-                                    type="number" min="0" step="0.01"
+                                <CampoNumero
+                                    decimales={3}
                                     className={`form-control form-control-sm text-end fw-bold ${erroresLinea.total_kilos ? "is-invalid" : ""}`}
                                     value={borrador.total_kilos}
-                                    onChange={(e) => actualizarBorrador({ total_kilos: e.target.value })}
+                                    onChange={(valor) => actualizarBorrador({ total_kilos: valor })}
                                 />
                                 {erroresLinea.total_kilos && <div className="invalid-feedback d-block">{erroresLinea.total_kilos}</div>}
                             </div>
@@ -594,10 +663,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 <label className={CLASE_ETIQUETA}>Costo / kg</label>
                                 <div className="input-group input-group-sm">
                                     <span className="input-group-text">$</span>
-                                    <input
-                                        type="number" min="0" step="0.01" className="form-control text-end"
+                                    <CampoNumero
+                                        decimales={4}
+                                        className="form-control text-end"
                                         value={borrador.costo_por_kilo}
-                                        onChange={(e) => actualizarBorrador({ costo_por_kilo: e.target.value })}
+                                        onChange={(valor) => actualizarBorrador({ costo_por_kilo: valor })}
                                     />
                                 </div>
                             </div>
@@ -605,10 +675,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                 <label className={CLASE_ETIQUETA}>P. venta</label>
                                 <div className="input-group input-group-sm">
                                     <span className="input-group-text">$</span>
-                                    <input
-                                        type="number" min="0" step="0.01" className="form-control text-end"
+                                    <CampoNumero
+                                        decimales={4}
+                                        className="form-control text-end"
                                         value={borrador.precio_venta_planeado}
-                                        onChange={(e) => actualizarBorrador({ precio_venta_planeado: e.target.value })}
+                                        onChange={(valor) => actualizarBorrador({ precio_venta_planeado: valor })}
                                     />
                                 </div>
                             </div>
@@ -663,6 +734,11 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                             <i className="bi bi-list-ul text-body-secondary" aria-hidden="true"></i>
                             Líneas agregadas
                             <span className="badge text-bg-secondary">{lineas.length}</span>
+                            {proveedoresDistintos > 1 && (
+                                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle fw-normal">
+                                    {proveedoresDistintos} proveedores
+                                </span>
+                            )}
                         </h6>
 
                         {lineas.length === 0 ? (
@@ -675,6 +751,9 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                     <thead>
                                         <tr className="small text-uppercase text-body-secondary">
                                             <th style={{ width: "36px" }}>#</th>
+                                            <th>Proveedor</th>
+                                            <th>Factura</th>
+                                            {cabecera.es_internacional && <th>Pedimento</th>}
                                             <th>Producto</th>
                                             <th>Lote</th>
                                             <th>Cámara</th>
@@ -692,14 +771,21 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                         {lineas.map((linea, index) => (
                                             <tr key={linea.uid} className={linea.uid === editandoUid ? "table-warning" : undefined}>
                                                 <td className="text-body-secondary">{index + 1}</td>
+                                                <td className="text-wrap">{nombreProveedor(linea.proveedor_id)}</td>
+                                                <td className="text-nowrap">{linea.factura}</td>
+                                                {cabecera.es_internacional && (
+                                                    <td className="text-nowrap">
+                                                        {linea.pedimento || <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Falta</span>}
+                                                    </td>
+                                                )}
                                                 <td className="text-wrap fw-semibold">{nombreProducto(linea.producto_id)}</td>
                                                 <td className="text-wrap">{linea.lote_proveedor}</td>
                                                 <td className="text-wrap">{nombreCamara(linea.camara)}</td>
                                                 <td className="text-end">{linea.cajas}</td>
-                                                <td className="text-end">{linea.peso_por_caja || "—"}</td>
-                                                <td className="text-end fw-bold">{Number(linea.total_kilos).toFixed(2)}</td>
-                                                <td className="text-end">{linea.costo_por_kilo ? `$${linea.costo_por_kilo}` : "—"}</td>
-                                                <td className="text-end">{linea.precio_venta_planeado ? `$${linea.precio_venta_planeado}` : "—"}</td>
+                                                <td className="text-end">{linea.peso_por_caja ? formatearPeso(Number(linea.peso_por_caja)) : "—"}</td>
+                                                <td className="text-end fw-bold">{formatearKg(linea.total_kilos)}</td>
+                                                <td className="text-end">{linea.costo_por_kilo ? formatearPrecioKg(linea.costo_por_kilo) : "—"}</td>
+                                                <td className="text-end">{linea.precio_venta_planeado ? formatearPrecioKg(linea.precio_venta_planeado) : "—"}</td>
                                                 <td className="text-wrap">
                                                     {linea.fecha_caducidad
                                                         ? formatearFechaNumerica(new Date(linea.fecha_caducidad + "T00:00:00"))
@@ -712,24 +798,27 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                                         className="btn btn-sm btn-outline-secondary me-1"
                                                         onClick={() => editarLinea(linea.uid)}
                                                         title="Editar línea"
+                                                        aria-label={`Editar línea ${index + 1}`}
                                                     >
-                                                        <i className="bi bi-pencil"></i>
+                                                        <i className="bi bi-pencil" aria-hidden="true"></i>
                                                     </button>
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-secondary me-1"
                                                         onClick={() => duplicarLinea(linea.uid)}
                                                         title="Copiar al formulario para capturar otra igual"
+                                                        aria-label={`Copiar línea ${index + 1}`}
                                                     >
-                                                        <i className="bi bi-copy"></i>
+                                                        <i className="bi bi-copy" aria-hidden="true"></i>
                                                     </button>
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-danger"
                                                         onClick={() => quitarLinea(linea.uid)}
                                                         title="Quitar línea"
+                                                        aria-label={`Quitar línea ${index + 1}`}
                                                     >
-                                                        <i className="bi bi-trash"></i>
+                                                        <i className="bi bi-trash" aria-hidden="true"></i>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -737,12 +826,12 @@ function EntradaForm({ empresas, proveedores, camaras, productos, entrada, onGua
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-top">
-                                            <td colSpan={4} className="text-end fw-semibold text-uppercase small text-body-secondary">
+                                            <td colSpan={cabecera.es_internacional ? 7 : 6} className="text-end fw-semibold text-uppercase small text-body-secondary">
                                                 Totales:
                                             </td>
                                             <td className="text-end fw-bold">{totalCajas}</td>
                                             <td></td>
-                                            <td className="text-end fw-bold">{totalKilos.toFixed(2)} kg</td>
+                                            <td className="text-end fw-bold">{formatearKg(totalKilos)} kg</td>
                                             <td colSpan={5}></td>
                                         </tr>
                                     </tfoot>

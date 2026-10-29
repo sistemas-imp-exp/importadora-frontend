@@ -12,6 +12,7 @@ import AlertasCaducidadView from "./views/alertas/AlertasCaducidadView";
 import AuditoriaEntradasView from "./views/auditoria/AuditoriaEntradasView";
 import ReportesInventarioView from "./views/reportes/ReportesInventarioView";
 import ReporteUtilidadView from "./views/reportes/ReporteUtilidadView";
+import ResguardosView from "../resguardos/views/ResguardosView";
 
 export const inventarioRoutes = (
     <>
@@ -24,6 +25,7 @@ export const inventarioRoutes = (
         <Route path="/inventario/entradas" element={<EntradasView />} />
         <Route path="/inventario/salidas" element={<SalidasView />} />
         <Route path="/inventario/movimientos-camara" element={<MovimientosCamaraView />} />
+        <Route path="/inventario/resguardos" element={<ResguardosView area="INV" />} />
         <Route path="/inventario/existencias" element={<ExistenciasView />} />
         <Route path="/inventario/alertas-caducidad" element={<AlertasCaducidadView />} />
         <Route path="/inventario/auditoria-entradas" element={<AuditoriaEntradasView />} />

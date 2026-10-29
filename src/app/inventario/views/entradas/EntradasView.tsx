@@ -5,7 +5,7 @@ import { obtenerEmpresas } from "../../services/empresa.service";
 import { obtenerProveedores } from "../../services/proveedor.service";
 import { obtenerCamaras } from "../../services/camara.service";
 import { obtenerProductos } from "../../services/producto.service";
-import type { EntradaApi, CrearEntradaRequest } from "../../interfaces/entradas/Entrada";
+import { proveedoresDe, type EntradaApi, type CrearEntradaRequest } from "../../interfaces/entradas/Entrada";
 import type { Empresa } from "../../interfaces/empresas/Empresa";
 import type { Proveedor } from "../../interfaces/proveedores/Proveedor";
 import type { Camara } from "../../interfaces/camaras/Camara";
@@ -246,7 +246,7 @@ function EntradasView() {
                 <div className="text-center">
                     <i className="bi bi-exclamation-triangle-fill text-warning fs-1"></i>
                     <h3 className="text-slate-900 text-base font-semibold dark:text-slate-50">
-                        ¿Eliminar la entrada de {entradaEliminar?.proveedor?.nombre} del {entradaEliminar?.fecha}?
+                        ¿Eliminar la entrada de {entradaEliminar ? proveedoresDe(entradaEliminar).join(", ") : ""} del {entradaEliminar?.fecha}?
                     </h3>
                     <p className="text-slate-600 text-sm mt-2 leading-relaxed dark:text-slate-400">
                         Se eliminan también todas sus líneas. Si alguna ya fue vendida o movida a otra cámara, no se podrá eliminar.

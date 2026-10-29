@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SearchableSelect from "../../../../shared/components/SearchableSelect";
 import { formatearFechaNumerica } from "../../../../shared/utils/fechas";
 import type { EntradaApi } from "../../interfaces/entradas/Entrada";
 import { obtenerEntrada, type EntradaResumen } from "../../services/entrada.service";
-import type {
-    CabeceraEdicionAuditada,
-    EditarEntradaAuditadaRequest,
-    LineaEdicionAuditada,
-} from "../../interfaces/auditoria/EdicionEntrada";
+import type { EditarEntradaAuditadaRequest, LineaEdicionAuditada } from "../../interfaces/auditoria/EdicionEntrada";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface AuditoriaEntradaFormProps {
     /** Lista ligera para el selector; el detalle se pide al elegir una entrada. */
@@ -17,6 +15,8 @@ interface AuditoriaEntradaFormProps {
 }
 
 interface CamposLinea {
+    factura: string;
+    pedimento: string;
     lote_proveedor: string;
     precio_venta_planeado: string;
     fecha_caducidad: string;
@@ -29,6 +29,8 @@ function camposDeLinea(entrada: EntradaApi): Record<number, CamposLinea> {
     const mapa: Record<number, CamposLinea> = {};
     for (const detalle of entrada.detalles) {
         mapa[detalle.id] = {
+            factura: detalle.factura,
+            pedimento: detalle.pedimento,
             lote_proveedor: detalle.lote_proveedor,
             precio_venta_planeado: detalle.precio_venta_planeado ?? "",
             fecha_caducidad: detalle.fecha_caducidad ?? "",
@@ -43,8 +45,6 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
     const [entrada, setEntrada] = useState<EntradaApi | null>(null);
     const [cargandoEntrada, setCargandoEntrada] = useState(false);
     const [motivo, setMotivo] = useState("");
-    const [factura, setFactura] = useState("");
-    const [pedimento, setPedimento] = useState("");
     const [lineas, setLineas] = useState<Record<number, CamposLinea>>({});
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -75,13 +75,9 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
 
     useEffect(() => {
         if (!entrada) {
-            setFactura("");
-            setPedimento("");
             setLineas({});
             return;
         }
-        setFactura(entrada.factura);
-        setPedimento(entrada.pedimento);
         setLineas(camposDeLinea(entrada));
         setError(null);
     }, [entrada]);
@@ -93,10 +89,6 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
     /** Solo se envían los campos que realmente cambiaron respecto a lo guardado. */
     function construirPayload(): EditarEntradaAuditadaRequest | null {
         if (!entrada) return null;
-
-        const cabecera: CabeceraEdicionAuditada = {};
-        if (factura !== entrada.factura) cabecera.factura = factura;
-        if (pedimento !== entrada.pedimento) cabecera.pedimento = pedimento;
 
         const originales = camposDeLinea(entrada);
         const lineasCambiadas: LineaEdicionAuditada[] = [];
@@ -111,16 +103,12 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
             if (Object.keys(cambios).length > 0) lineasCambiadas.push({ id: detalle.id, ...cambios });
         }
 
-        if (Object.keys(cabecera).length === 0 && lineasCambiadas.length === 0) return null;
+        if (lineasCambiadas.length === 0) return null;
 
-        return {
-            motivo,
-            ...(Object.keys(cabecera).length > 0 ? { cabecera } : {}),
-            ...(lineasCambiadas.length > 0 ? { lineas: lineasCambiadas } : {}),
-        };
+        return { motivo, lineas: lineasCambiadas };
     }
 
-    async function guardar(e: React.FormEvent) {
+    async function guardar(e: React.SyntheticEvent) {
         e.preventDefault();
         setError(null);
 
@@ -189,28 +177,6 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
 
                 {entrada && (
                     <>
-                        <h6 className="fw-bold border-bottom pb-2 mb-3">Cabecera</h6>
-                        <div className="row g-3 mb-4">
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>Factura</label>
-                                <input
-                                    className="form-control form-control-sm"
-                                    value={factura}
-                                    onChange={(e) => setFactura(e.target.value)}
-                                />
-                            </div>
-                            <div className="col-12 col-sm-6 col-lg-3">
-                                <label className={CLASE_ETIQUETA}>Pedimento</label>
-                                <input
-                                    className="form-control form-control-sm"
-                                    value={pedimento}
-                                    onChange={(e) => setPedimento(e.target.value)}
-                                    disabled={!entrada.es_internacional}
-                                    title={entrada.es_internacional ? undefined : "La entrada es nacional"}
-                                />
-                            </div>
-                        </div>
-
                         <h6 className="fw-bold border-bottom pb-2 mb-3">Líneas</h6>
                         <div className="table-responsive">
                             <table className="table table-sm align-middle mb-0">
@@ -218,6 +184,8 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
                                     <tr className="small text-uppercase text-body-secondary">
                                         <th>Producto</th>
                                         <th>Cámara / cantidades</th>
+                                        <th style={{ minWidth: "130px" }}>Factura</th>
+                                        {entrada.es_internacional && <th style={{ minWidth: "150px" }}>Pedimento</th>}
                                         <th style={{ minWidth: "130px" }}>Lote proveedor</th>
                                         <th style={{ minWidth: "120px" }}>P. venta planeado</th>
                                         <th style={{ minWidth: "150px" }}>Caducidad</th>
@@ -227,13 +195,32 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
                                 <tbody>
                                     {entrada.detalles.map((detalle) => (
                                         <tr key={detalle.id}>
-                                            <td className="text-wrap fw-semibold">
-                                                {detalle.producto.talla} {detalle.producto.tipo}
+                                            <td className="text-wrap">
+                                                <div className="fw-semibold">{detalle.producto.talla} {detalle.producto.tipo}</div>
+                                                <div className="small text-body-secondary">{detalle.proveedor_origen?.nombre ?? "—"}</div>
                                             </td>
                                             <td className="text-wrap small text-body-secondary">
-                                                {detalle.cajas} cajas · {detalle.total_kilos} kg
+                                                {detalle.cajas} cajas · {formatearKg(detalle.total_kilos)} kg
                                                 <div>Disponibles: {detalle.cajas_disponibles}</div>
                                             </td>
+                                            <td>
+                                                <input
+                                                    className="form-control form-control-sm"
+                                                    aria-label="Factura"
+                                                    value={lineas[detalle.id]?.factura ?? ""}
+                                                    onChange={(e) => actualizarLinea(detalle.id, { factura: e.target.value })}
+                                                />
+                                            </td>
+                                            {entrada.es_internacional && (
+                                                <td>
+                                                    <input
+                                                        className="form-control form-control-sm"
+                                                        aria-label="Pedimento"
+                                                        value={lineas[detalle.id]?.pedimento ?? ""}
+                                                        onChange={(e) => actualizarLinea(detalle.id, { pedimento: e.target.value })}
+                                                    />
+                                                </td>
+                                            )}
                                             <td>
                                                 <input
                                                     className="form-control form-control-sm"
@@ -244,10 +231,11 @@ function AuditoriaEntradaForm({ entradas, onGuardar }: AuditoriaEntradaFormProps
                                             <td>
                                                 <div className="input-group input-group-sm">
                                                     <span className="input-group-text">$</span>
-                                                    <input
-                                                        type="number" min="0" step="0.01" className="form-control text-end"
+                                                    <CampoNumero
+                                                        decimales={4}
+                                                        className="form-control text-end"
                                                         value={lineas[detalle.id]?.precio_venta_planeado ?? ""}
-                                                        onChange={(e) => actualizarLinea(detalle.id, { precio_venta_planeado: e.target.value })}
+                                                        onChange={(valor) => actualizarLinea(detalle.id, { precio_venta_planeado: valor })}
                                                     />
                                                 </div>
                                             </td>

@@ -4,18 +4,21 @@ import { useAuth } from "../../../shared/hooks/useAuth";
 import BuscadorTabla from "../../../shared/components/BuscadorTabla";
 import Paginacion from "../../../shared/components/Paginacion";
 import { usePaginacion } from "../../../shared/hooks/usePaginacion";
+import { formatearFechaNumerica } from "../../../shared/utils/fechas";
 
 interface UsuariosTableProps {
     usuarios: Usuario[];
     onEditar: (usuario: Usuario) => void;
     onToggleActivo: (usuario: Usuario) => void;
+    onCerrarSesiones: (usuario: Usuario) => void;
+    onDesbloquear: (usuario: Usuario) => void;
 }
 
 type FiltroEstado = "todos" | "activos" | "inactivos";
 
 const POR_PAGINA = 10;
 
-function UsuariosTable({ usuarios, onEditar, onToggleActivo }: UsuariosTableProps) {
+function UsuariosTable({ usuarios, onEditar, onToggleActivo, onCerrarSesiones, onDesbloquear }: UsuariosTableProps) {
     const { user } = useAuth();
 
     const [busqueda, setBusqueda] = useState("");
@@ -70,13 +73,14 @@ function UsuariosTable({ usuarios, onEditar, onToggleActivo }: UsuariosTableProp
                             <th className="text-wrap">Áreas</th>
                             <th className="text-wrap text-center">Rol</th>
                             <th className="text-wrap text-center">Estado</th>
+                            <th className="text-wrap">Último acceso</th>
                             <th className="text-wrap text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginados.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="text-center text-muted py-4">
+                                <td colSpan={7} className="text-center text-muted py-4">
                                     {usuarios.length === 0
                                         ? "No hay usuarios registrados."
                                         : "Ningún usuario coincide con la búsqueda."}
@@ -140,6 +144,23 @@ function UsuariosTable({ usuarios, onEditar, onToggleActivo }: UsuariosTableProp
                                             ) : (
                                                 <span className="badge text-bg-secondary">Inactivo</span>
                                             )}
+                                            {usuario.bloqueado && (
+                                                <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle d-block mt-1"
+                                                    title="Bloqueado 15 min por 5 intentos fallidos">
+                                                    <i className="bi bi-lock-fill me-1" aria-hidden="true"></i>Bloqueado
+                                                </span>
+                                            )}
+                                            {usuario.debe_cambiar_password && (
+                                                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-block mt-1"
+                                                    title="Debe cambiar su contraseña al entrar">
+                                                    <i className="bi bi-key me-1" aria-hidden="true"></i>Contraseña provisional
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="text-wrap small">
+                                            {usuario.ultimo_acceso
+                                                ? formatearFechaNumerica(new Date(usuario.ultimo_acceso), "numerico-hora")
+                                                : <span className="text-muted">Nunca</span>}
                                         </td>
                                         <td>
                                             <div className="text-end">
@@ -157,6 +178,21 @@ function UsuariosTable({ usuarios, onEditar, onToggleActivo }: UsuariosTableProp
                                                     >
                                                         <i className={`bi ${usuario.is_active ? "bi-person-dash" : "bi-person-check"}`} aria-hidden="true"></i>
                                                     </button>
+                                                    <button
+                                                        className="btn btn-outline-secondary"
+                                                        type="button"
+                                                        title={esUnoMismo ? "Para cerrar tus otras sesiones, cambia tu contraseña" : "Cerrar sus sesiones en todos los equipos"}
+                                                        disabled={esUnoMismo}
+                                                        onClick={() => onCerrarSesiones(usuario)}
+                                                    >
+                                                        <i className="bi bi-box-arrow-right" aria-hidden="true"></i>
+                                                    </button>
+                                                    {usuario.bloqueado && (
+                                                        <button className="btn btn-outline-danger" type="button" title="Quitar bloqueo por intentos"
+                                                            onClick={() => onDesbloquear(usuario)}>
+                                                            <i className="bi bi-unlock" aria-hidden="true"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>

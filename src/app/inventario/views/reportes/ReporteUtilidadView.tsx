@@ -26,6 +26,7 @@ import { obtenerProductos } from "../../services/producto.service";
 import { obtenerProveedores } from "../../services/proveedor.service";
 import { descargarReporteUtilidad, obtenerReporteUtilidad } from "../../services/reporteUtilidad.service";
 import { formatearDinero } from "../../utils/existencias";
+import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros";
 
 const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-secondary mb-1";
 const AGRUPACIONES: { valor: AgrupacionUtilidad; etiqueta: string }[] = [
@@ -77,7 +78,7 @@ function CeldasTotales({ t }: { t: TotalesUtilidad }) {
     return (
         <>
             <td className="num">{t.lineas.toLocaleString("es-MX")}</td>
-            <td className="num">{formatearDinero(Number(t.kilos))}</td>
+            <td className="num">{formatearKg(t.kilos)}</td>
             <td className="num">{pesos(t.venta)}</td>
             <td className="num">{pesos(t.costo)}</td>
             <td className={`num fw-semibold ${claseSigno(t.utilidad)}`}>{pesos(t.utilidad)}</td>
@@ -247,7 +248,7 @@ function ReporteUtilidadView() {
                             <Tarjeta titulo="Costo" valor={pesos(r.costo)} color="secondary" />
                             <Tarjeta titulo="Utilidad" valor={pesos(r.utilidad)} color="success" clase={claseSigno(r.utilidad) || "text-success"} />
                             <Tarjeta titulo="Margen" valor={margen(r.margen)} color="primary" clase={claseSigno(r.margen)} />
-                            <Tarjeta titulo="Kg vendidos" valor={formatearDinero(Number(r.kilos))} color="warning"
+                            <Tarjeta titulo="Kg vendidos" valor={formatearKg(r.kilos)} color="warning"
                                 nota={`${r.lineas - r.incompletas} línea(s) incluidas`} />
                         </div>
 
@@ -256,9 +257,9 @@ function ReporteUtilidadView() {
                                 <i className="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                                 <span>
                                     No incluidas en los totales:{" "}
-                                    {reporte.avisos.sin_precio.lineas > 0 && <b>{reporte.avisos.sin_precio.lineas} línea(s) sin precio ({formatearDinero(Number(reporte.avisos.sin_precio.kilos))} kg)</b>}
+                                    {reporte.avisos.sin_precio.lineas > 0 && <b>{reporte.avisos.sin_precio.lineas} línea(s) sin precio ({formatearKg(reporte.avisos.sin_precio.kilos)} kg)</b>}
                                     {reporte.avisos.sin_precio.lineas > 0 && reporte.avisos.sin_costo.lineas > 0 && " y "}
-                                    {reporte.avisos.sin_costo.lineas > 0 && <b>{reporte.avisos.sin_costo.lineas} línea(s) de lotes sin costo ({formatearDinero(Number(reporte.avisos.sin_costo.kilos))} kg)</b>}
+                                    {reporte.avisos.sin_costo.lineas > 0 && <b>{reporte.avisos.sin_costo.lineas} línea(s) de lotes sin costo ({formatearKg(reporte.avisos.sin_costo.kilos)} kg)</b>}
                                     . Aparecen marcadas en el detalle.
                                 </span>
                             </div>
@@ -333,10 +334,10 @@ function ReporteUtilidadView() {
                                                                                         <td className="text-nowrap">{l.lote}</td>
                                                                                         <td className="truncar" title={l.proveedor}>{l.proveedor}</td>
                                                                                         <td className="text-nowrap">{l.camara}</td>
-                                                                                        <td className="num">{formatearDinero(Number(l.kilos))}</td>
-                                                                                        <td className="num">{pesos(l.precio_kg)}</td>
+                                                                                        <td className="num">{formatearKg(l.kilos)}</td>
+                                                                                        <td className="num">{l.precio_kg !== null ? formatearPrecioKg(l.precio_kg) : "—"}</td>
                                                                                         <td className="num">{l.estado === "sin_precio" ? <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Sin precio</span> : pesos(l.venta)}</td>
-                                                                                        <td className="num">{l.estado === "sin_costo" ? <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Sin costo</span> : pesos(l.costo_kg)}</td>
+                                                                                        <td className="num">{l.estado === "sin_costo" ? <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Sin costo</span> : l.costo_kg !== null ? formatearPrecioKg(l.costo_kg) : "—"}</td>
                                                                                         <td className="num">{pesos(l.costo)}</td>
                                                                                         <td className={`num fw-semibold ${claseSigno(l.utilidad)}`}>{pesos(l.utilidad)}</td>
                                                                                         <td className={`num ${claseSigno(l.margen)}`}>{margen(l.margen)}</td>

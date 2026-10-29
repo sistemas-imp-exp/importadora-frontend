@@ -1,5 +1,5 @@
 import type { BloqueReporteCamara, CamaraReporte } from "../../interfaces/reportes/ReporteCamaras";
-import { formatearDinero } from "../../utils/existencias";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface ReporteCamaraTablaProps {
     camara: CamaraReporte;
@@ -46,9 +46,9 @@ function FilasBloque({ bloque, mostrarRotulo }: { bloque: BloqueReporteCamara; m
                                 <td>{fila.proveedor}</td>
                                 <td className="text-center">{peso(fila.peso_por_caja)}</td>
                                 <td className="num">{fila.cajas.toLocaleString("es-MX")}</td>
-                                <td className="num">{formatearDinero(Number(fila.kilos))}</td>
+                                <td className="num">{formatearKg((fila.kilos))}</td>
                                 {primeraDeTalla && (
-                                    <td rowSpan={filasTalla} className="num align-middle">{formatearDinero(Number(talla.existencia))}</td>
+                                    <td rowSpan={filasTalla} className="num align-middle">{formatearKg((talla.existencia))}</td>
                                 )}
                             </tr>
                         );
@@ -58,7 +58,7 @@ function FilasBloque({ bloque, mostrarRotulo }: { bloque: BloqueReporteCamara; m
             <tr className="reporte-total">
                 <td colSpan={4}></td>
                 <td className="text-center">SUBTOTAL</td>
-                <td className="num">{formatearDinero(Number(bloque.subtotal))}</td>
+                <td className="num">{formatearKg((bloque.subtotal))}</td>
                 <td></td>
             </tr>
         </>
@@ -95,7 +95,7 @@ function ReporteCamaraTabla({ camara, fecha, empresa }: ReporteCamaraTablaProps)
                     <tr className="reporte-total">
                         <td colSpan={4}></td>
                         <td className="text-center">TOTAL</td>
-                        <td className="num">{formatearDinero(Number(camara.total))}</td>
+                        <td className="num">{formatearKg((camara.total))}</td>
                         <td></td>
                     </tr>
                 </tbody>

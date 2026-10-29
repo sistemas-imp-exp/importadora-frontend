@@ -17,6 +17,7 @@ import { usePaginacion } from "../../../../shared/hooks/usePaginacion";
 import { useOrdenTabla } from "../../../../shared/hooks/useOrdenTabla";
 import { obtenerMensajeError } from "../../../../shared/utils/apiError";
 import { useToastContext } from "../../../../shared/context/ToastProvider";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 const POR_PAGINA_INICIAL = 50;
 
@@ -97,7 +98,7 @@ function ExistenciasView() {
                                 <div className="card card-outline card-info mb-0 h-100">
                                     <div className="card-body py-2">
                                         <div className="text-muted small">Total kilos disponibles</div>
-                                        <div className="fs-4 fw-bold">{formatearDinero(totales.totalKilosDisponibles)} kg</div>
+                                        <div className="fs-4 fw-bold">{formatearKg(totales.totalKilosDisponibles)} kg</div>
                                     </div>
                                 </div>
                             </div>

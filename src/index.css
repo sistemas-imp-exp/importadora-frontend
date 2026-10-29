@@ -375,3 +375,40 @@
 .tabla-datos .celda-producto > .truncar {
     max-width: 100%;
 }
+
+/* Campana de notificaciones (barra superior) */
+.campana-menu {
+    width: 380px;
+    max-width: calc(100vw - 1rem);
+}
+.campana-lista {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+.campana-texto {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-line;
+}
+
+/* Puntos del menú lateral: trabajo pendiente en esa opción o en sus hijas */
+.sidebar-menu .menu-pendiente {
+    font-size: 0.7rem;
+    min-width: 1.4rem;
+}
+.sidebar-menu .menu-punto {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--bs-danger);
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+/* Conversación de notificaciones */
+.hilo-mensaje {
+    white-space: pre-line;
+}

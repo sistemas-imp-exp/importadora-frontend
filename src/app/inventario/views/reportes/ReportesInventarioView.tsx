@@ -15,7 +15,7 @@ import type { Camara } from "../../interfaces/camaras/Camara";
 import type { Empresa } from "../../interfaces/empresas/Empresa";
 import type { FiltrosReporteCamaras, ReporteCamarasApi } from "../../interfaces/reportes/ReporteCamaras";
 import ReporteCamaraTabla from "../../components/reportes/ReporteCamaraTabla";
-import { formatearDinero } from "../../utils/existencias";
+import { formatearKg } from "../../../../shared/utils/numeros";
 
 const CLASE_ETIQUETA = "form-label small text-uppercase fw-semibold text-body-secondary mb-1";
 
@@ -191,7 +191,7 @@ function ReportesInventarioView() {
                             {reporte.camaras.length > 1 && (
                                 <div className="d-flex flex-wrap gap-3 mb-3 small">
                                     <span className="text-body-secondary">{reporte.camaras.length} cámaras</span>
-                                    <span className="fw-semibold">Total general: {formatearDinero(totalGeneral)} kg</span>
+                                    <span className="fw-semibold">Total general: {formatearKg(totalGeneral)} kg</span>
                                 </div>
                             )}
                             {reporte.camaras.map((camara) => (

@@ -82,6 +82,11 @@ export const inventarioMenu: SidebarMenuItem[] = [
                 label: "Movimientos entre cámaras",
                 to: "/inventario/movimientos-camara",
                 icon: "bi bi-arrow-left-right"
+            },
+            {
+                label: "Resguardos",
+                to: "/inventario/resguardos",
+                icon: "bi bi-safe"
             }
         ]
     }

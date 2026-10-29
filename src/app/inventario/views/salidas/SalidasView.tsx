@@ -1,5 +1,6 @@
 import PageHeader from "../../../../layouts/components/PageHeader";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { actualizarSalida, crearSalida, descargarSalidasExcel, eliminarSalida, obtenerSalidas } from "../../services/salida.service";
 import { obtenerClientes } from "../../services/cliente.service";
 import { obtenerCamaras } from "../../services/camara.service";
@@ -31,8 +32,18 @@ function SalidasView() {
     const [camaras, setCamaras] = useState<Camara[]>([]);
     const [existencias, setExistencias] = useState<ExistenciaApi[]>([]);
     const [total, setTotal] = useState(0);
-    const [busqueda, setBusqueda] = useState("");
+    // Los avisos de Cartera enlazan con ?busqueda=<folio>.
+    const [searchParams] = useSearchParams();
+    const parametroBusqueda = searchParams.get("busqueda") ?? "";
+    const [busqueda, setBusqueda] = useState(parametroBusqueda);
     const [pagina, setPagina] = useState(1);
+    // Llegar con otro folio estando ya en Salidas (p. ej. desde la campana).
+    const [parametroPrevio, setParametroPrevio] = useState(parametroBusqueda);
+    if (parametroBusqueda !== parametroPrevio) {
+        setParametroPrevio(parametroBusqueda);
+        setBusqueda(parametroBusqueda);
+        setPagina(1);
+    }
     const [porPagina, setPorPagina] = useState(25);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

@@ -25,6 +25,12 @@ export const usuariosMenu: SidebarMenuItem[] = [
                 area: "ADMIN",
             },
             {
+                label: "Bitácora de accesos",
+                icon: "bi bi-journal-text",
+                to: "/usuarios/bitacora",
+                area: "ADMIN",
+            },
+            {
                 label: "Auditoría de entradas",
                 icon: "bi bi-clock-history",
                 to: "/inventario/auditoria-entradas",

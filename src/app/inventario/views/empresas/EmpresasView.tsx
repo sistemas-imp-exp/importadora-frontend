@@ -63,7 +63,7 @@ function EmpresasView() {
         <>
             <PageHeader
                 title="Empresas"
-                subtitle="Empresas propietarias de cámaras de resguardo"
+                subtitle="Empresas propietarias de cámaras de almacenamiento"
                 breadcrumbs={[
                     { label: "Inicio", to: "/" },
                     { label: "Inventario", to: "/inventario" },

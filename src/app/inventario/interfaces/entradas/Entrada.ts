@@ -18,12 +18,14 @@ export interface EntradaDetalleApi {
     observaciones: string;
     cajas_disponibles: number;
     kilos_disponibles: string;
-    // Proveedor real del lote. En una entrada normal es el mismo que entrada.proveedor;
-    // en la mitad "de llegada" de un Movimiento entre cámaras, entrada.proveedor es null
-    // (no es una compra real) pero esto sí conserva de dónde vino el producto.
+    // Proveedor de la línea: una entrada puede traer mercancía de varios. En la
+    // mitad "de llegada" de un Movimiento entre cámaras se hereda del lote de origen.
     proveedor_origen: Proveedor | null;
+    // Documentos del proveedor de esta línea ("" en las líneas de llegada de un traslado).
+    factura: string;
+    pedimento: string;
     // Factura y recibo del lote raíz. En un lote que llegó por movimiento entre
-    // cámaras, la entrada propia no tiene documentos: estos suben por la cadena
+    // cámaras, la línea propia no tiene documentos: estos suben por la cadena
     // hasta la compra real, y son la llave de búsqueda al registrar salidas.
     factura_origen: string;
     recibo_origen: string;
@@ -35,14 +37,11 @@ export interface EntradaApi {
     // IMPORTADORA, MARISCOS SELECTOS… (catálogo de Empresas). En los traslados
     // entre cámaras se hereda de la entrada de origen.
     empresa: Empresa | null;
-    // null cuando la entrada es la mitad "llegada" de un Movimiento entre cámaras,
-    // no una compra real — ver MovimientoCamaraCrearSerializer en el backend.
-    proveedor: Proveedor | null;
     es_internacional: boolean;
-    factura: string;
-    pedimento: string;
-    // Código del RECIBO INGRESO (LoteGeneral) que agrupa las líneas que van a
-    // resguardo — "" si la entrada no tiene uno.
+    // La mitad "llegada" de un Movimiento entre cámaras, no una compra real.
+    es_traslado: boolean;
+    // Código del RECIBO INGRESO (LoteGeneral) de las líneas que van a cámara
+    // — "" si no tiene. Un recibo puede abarcar varias entradas.
     recibo_ingreso: string;
     detalles: EntradaDetalleApi[];
     // True si la entrada tiene registros en la bitácora de ediciones
@@ -55,6 +54,9 @@ export interface CrearEntradaLineaRequest {
     // Ausente = línea nueva.
     id?: number;
     producto_id: number;
+    proveedor_id: number;
+    factura: string;
+    pedimento: string;
     lote_proveedor: string;
     camara: number | null;
     cajas: number;
@@ -69,10 +71,22 @@ export interface CrearEntradaLineaRequest {
 export interface CrearEntradaRequest {
     fecha: string;
     empresa_id: number;
-    proveedor_id: number;
     es_internacional: boolean;
-    factura: string;
-    pedimento: string;
     recibo_ingreso: string;
     detalles: CrearEntradaLineaRequest[];
+}
+
+/** Proveedores de las líneas de la entrada, sin repetir. */
+export function proveedoresDe(entrada: EntradaApi): string[] {
+    return [...new Set(entrada.detalles.map((d) => d.proveedor_origen?.nombre).filter((n): n is string => !!n))];
+}
+
+/** Facturas de las líneas de la entrada, sin repetir. */
+export function facturasDe(entrada: EntradaApi): string[] {
+    return [...new Set(entrada.detalles.map((d) => d.factura).filter(Boolean))];
+}
+
+/** Pedimentos de las líneas de la entrada, sin repetir. */
+export function pedimentosDe(entrada: EntradaApi): string[] {
+    return [...new Set(entrada.detalles.map((d) => d.pedimento).filter(Boolean))];
 }

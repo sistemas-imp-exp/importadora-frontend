@@ -52,7 +52,7 @@ export function construirLotesDisponibles(
             pesoPorCaja: item.peso_por_caja,
             cajasDisponibles: item.cajas_disponibles + (reservado?.cajas ?? 0),
             kilosDisponibles: reservado
-                ? (Number(item.kilos_disponibles) + reservado.kilos).toFixed(2)
+                ? (Number(item.kilos_disponibles) + reservado.kilos).toFixed(3)
                 : item.kilos_disponibles,
             precioVentaPlaneado: item.precio_venta_planeado,
             proveedorNombre: item.proveedor_nombre,
@@ -74,6 +74,8 @@ export function loteCoincide(lote: LoteDisponible, termino: string): boolean {
         lote.talla.toLowerCase().includes(t) ||
         lote.tipo.toLowerCase().includes(t) ||
         lote.proveedorNombre.toLowerCase().includes(t) ||
-        lote.camaraNombre.toLowerCase().includes(t)
+        lote.camaraNombre.toLowerCase().includes(t) ||
+        // Peso por caja sin ceros de relleno ("9.072", "20"): distingue el mismo producto en otra presentación.
+        String(Number(lote.pesoPorCaja)).includes(t)
     );
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import CampoNumero from "../../../../shared/components/CampoNumero";
 import LoadingButton from "../../../../shared/components/LoadingButton";
 import SelectorLotesModal from "../salidas/SelectorLotesModal";
 import { construirLotesDisponibles, type LoteDisponible } from "../../utils/lotesDisponibles";
@@ -51,7 +52,7 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                 const cajas = Number(nuevo.cajas);
                 const peso = lote?.pesoPorCaja ? Number(lote.pesoPorCaja) : NaN;
                 if (cajas > 0 && peso > 0) {
-                    nuevo.total_kilos = (cajas * peso).toFixed(2);
+                    nuevo.total_kilos = (cajas * peso).toFixed(3);
                 }
                 // Si cambia el lote de origen, la cámara destino elegida podría ya no ser válida.
                 if ("entrada_detalle_origen" in cambios && nuevo.camara_destino === lote?.camaraOrigen) {
@@ -150,18 +151,20 @@ function MovimientoCamaraForm({ camaras, existencias, onGuardar }: MovimientoCam
                         </div>
                         <div className="col-6 col-sm-3 col-md-1">
                             <label className="form-label small fw-bold">Cajas <span className="text-danger">*</span></label>
-                            <input
-                                type="number" min="0" className="form-control form-control-sm"
+                            <CampoNumero
+                                decimales={0}
+                                className="form-control form-control-sm text-end"
                                 value={form.cajas}
-                                onChange={(e) => actualizar({ cajas: e.target.value })}
+                                onChange={(valor) => actualizar({ cajas: valor })}
                             />
                         </div>
                         <div className="col-6 col-sm-3 col-md-2">
                             <label className="form-label small fw-bold">Total kilos <span className="text-danger">*</span></label>
-                            <input
-                                type="number" min="0" step="0.01" className="form-control form-control-sm"
+                            <CampoNumero
+                                decimales={3}
+                                className="form-control form-control-sm text-end"
                                 value={form.total_kilos}
-                                onChange={(e) => actualizar({ total_kilos: e.target.value })}
+                                onChange={(valor) => actualizar({ total_kilos: valor })}
                             />
                         </div>
                         <div className="col-12 col-sm-6 col-md-2">

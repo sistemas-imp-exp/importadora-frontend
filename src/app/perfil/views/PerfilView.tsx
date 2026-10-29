@@ -3,6 +3,7 @@ import { useAuth } from "../../../shared/hooks/useAuth";
 import { useToastContext } from "../../../shared/context/ToastProvider";
 import { obtenerMensajeError } from "../../../shared/utils/apiError";
 import { actualizarMe, cambiarPassword, eliminarFoto, subirFoto } from "../../../shared/services/auth.service";
+import { sesion } from "../../../shared/services/sesion";
 import AvatarUploader from "../components/AvatarUploader";
 import DatosForm from "../components/DatosForm";
 import PasswordForm from "../components/PasswordForm";
@@ -28,8 +29,11 @@ function PerfilView() {
 
     async function guardarPassword(datos: { password_actual: string; password_nueva: string; password_nueva2: string }) {
         try {
-            await cambiarPassword(datos);
-            mostrarToast("Contraseña actualizada", "Tu contraseña fue cambiada correctamente.", "success");
+            // Cierra la sesión en los demás equipos; esta sigue con tokens nuevos.
+            const respuesta = await cambiarPassword(datos);
+            sesion.setAccess(respuesta.access);
+            updateUser(respuesta.user);
+            mostrarToast("Contraseña actualizada", "Tu contraseña fue cambiada y se cerraron tus sesiones en otros equipos.", "success");
         } catch (error) {
             mostrarToast("Error al cambiar contraseña", obtenerMensajeError(error), "danger");
             throw error;

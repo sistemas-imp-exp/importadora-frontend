@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
+import { NotificacionesProvider } from "../shared/context/NotificacionesProvider";
 
 function MainLayout() {
     const location = useLocation();
@@ -55,6 +56,7 @@ function MainLayout() {
     }, [location]);
 
     return (
+        <NotificacionesProvider>
         <div className="app-wrapper">
             <Header />
             <Sidebar />
@@ -69,6 +71,7 @@ function MainLayout() {
 
             <Footer />
         </div>
+        </NotificacionesProvider>
     );
 }
 

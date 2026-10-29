@@ -1,44 +1,71 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AuthContext } from "./AuthContext";
 import type { User } from "../interfaces/auth";
-import { authStorage } from "../services/authStorage.service";
-import { me } from "../services/auth.service";
-import { useEffect } from "react";
+import {
+    alCerrarseEnOtraPestana,
+    cerrarSesionServidor,
+    renovarSesion,
+    sesion,
+    type MotivoSalida,
+} from "../services/sesion";
+import { useInactividad } from "../hooks/useInactividad";
+import AvisoInactividad from "../components/AvisoInactividad";
 
 interface Props {
     children: ReactNode;
 }
 
 export function AuthProvider({ children }: Props) {
-    const [user, setUser] = useState<User | null>(
-        authStorage.getUser()
+    const [user, setUser] = useState<User | null>(null);
+    const [cargando, setCargando] = useState(true);
+
+    // Al abrir o recargar: el access no sobrevive (vive en memoria), se pide
+    // uno nuevo con la cookie del refresh. Sin cookie válida, al login.
+    useEffect(() => {
+        let vigente = true;
+        renovarSesion()
+            .then((data) => {
+                if (vigente) setUser(data.user);
+            })
+            .catch(() => {
+                // sin sesión
+            })
+            .finally(() => {
+                if (vigente) setCargando(false);
+            });
+        return () => {
+            vigente = false;
+        };
+    }, []);
+
+    // Cerrar sesión en una pestaña la cierra en todas.
+    useEffect(
+        () =>
+            alCerrarseEnOtraPestana(() => {
+                sesion.setAccess(null);
+                setUser(null);
+            }),
+        []
     );
 
-    const [accessToken, setAccessToken] = useState<string | null>(
-        authStorage.getAccessToken()
-    );
-
-    const login = (
-        access: string,
-        refresh: string,
-        user: User
-    ) => {
-        authStorage.save(access, refresh, user);
-
-        setAccessToken(access);
+    const login = (access: string, user: User) => {
+        sesion.setAccess(access);
         setUser(user);
     };
 
-    const logout = () => {
-        authStorage.clear();
-
-        setAccessToken(null);
+    const logout = useCallback(async (motivo: MotivoSalida = "manual") => {
+        await cerrarSesionServidor(motivo);
         setUser(null);
-    };
+    }, []);
+
+    const cerrarPorInactividad = useCallback(() => {
+        logout("inactividad");
+    }, [logout]);
+
+    const { segundosRestantes, seguir } = useInactividad(!!user, cerrarPorInactividad);
 
     const updateUser = (user: User) => {
-        authStorage.updateUser(user);
         setUser(user);
     };
 
@@ -57,44 +84,28 @@ export function AuthProvider({ children }: Props) {
         if (user.is_superuser) return true;
         return !(user.areas_solo_lectura ?? []).includes(area);
     };
-    useEffect(() => {
-        async function loadUser() {
 
-            if (!accessToken)
-                return;
-
-            try {
-
-                const user = await me();
-
-                setUser(user);
-
-                authStorage.updateUser(user);
-
-            } catch {
-
-                logout();
-
-            }
-        }
-
-        loadUser();
-
-    }, [accessToken]);
     return (
         <AuthContext.Provider
             value={{
                 user,
-                accessToken,
+                cargando,
                 login,
                 logout,
                 updateUser,
                 hasArea,
                 puedeEditar,
-                isAuthenticated: !!accessToken && !!user,
+                isAuthenticated: !!user,
             }}
         >
             {children}
+            {segundosRestantes !== null && (
+                <AvisoInactividad
+                    segundos={segundosRestantes}
+                    onSeguir={seguir}
+                    onSalir={() => logout()}
+                />
+            )}
         </AuthContext.Provider>
     );
 }
