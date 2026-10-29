@@ -6,7 +6,7 @@ import { construirLotesDisponibles, type LoteDisponible, type Reservado } from "
 import { referenciaSalida, type CrearSalidaLineaRequest, type CrearSalidaRequest, type SalidaApi } from "../../interfaces/salidas/Salida";
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import type { Cliente } from "../../interfaces/clientes/Cliente";
-import { formatearPeso } from "../../utils/existencias";
+import { formatearDinero, formatearPeso } from "../../utils/existencias";
 import { formatearKg } from "../../../../shared/utils/numeros";
 
 interface SalidaFormProps {
@@ -623,7 +623,7 @@ function SalidaForm({ clientes, existencias, salida, onGuardar, onCancelar }: Sa
                                                 {totalResguardo > 0 ? `${formatearKg(totalResguardo)} kg` : ""}
                                             </td>
                                             <td></td>
-                                            <td className="text-end fw-bold">${totalVenta.toFixed(2)}</td>
+                                            <td className="text-end fw-bold">${formatearDinero(totalVenta)}</td>
                                             <td colSpan={2}></td>
                                         </tr>
                                     </tfoot>
