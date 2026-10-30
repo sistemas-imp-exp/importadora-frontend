@@ -15,10 +15,11 @@ import { useDensidadTabla } from "../../../shared/hooks/useDensidadTabla";
 import { obtenerMensajeError } from "../../../shared/utils/apiError";
 import { formatearKg } from "../../../shared/utils/numeros";
 import ResguardosTabla from "../components/ResguardosTabla";
+import LigarEntregaModal from "../components/LigarEntregaModal";
 import RetiroResguardoModal from "../components/RetiroResguardoModal";
-import type { CrearRetiroRequest, Resguardo, Retiro } from "../interfaces/Resguardo";
+import type { CrearRetiroRequest, LigarEntregaRequest, Resguardo, Retiro } from "../interfaces/Resguardo";
 import {
-    cancelarRetiro, obtenerClientesConResguardo, obtenerResguardos, registrarRetiro, type FiltrosResguardos,
+    cancelarRetiro, ligarEntregas, obtenerClientesConResguardo, obtenerResguardos, registrarRetiro, type FiltrosResguardos,
 } from "../services/resguardos.service";
 
 interface Props {
@@ -69,6 +70,7 @@ function ResguardosView({ area }: Props) {
     const [recarga, setRecarga] = useState(0);
 
     const [retirando, setRetirando] = useState<Resguardo | null>(null);
+    const [ligando, setLigando] = useState<Resguardo | null>(null);
     const [cancelando, setCancelando] = useState<Retiro | null>(null);
     const [procesando, setProcesando] = useState(false);
 
@@ -106,12 +108,29 @@ function ResguardosView({ area }: Props) {
         setRecarga((n) => n + 1);
     }
 
+    async function guardarLiga(datos: LigarEntregaRequest) {
+        const creado = await ligarEntregas(datos);
+        mostrarToast(
+            `Entrega ligada como ${creado.folio_retiro}`,
+            `${formatearKg(creado.kilos)} kg de la salida ${creado.folio_de_salida}. ${area === "INV" ? "Cartera" : "Inventario"} recibió el aviso.`,
+            "success",
+        );
+        setLigando(null);
+        setRecarga((n) => n + 1);
+    }
+
     async function confirmarCancelacion() {
         if (!cancelando) return;
         setProcesando(true);
         try {
             await cancelarRetiro(cancelando.id);
-            mostrarToast("Retiro cancelado", `${cancelando.folio_retiro}: lo entregado vuelve a quedar pendiente.`, "success");
+            mostrarToast(
+                "Retiro cancelado",
+                cancelando.entrega_ligada
+                    ? `${cancelando.folio_retiro}: sus líneas regresan a la salida ${cancelando.folio_de_salida}.`
+                    : `${cancelando.folio_retiro}: lo entregado vuelve a quedar pendiente.`,
+                "success",
+            );
             setCancelando(null);
             setRecarga((n) => n + 1);
         } catch (e) {
@@ -205,6 +224,7 @@ function ResguardosView({ area }: Props) {
                                     resguardos={resguardos}
                                     densidad={densidad}
                                     onRetirar={editable ? setRetirando : undefined}
+                                    onLigar={editable ? setLigando : undefined}
                                     onCancelarRetiro={editable ? setCancelando : undefined}
                                 />
                             </div>
@@ -223,6 +243,15 @@ function ResguardosView({ area }: Props) {
                 />
             )}
 
+            {ligando && (
+                <LigarEntregaModal
+                    key={ligando.id}
+                    resguardo={ligando}
+                    onCerrar={() => setLigando(null)}
+                    onLigar={guardarLiga}
+                />
+            )}
+
             <ConfirmModal
                 show={cancelando !== null}
                 isLoading={procesando}
@@ -233,8 +262,17 @@ function ResguardosView({ area }: Props) {
                     <i className="bi bi-exclamation-triangle-fill text-warning fs-1" aria-hidden="true"></i>
                     <h3 className="fs-5 fw-semibold">¿Cancelar el retiro {cancelando?.folio_retiro}?</h3>
                     <p className="small text-body-secondary mt-2">
-                        Los {cancelando ? formatearKg(cancelando.kilos) : ""} kg vuelven a quedar pendientes de entregar y
-                        regresan a la existencia de sus lotes. Se avisa al otro área.
+                        {cancelando?.entrega_ligada ? (
+                            <>
+                                Se desliga: los {formatearKg(cancelando.kilos)} kg vuelven a quedar pendientes y sus líneas
+                                regresan a la salida {cancelando.folio_de_salida} (las existencias no cambian). Se avisa al otro área.
+                            </>
+                        ) : (
+                            <>
+                                Los {cancelando ? formatearKg(cancelando.kilos) : ""} kg vuelven a quedar pendientes de entregar y
+                                regresan a la existencia de sus lotes. Se avisa al otro área.
+                            </>
+                        )}
                     </p>
                 </div>
             </ConfirmModal>

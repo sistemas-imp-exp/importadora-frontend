@@ -25,6 +25,8 @@ export interface Retiro {
     folio_retiro: string;
     folio_de_salida: string;
     notas: string;
+    /** Armado con líneas ya capturadas en una salida normal: al cancelarlo regresan a ella. */
+    entrega_ligada: boolean;
     fecha: string;
     kilos: string;
     cajas: number;
@@ -56,6 +58,26 @@ export interface RespuestaResguardos {
     results: Resguardo[];
     /** Kilos por entregar de todo lo filtrado (no solo la página). */
     kilos_pendientes: string;
+}
+
+/** Línea sin precio de una salida normal que en realidad entregó parte de un resguardo. */
+export interface EntregaCapturada {
+    id: number;
+    producto_id: number;
+    producto: string;
+    fecha: string;
+    notas: string;
+    lote_proveedor: string;
+    proveedor: string;
+    camara: string;
+    cajas: number;
+    kilos: string;
+}
+
+export interface LigarEntregaRequest {
+    venta: number;
+    folio_de_salida: string;
+    lineas: { linea: number; retiro_de: number }[];
 }
 
 export interface CrearRetiroRequest {

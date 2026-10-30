@@ -14,6 +14,7 @@ interface Props {
     densidad: DensidadTabla;
     /** Sin estas acciones (solo lectura) no hay columna de acciones. */
     onRetirar?: (resguardo: Resguardo) => void;
+    onLigar?: (resguardo: Resguardo) => void;
     onCancelarRetiro?: (retiro: Retiro) => void;
 }
 
@@ -76,7 +77,15 @@ function Detalle({ resguardo, onCancelarRetiro }: { resguardo: Resguardo; onCanc
                         <tbody>
                             {resguardo.retiros.map((r) => (
                                 <tr key={r.id}>
-                                    <td className="text-nowrap fw-semibold">{r.folio_retiro}</td>
+                                    <td className="text-nowrap fw-semibold">
+                                        {r.folio_retiro}
+                                        {r.entrega_ligada && (
+                                            <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle fw-normal ms-1"
+                                                title="Se capturó en Salidas como salida normal y se ligó a este resguardo">
+                                                Ligada
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="text-nowrap">{fecha(r.fecha)}</td>
                                     <td className="text-nowrap">{r.folio_de_salida}</td>
                                     <td className="text-nowrap">{r.notas}</td>
@@ -112,7 +121,7 @@ function Detalle({ resguardo, onCancelarRetiro }: { resguardo: Resguardo; onCanc
 }
 
 /** Una fila por venta (nota) con resguardo; al desplegar, lo pendiente por producto y sus retiros. */
-function ResguardosTabla({ resguardos, densidad, onRetirar, onCancelarRetiro }: Props) {
+function ResguardosTabla({ resguardos, densidad, onRetirar, onLigar, onCancelarRetiro }: Props) {
     const { estaExpandida, alternar, alternarTodas, todasExpandidas } = useFilasExpandibles(resguardos.map((r) => r.id));
     const conAcciones = Boolean(onRetirar);
     const columnas = conAcciones ? COLUMNAS : COLUMNAS - 1;
@@ -184,6 +193,12 @@ function ResguardosTabla({ resguardos, densidad, onRetirar, onCancelarRetiro }: 
                                                     etiqueta={`Registrar retiro de la venta ${r.referencia}`}
                                                     motivoBloqueo={pendiente ? undefined : "Ya se entregó todo el resguardo."}
                                                     onClick={() => onRetirar?.(r)}
+                                                />
+                                                <BotonAccionFila
+                                                    icono="bi-link-45deg"
+                                                    etiqueta={`Ligar entrega ya capturada en Salidas a la venta ${r.referencia}`}
+                                                    motivoBloqueo={pendiente ? undefined : "Ya se entregó todo el resguardo."}
+                                                    onClick={() => onLigar?.(r)}
                                                 />
                                             </td>
                                         )}
