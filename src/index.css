@@ -181,6 +181,42 @@
     .tabla-datos .btn-expandir .bi { transition: none; }
 }
 
+/* Tablas planas por documento (Salidas, Resguardos): un <tbody> por documento,
+   sus datos comunes en celdas combinadas y una línea gruesa entre uno y otro,
+   como en las hojas del área. Sin desplegar. */
+.tabla-datos > tbody.grupo-documento + tbody.grupo-documento > tr:first-child > * {
+    border-top: 2px solid var(--bs-secondary-color);
+}
+.tabla-datos > tbody.grupo-documento:hover > tr > * {
+    background-color: var(--bs-tertiary-bg);
+}
+
+/* Como hoja de Excel del área: cuadrícula fina en todas las celdas y el
+   renglón de cada bloque (nota + producto) en amarillo. */
+.tabla-datos.tabla-hoja > :not(caption) > * > * {
+    border: 1px solid var(--bs-border-color);
+}
+.tabla-datos.tabla-hoja > tbody > tr.fila-bloque > * {
+    background-color: var(--bs-warning-bg-subtle);
+}
+
+/* Como una tabla de Excel con el estilo por omisión (TableStyleMedium2), el de
+   la hoja SALIDA del área: encabezado azul y renglones rayados. Fondos opacos
+   por las columnas fijas. */
+.tabla-datos.tabla-excel {
+    --azul-excel: #4472c4;
+}
+.tabla-datos.tabla-excel > thead th {
+    background-color: var(--azul-excel);
+    color: #fff;
+}
+.tabla-datos.tabla-excel > tbody > tr:nth-child(odd) > * {
+    background-color: color-mix(in srgb, var(--azul-excel) 20%, var(--bs-body-bg));
+}
+.tabla-datos.tabla-excel > tbody > tr:hover > * {
+    background-color: color-mix(in srgb, var(--azul-excel) 35%, var(--bs-body-bg));
+}
+
 /* Pie de totales fijo abajo: los totales siguen a la vista al desplazar. */
 /* El separador va como sombra y no como border-top: con border-collapse los
    bordes no viajan con la celda sticky y dejaban ver la fila de abajo. */
