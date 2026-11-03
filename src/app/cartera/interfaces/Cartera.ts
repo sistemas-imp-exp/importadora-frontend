@@ -115,6 +115,29 @@ export interface PagoCliente extends Omit<MovimientoCartera, "cliente"> {
     tipo_display: string;
     referencia: string;
     ingreso_tesoreria: (Omit<IngresoTesoreria, "monto"> & { cancelado: boolean }) | null;
+    /** Lo descontado a mano de cada nota; el resto va a lo más antiguo. */
+    aplicaciones: (AplicacionPago & { nota: string })[];
+}
+
+/** Parte de un pago aplicada a una nota; `salida_id` null = saldo al corte. */
+export interface AplicacionPago {
+    salida_id: number | null;
+    monto: string;
+}
+
+/** Nota a la que se puede aplicar un pago (saldo al corte o venta). */
+export interface NotaPendiente {
+    salida_id: number | null;
+    tipo: "inicial" | "venta";
+    nota: string;
+    folio: string;
+    fecha: string;
+    dias: number;
+    importe: string;
+    /** Lo que debe hoy (después de pagos, abonos y lo más antiguo primero). */
+    pendiente: string;
+    /** Lo máximo que se le puede aplicar: importe − lo aplicado a mano por otros pagos. */
+    disponible: string;
 }
 
 export interface PagoClienteRequest {
@@ -128,6 +151,8 @@ export interface PagoClienteRequest {
     ingreso_tesoreria_id: number | null;
     fecha?: string;
     monto?: number;
+    /** [] = todo a lo más antiguo. */
+    aplicaciones: AplicacionPago[];
 }
 
 export type Naturaleza = "C" | "A";

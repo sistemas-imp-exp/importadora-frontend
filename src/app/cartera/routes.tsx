@@ -7,6 +7,7 @@ import AjustesView from "./views/AjustesView";
 import ReporteSaldosView from "./views/ReporteSaldosView";
 import ResguardosView from "../resguardos/views/ResguardosView";
 import UtilidadRealView from "./views/UtilidadRealView";
+import AntiguedadSaldosView from "./views/AntiguedadSaldosView";
 
 export const carteraRoutes = (
     <>
@@ -19,5 +20,6 @@ export const carteraRoutes = (
         <Route path="/cartera/utilidad" element={<UtilidadRealView />} />
         <Route path="/cartera/reportes" element={<Navigate to="/cartera/reportes/saldos" replace />} />
         <Route path="/cartera/reportes/saldos" element={<ReporteSaldosView />} />
+        <Route path="/cartera/reportes/antiguedad" element={<AntiguedadSaldosView />} />
     </>
 );

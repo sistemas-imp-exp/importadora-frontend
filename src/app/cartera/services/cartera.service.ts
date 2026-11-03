@@ -2,7 +2,7 @@ import api from "../../../shared/api/client";
 import { descargarBlob } from "../../../shared/utils/descargarArchivo";
 import type {
     AjusteCliente, AjusteClienteRequest, ClienteCartera, ClienteCarteraRequest, EmpresaCartera, FiltroMovimientos,
-    EstadoVenta, IngresoTesoreria, PagoCliente, PagoClienteRequest, RenglonEstadoCuenta, ResumenCartera,
+    EstadoVenta, IngresoTesoreria, NotaPendiente, PagoCliente, PagoClienteRequest, RenglonEstadoCuenta, ResumenCartera,
     TraspasoRequest, VentaCliente,
 } from "../interfaces/Cartera";
 
@@ -317,6 +317,71 @@ export interface ControlMensual {
 export async function obtenerControlMensual(mes: string): Promise<ControlMensual> {
     const { data } = await api.get<ControlMensual>(`${BASE}reportes/control-mensual/`, { params: { mes } });
     return data;
+}
+
+// --- Notas por cobrar y antigüedad de saldos ----------------------------------
+
+/** `pago`: el que se edita (no ocupa lo disponible); `fecha`: deja fuera las notas posteriores al pago. */
+export async function obtenerNotasPendientes(
+    clienteId: number, empresaId: number, opciones: { pago?: number; fecha?: string } = {},
+): Promise<NotaPendiente[]> {
+    const { data } = await api.get<NotaPendiente[]>(`${BASE}clientes/${clienteId}/notas-pendientes/`, {
+        params: { empresa: empresaId, ...opciones },
+    });
+    return data;
+}
+
+export interface NotaAntiguedad {
+    tipo: "inicial" | "venta" | "cargo";
+    salida_id: number | null;
+    nota: string;
+    folio: string;
+    fecha: string;
+    dias: number;
+    /** Índice en `rangos`. */
+    rango: number;
+    importe: string;
+    descontado: string;
+    pendiente: string;
+}
+
+export interface BloqueAntiguedad {
+    empresa: { id: number; nombre: string };
+    notas: NotaAntiguedad[];
+    por_rango: string[];
+    a_favor: string;
+    saldo: string;
+}
+
+export interface AntiguedadSaldos {
+    fecha: string;
+    rangos: string[];
+    clientes: {
+        cliente: { id: number; nombre: string };
+        empresas: BloqueAntiguedad[];
+        por_rango: string[];
+        conjunto: string;
+    }[];
+    empresas: { empresa: { id: number; nombre: string }; por_rango: string[]; a_favor: string; saldo: string }[];
+}
+
+export interface FiltroAntiguedad {
+    fecha?: string;
+    empresa?: number;
+    cliente?: number;
+}
+
+export async function obtenerAntiguedad(filtro: FiltroAntiguedad, signal?: AbortSignal): Promise<AntiguedadSaldos> {
+    const { data } = await api.get<AntiguedadSaldos>(`${BASE}reportes/antiguedad/`, { params: filtro, signal });
+    return data;
+}
+
+export async function descargarAntiguedad(filtro: FiltroAntiguedad): Promise<void> {
+    const params = new URLSearchParams();
+    if (filtro.fecha) params.set("fecha", filtro.fecha);
+    if (filtro.empresa) params.set("empresa", String(filtro.empresa));
+    if (filtro.cliente) params.set("cliente", String(filtro.cliente));
+    await descargarBlob(`${BASE}reportes/antiguedad/excel/`, XLSX, `antiguedad_saldos_${filtro.fecha ?? "hoy"}.xlsx`, params);
 }
 
 export async function descargarControlMensual(mes: string): Promise<void> {
