@@ -290,3 +290,36 @@ export async function descargarPagos(formato: "pdf" | "excel", filtro: FiltroMov
     await descargarBlob(`${BASE}pagos/${formato}/`, formato === "pdf" ? PDF : XLSX,
         `pagos_clientes.${formato === "pdf" ? "pdf" : "xlsx"}`, params);
 }
+
+// --- Control mensual por empresa ---------------------------------------------
+
+interface TotalesControl {
+    anterior: string;
+    ventas: string;
+    pagos: string;
+    ajustes: string;
+    actual: string;
+}
+
+export interface ControlMensual {
+    anio: number;
+    mes: number;
+    empresas: {
+        empresa: { id: number; nombre: string };
+        totales: TotalesControl;
+        filas: ({ cliente: { id: number; nombre: string } } & TotalesControl)[];
+        pagos: { tipo: string; fecha: string; cliente: string; cantidad: string }[];
+        ventas: { nota: string; fecha: string; cliente: string; cantidad: string }[];
+    }[];
+}
+
+/** `mes`: AAAA-MM. */
+export async function obtenerControlMensual(mes: string): Promise<ControlMensual> {
+    const { data } = await api.get<ControlMensual>(`${BASE}reportes/control-mensual/`, { params: { mes } });
+    return data;
+}
+
+export async function descargarControlMensual(mes: string): Promise<void> {
+    await descargarBlob(`${BASE}reportes/control-mensual/excel/`, XLSX, `control_cartera_${mes}.xlsx`,
+        new URLSearchParams({ mes }));
+}
