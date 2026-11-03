@@ -22,6 +22,9 @@ export interface ClienteCartera {
     nombre: string;
     activo: boolean;
     celular: string;
+    // Opcionales; van en el encabezado del estado de cuenta.
+    domicilio: string;
+    rfc: string;
     pagare: boolean;
     notas: string;
     /** {empresa_id: saldo} */
@@ -38,6 +41,9 @@ export interface ClienteCarteraRequest {
     nombre: string;
     activo: boolean;
     celular: string;
+    // Opcionales; van en el encabezado del estado de cuenta.
+    domicilio: string;
+    rfc: string;
     pagare: boolean;
     notas: string;
 }
@@ -186,6 +192,9 @@ export interface LineaVenta {
     producto: string;
     lote: string;
     camara: string;
+    // Del lote de origen; vacíos en una venta en resguardo (sin lote).
+    proveedor: string;
+    factura: string;
     cajas: number;
     kilos: string;
     precio_kilo: string | null;

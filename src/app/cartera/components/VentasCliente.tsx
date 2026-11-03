@@ -99,7 +99,7 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
             {error ? (
                 <div className="alert alert-danger m-3">{error}</div>
             ) : !ventas ? (
-                <SkeletonTable columnas={7} filas={4} />
+                <SkeletonTable columnas={9} filas={4} />
             ) : ventas.length === 0 ? (
                 <p className="text-center text-body-secondary py-5 mb-0">
                     <i className="bi bi-inbox fs-3 d-block mb-2" aria-hidden="true"></i>
@@ -112,6 +112,8 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
                             <tr>
                                 <th>Producto</th>
                                 <th>Lote</th>
+                                <th>Proveedor</th>
+                                <th>Factura</th>
                                 <th className="num">Cajas</th>
                                 <th className="num">Kilos</th>
                                 <th className="num">Precio/kg</th>
@@ -126,7 +128,7 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
                                 return (
                                     <Fragment key={`${v.salida_id}-${v.empresa.id}`}>
                                         <tr className="table-light">
-                                            <td colSpan={5}>
+                                            <td colSpan={7}>
                                                 <span className="fw-semibold">{fecha(v.fecha)}</span>
                                                 <span className="mx-2">·</span>Salida <span className="fw-semibold">{v.folio_salida || "sin salida (todo en resguardo)"}</span>
                                                 <span className="mx-2">·</span>Nota <span className="fw-semibold">{v.nota_salida || "—"}</span>
@@ -151,6 +153,8 @@ function VentasCliente({ clienteId, empresas, editable, onCambio }: Props) {
                                                 <tr key={l.id}>
                                                     <td className="ps-4">{l.producto}</td>
                                                     <td className="small">{l.lote || "—"}</td>
+                                                    <td className="small">{l.proveedor || "—"}</td>
+                                                    <td className="small text-nowrap">{l.factura || "—"}</td>
                                                     <td className="num">{l.cajas}</td>
                                                     <td className="num">{formatearKg(l.kilos)}</td>
                                                     <td className="num">{l.precio_kilo !== null ? formatearPrecioKg(l.precio_kilo) : "—"}</td>

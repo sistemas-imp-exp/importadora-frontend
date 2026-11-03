@@ -14,6 +14,8 @@ function ClienteCarteraForm({ cliente, onGuardar, onCancelar }: Props) {
         nombre: cliente?.nombre ?? "",
         activo: cliente?.activo ?? true,
         celular: cliente?.celular ?? "",
+        domicilio: cliente?.domicilio ?? "",
+        rfc: cliente?.rfc ?? "",
         pagare: cliente?.pagare ?? false,
         notas: cliente?.notas ?? "",
     });
@@ -29,7 +31,13 @@ function ClienteCarteraForm({ cliente, onGuardar, onCancelar }: Props) {
         setError(null);
         setGuardando(true);
         try {
-            await onGuardar({ ...form, nombre: form.nombre.trim(), celular: form.celular.trim() });
+            await onGuardar({
+                ...form,
+                nombre: form.nombre.trim(),
+                celular: form.celular.trim(),
+                domicilio: form.domicilio.trim(),
+                rfc: form.rfc.trim().toUpperCase(),
+            });
         } catch {
             // El toast con el mensaje del servidor lo muestra la vista.
         } finally {
@@ -52,7 +60,7 @@ function ClienteCarteraForm({ cliente, onGuardar, onCancelar }: Props) {
                     <div className="form-text">Es el mismo catálogo de clientes de Inventario.</div>
                 </div>
                 <div className="col-md-8">
-                    <label className="form-label" htmlFor="cliente-celular">Celular</label>
+                    <label className="form-label" htmlFor="cliente-celular">Teléfono</label>
                     <input
                         id="cliente-celular"
                         className="form-control"
@@ -82,6 +90,30 @@ function ClienteCarteraForm({ cliente, onGuardar, onCancelar }: Props) {
                         />
                         <label className="form-check-label" htmlFor="cliente-activo">Activo</label>
                     </div>
+                </div>
+                <div className="col-md-8">
+                    <label className="form-label" htmlFor="cliente-domicilio">Domicilio</label>
+                    <input
+                        id="cliente-domicilio"
+                        className="form-control"
+                        value={form.domicilio}
+                        placeholder="Calle, número, colonia, ciudad"
+                        onChange={(e) => setForm({ ...form, domicilio: e.target.value })}
+                    />
+                </div>
+                <div className="col-md-4">
+                    <label className="form-label" htmlFor="cliente-rfc">RFC</label>
+                    <input
+                        id="cliente-rfc"
+                        className="form-control text-uppercase"
+                        value={form.rfc}
+                        maxLength={15}
+                        placeholder="12 o 13 caracteres"
+                        onChange={(e) => setForm({ ...form, rfc: e.target.value })}
+                    />
+                </div>
+                <div className="col-12 form-text mt-1">
+                    Teléfono, domicilio y RFC son opcionales; aparecen arriba en el estado de cuenta.
                 </div>
                 <div className="col-12">
                     <label className="form-label" htmlFor="cliente-notas">Notas</label>
