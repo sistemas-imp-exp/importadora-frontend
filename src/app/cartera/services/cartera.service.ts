@@ -186,6 +186,8 @@ export type EstadoUtilidad = "completa" | "sin_precio" | "sin_costo";
 /** Una línea de venta como en la hoja Registro del área. */
 export interface FilaUtilidad {
     linea_id: number;
+    /** La del lote, o la de la venta si es en resguardo. */
+    empresa: { id: number; nombre: string };
     fecha: string;
     lote: string;
     nota: string;
@@ -228,12 +230,14 @@ export interface UtilidadReal {
     gasto_por_kilo: string;
     filas: FilaUtilidad[];
     resumen: ResumenUtilidad;
+    empresas: { empresa: { id: number; nombre: string }; resumen: ResumenUtilidad }[];
 }
 
 export interface FiltroUtilidad {
     desde: string;
     hasta: string;
     cliente?: number;
+    empresa?: number;
 }
 
 export interface GastoOperativo {
@@ -252,6 +256,7 @@ export async function obtenerUtilidadReal(filtro: FiltroUtilidad): Promise<Utili
 export async function descargarUtilidadReal(filtro: FiltroUtilidad): Promise<void> {
     const params = new URLSearchParams({ desde: filtro.desde, hasta: filtro.hasta });
     if (filtro.cliente) params.set("cliente", String(filtro.cliente));
+    if (filtro.empresa) params.set("empresa", String(filtro.empresa));
     await descargarBlob(`${BASE}utilidad/excel/`, XLSX, `utilidad_real_${filtro.desde}_${filtro.hasta}.xlsx`, params);
 }
 

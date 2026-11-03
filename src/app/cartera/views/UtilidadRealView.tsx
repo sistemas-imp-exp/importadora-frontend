@@ -47,12 +47,13 @@ function UtilidadRealView() {
     const { puedeEditar } = useAuth();
     const editable = puedeEditar("CAR");
     const { mostrarToast } = useToastContext();
-    const { clientes } = useCatalogosCartera((m) => mostrarToast("Error al cargar", m, "danger"));
+    const { clientes, empresas } = useCatalogosCartera((m) => mostrarToast("Error al cargar", m, "danger"));
 
     const hoy = hoyISO();
     const [desde, setDesde] = useState(hoy.slice(0, 8) + "01");
     const [hasta, setHasta] = useState(hoy);
     const [clienteId, setClienteId] = useState<number | "">("");
+    const [empresaId, setEmpresaId] = useState<number | "">("");
     const [busqueda, setBusqueda] = useState("");
     const [datos, setDatos] = useState<UtilidadReal | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -63,7 +64,10 @@ function UtilidadRealView() {
     const [historial, setHistorial] = useState<FilaUtilidad | null>(null);
     const [verGasto, setVerGasto] = useState(false);
 
-    const filtro = useMemo(() => ({ desde, hasta, cliente: clienteId || undefined }), [desde, hasta, clienteId]);
+    const filtro = useMemo(
+        () => ({ desde, hasta, cliente: clienteId || undefined, empresa: empresaId || undefined }),
+        [desde, hasta, clienteId, empresaId],
+    );
 
     useEffect(() => {
         if (!desde || !hasta) return;
@@ -93,6 +97,22 @@ function UtilidadRealView() {
             t.gasto += c.kilos * Number(f.gasto_por_kilo);
         }
         return t;
+    }, [filas, editados]);
+
+    const porEmpresa = useMemo(() => {
+        const mapa = new Map<string, { kilos: number; venta: number; costo: number; utilidad: number; gasto: number }>();
+        for (const f of filas) {
+            const c = calcular(f, editados[f.linea_id]);
+            if (c.venta === null || c.costo === null) continue;
+            const t = mapa.get(f.empresa.nombre) ?? { kilos: 0, venta: 0, costo: 0, utilidad: 0, gasto: 0 };
+            t.kilos += c.kilos;
+            t.venta += c.venta;
+            t.costo += c.costo;
+            t.utilidad += c.venta - c.costo;
+            t.gasto += c.kilos * Number(f.gasto_por_kilo);
+            mapa.set(f.empresa.nombre, t);
+        }
+        return [...mapa.entries()].sort(([a], [b]) => a.localeCompare(b));
     }, [filas, editados]);
 
     const pendientes = Object.keys(editados).length;
@@ -149,6 +169,14 @@ function UtilidadRealView() {
                             <label className="form-label small fw-semibold text-uppercase text-body-secondary mb-1" htmlFor="utilidad-hasta">Hasta</label>
                             <input id="utilidad-hasta" type="date" className="form-control form-control-sm" value={hasta} onChange={(e) => setHasta(e.target.value)} />
                         </div>
+                        <div>
+                            <label className="form-label small fw-semibold text-uppercase text-body-secondary mb-1" htmlFor="utilidad-empresa">Empresa</label>
+                            <select id="utilidad-empresa" className="form-select form-select-sm" value={empresaId}
+                                onChange={(e) => setEmpresaId(e.target.value ? Number(e.target.value) : "")}>
+                                <option value="">Todas (separadas)</option>
+                                {empresas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                            </select>
+                        </div>
                         <div style={{ minWidth: "16rem" }}>
                             <span className="form-label small fw-semibold text-uppercase text-body-secondary mb-1 d-block">Cliente</span>
                             <SearchableSelect placeholder="Todos los clientes" options={opcionesClientes} value={clienteId} onChange={setClienteId} />
@@ -178,6 +206,46 @@ function UtilidadRealView() {
                     ))}
                 </div>
 
+                {porEmpresa.length > 0 && (
+                    <div className="card mb-3">
+                        <div className="card-header py-2">
+                            <h3 className="card-title fs-6 fw-bold m-0">Por empresa</h3>
+                        </div>
+                        <div className="card-body p-0">
+                            <TablaResponsive>
+                                <table className="table tabla-datos mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Empresa</th>
+                                            <th className="num">Kilos</th>
+                                            <th className="num">Venta</th>
+                                            <th className="num">Costo</th>
+                                            <th className="num">Utilidad bruta</th>
+                                            <th className="num">Gasto operativo</th>
+                                            <th className="num">Utilidad real</th>
+                                            <th className="num">% real</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {porEmpresa.map(([nombre, t]) => (
+                                            <tr key={nombre}>
+                                                <td className="fw-semibold">{nombre}</td>
+                                                <td className="num">{formatearKg(t.kilos)}</td>
+                                                <td className="num">{dinero(t.venta)}</td>
+                                                <td className="num">{dinero(t.costo)}</td>
+                                                <td className="num">{dinero(t.utilidad)}</td>
+                                                <td className="num">{dinero(t.gasto)}</td>
+                                                <td className={`num fw-bold ${claseSaldo(-(t.utilidad - t.gasto))}`}>{dinero(t.utilidad - t.gasto)}</td>
+                                                <td className="num">{margen(t.utilidad - t.gasto, t.venta)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </TablaResponsive>
+                        </div>
+                    </div>
+                )}
+
                 {(totales.sinPrecio > 0 || totales.sinCosto > 0 || (datos?.resumen.costo_propuesto ?? 0) > 0) && (
                     <div className="alert alert-warning py-2 small" role="status">
                         {totales.sinPrecio > 0 && <div>{totales.sinPrecio} línea(s) sin precio: Inventario debe capturarlo. No suman.</div>}
@@ -192,7 +260,7 @@ function UtilidadRealView() {
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">Registro <span className="badge text-bg-secondary">{filas.length}</span></h3>
                         <BuscadorTabla valor={busqueda} onChange={setBusqueda} placeholder="Nota, cliente, producto, lote o proveedor..." />
-                        <BotonDescargaExcel onDescargar={() => descargarUtilidadReal(filtro)} titulo="Descargar como la hoja Registro"
+                        <BotonDescargaExcel onDescargar={() => descargarUtilidadReal(filtro)} titulo="Descargar como la hoja Registro (una hoja por empresa)"
                             disabled={!datos || datos.filas.length === 0} />
                     </div>
 
@@ -246,7 +314,14 @@ function UtilidadRealView() {
                                                             ? <span className="badge border bg-warning-subtle text-warning-emphasis border-warning-subtle">Resguardo</span>
                                                             : f.lote}
                                                     </td>
-                                                    <td className="text-nowrap">{f.nota}</td>
+                                                    <td className="text-nowrap">
+                                                        {f.nota}
+                                                        {!empresaId && (
+                                                            <span className="badge border bg-body-tertiary text-body-secondary fw-normal ms-1" title={f.empresa.nombre}>
+                                                                {f.empresa.nombre === "IMPORTADORA" ? "IMP" : f.empresa.nombre === "MARISCOS SELECTOS" ? "MS" : f.empresa.nombre}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="truncar" title={f.proveedor}>{f.proveedor || "—"}</td>
                                                     <td className="truncar" title={f.cliente}>{f.cliente}</td>
                                                     <td className="text-nowrap">{f.producto}</td>
