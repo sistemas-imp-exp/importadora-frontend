@@ -10,6 +10,7 @@ import { perfilRoutes } from "../app/perfil/routes";
 import { usuariosRoutes } from "../app/usuarios/routes";
 import { inventarioRoutes } from "../app/inventario/routes";
 import { carteraRoutes } from "../app/cartera/routes";
+import { ganadoRoutes } from "../app/ganado/routes";
 import { notificacionesRoutes } from "../app/notificaciones/routes";
 
 import PrivateRoute from "./PrivateRoute";
@@ -36,6 +37,9 @@ function AppRouter() {
                         </Route>
                         <Route element={<PrivateRoute area="CAR" />}>
                             {carteraRoutes}
+                        </Route>
+                        <Route element={<PrivateRoute area="GAN" />}>
+                            {ganadoRoutes}
                         </Route>
                         <Route element={<PrivateRoute area="ADMIN" />}>
                             {usuariosRoutes}

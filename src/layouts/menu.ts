@@ -2,6 +2,7 @@
 import { usuariosMenu } from "../app/usuarios/menu/menu";
 import { inventarioMenu } from "../app/inventario/menu/menu";
 import { carteraMenu } from "../app/cartera/menu/menu";
+import { ganadoMenu } from "../app/ganado/menu/menu";
 import type { SidebarMenuItem } from "../shared/interfaces/SidebarMenu";
 
 export const sidebarMenu: SidebarMenuItem[] = [
@@ -11,4 +12,5 @@ export const sidebarMenu: SidebarMenuItem[] = [
     ...inventarioMenu,
     ...tesoreriaMenu,
     ...carteraMenu,
+    ...ganadoMenu,
 ];
