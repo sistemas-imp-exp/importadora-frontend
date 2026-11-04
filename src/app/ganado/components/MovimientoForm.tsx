@@ -199,7 +199,7 @@ function MovimientoForm({ tipoInicial, ranchos, especies, categorias, onGuardar,
                 <>
                     <div className="table-responsive" style={{ maxHeight: "45vh" }}>
                         <table className="table table-sm align-middle tabla-datos mb-2">
-                            <thead className="sticky-top">
+                            <thead>
                                 <tr>
                                     <th>Arete</th>
                                     <th>Especie</th>
@@ -299,7 +299,7 @@ function MovimientoForm({ tipoInicial, ranchos, especies, categorias, onGuardar,
                     </div>
                     <div className="table-responsive border rounded" style={{ maxHeight: "40vh" }}>
                         <table className="table table-sm table-hover tabla-datos mb-0">
-                            <thead className="sticky-top">
+                            <thead>
                                 <tr><th style={{ width: "2rem" }}></th><th>Arete</th><th>Folio</th><th>Categoría</th><th>Sexo</th><th>Raza / color</th></tr>
                             </thead>
                             <tbody>

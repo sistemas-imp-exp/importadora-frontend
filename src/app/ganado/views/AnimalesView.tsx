@@ -111,7 +111,7 @@ function AnimalesView() {
                         ) : (
                             <TablaResponsive alturaMaxima="70vh">
                                 <table className={`table tabla-datos mb-0 ${loading ? "opacity-50" : ""}`}>
-                                    <thead className="sticky-top">
+                                    <thead>
                                         <tr>
                                             <th>Arete</th>
                                             <th>Folio</th>

@@ -146,7 +146,7 @@ function ReporteMovimientosView() {
                         <div className="card-body p-0">
                             <TablaResponsive alturaMaxima="60vh">
                                 <table className="table tabla-datos tabla-excel mb-0">
-                                    <thead className="sticky-top">
+                                    <thead>
                                         <tr>
                                             <th>Fecha</th><th>Folio</th><th>Movimiento</th><th>Rancho</th><th>Destino</th>
                                             <th className="num">Cab.</th><th>Animales</th><th>Contraparte</th><th className="num">Importe</th><th>Notas</th>

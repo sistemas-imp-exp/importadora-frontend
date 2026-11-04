@@ -106,7 +106,7 @@ function DetalleMovimiento({ id, editable, onGuardar, onCerrar }: Props) {
             <h6 className="mt-4">{movimiento.cabezas} cabeza(s) · {movimiento.resumen}</h6>
             <div className="table-responsive border rounded" style={{ maxHeight: "35vh" }}>
                 <table className="table table-sm tabla-datos mb-0">
-                    <thead className="sticky-top">
+                    <thead>
                         <tr><th>Arete</th><th>Folio</th><th>Especie</th><th>Categoría</th><th>Sexo</th><th>Raza / color</th></tr>
                     </thead>
                     <tbody>

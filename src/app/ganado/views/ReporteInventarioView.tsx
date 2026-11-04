@@ -15,6 +15,11 @@ import { fecha } from "../utils/ganado";
 
 const CAMPOS = ["hembras", "machos", "con_arete", "sin_arete", "total"] as const;
 
+/** Los ceros en gris tenue: así resaltan las cantidades que sí hay. */
+function Cantidad({ valor }: { valor: number }) {
+    return valor ? <>{valor}</> : <span className="text-body-tertiary">0</span>;
+}
+
 /** Cabezas por rancho a una fecha; con "Ver animales", la lista de cada rancho con su arete en 3 columnas (como las hojas del área). */
 function ReporteInventarioView() {
     const { mostrarToast } = useToastContext();
@@ -85,15 +90,13 @@ function ReporteInventarioView() {
                         ) : (
                             <TablaResponsive alturaMaxima="70vh">
                                 <table className={`table tabla-datos tabla-hoja mb-0 ${cargando ? "opacity-50" : ""}`}>
-                                    <thead className="sticky-top">
+                                    <thead>
                                         <tr>
-                                            <th>Especie</th>
+                                            <th style={{ width: "9rem" }}>Especie</th>
                                             <th>Categoría</th>
-                                            <th className="num">Hembras</th>
-                                            <th className="num">Machos</th>
-                                            <th className="num">Con arete</th>
-                                            <th className="num">Sin arete</th>
-                                            <th className="num">Total</th>
+                                            {["Hembras", "Machos", "Con arete", "Sin arete", "Total"].map((t) => (
+                                                <th key={t} className="num" style={{ width: "8.5rem" }}>{t}</th>
+                                            ))}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -103,11 +106,12 @@ function ReporteInventarioView() {
                                                     <td colSpan={6} className="fw-semibold">{bloque.rancho.nombre}</td>
                                                     <td className="num fw-semibold">{bloque.total}</td>
                                                 </tr>
-                                                {bloque.filas.map((f) => (
+                                                {bloque.filas.map((f, i) => (
                                                     <tr key={`${f.especie}-${f.categoria}`}>
-                                                        <td className="small">{f.especie}</td>
+                                                        {/* La especie solo donde empieza su grupo, como en una hoja. */}
+                                                        <td className="small text-body-secondary">{i === 0 || bloque.filas[i - 1].especie !== f.especie ? f.especie : ""}</td>
                                                         <td>{f.categoria}</td>
-                                                        {CAMPOS.map((c) => <td key={c} className={`num ${c === "total" ? "fw-semibold" : ""}`}>{f[c]}</td>)}
+                                                        {CAMPOS.map((c) => <td key={c} className={`num ${c === "total" ? "fw-semibold" : ""}`}><Cantidad valor={f[c]} /></td>)}
                                                     </tr>
                                                 ))}
                                                 {verAnimales && bloque.animales && (
