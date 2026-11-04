@@ -40,4 +40,10 @@ export interface FiltrosReporteCamaras {
     fecha: string;
     camaraId: string;
     empresaId: string;
+    // Varios valores a la vez; vacío = sin filtro. Presentación: "entero" | "colas" | "sin".
+    presentaciones: string[];
+    tallas: string[];
+    tipos: string[];
+    categorias: string[];
+    proveedorIds: string[];
 }

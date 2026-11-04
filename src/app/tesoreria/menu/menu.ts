@@ -65,6 +65,11 @@ export const tesoreriaMenu: SidebarMenuItem[] = [
                         to: "/tesoreria/deudas/deudores",
                         icon: "bi bi-people",
                         catalogo: true
+                    },
+                    {
+                        label: "Reporte",
+                        to: "/tesoreria/deudas/reporte",
+                        icon: "bi bi-file-earmark-bar-graph"
                     }
                 ]
             },
