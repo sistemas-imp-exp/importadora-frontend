@@ -5,6 +5,7 @@ import { descargarExistenciasExcel, descargarExistenciasPdf } from "../../servic
 import type { ExistenciaApi } from "../../interfaces/existencias/Existencia";
 import ExistenciasTable from "../../components/existencias/ExistenciasTable";
 import ExistenciasFiltros from "../../components/existencias/ExistenciasFiltros";
+import SalidasReciboModal from "../../components/existencias/SalidasReciboModal";
 import { useExistenciasFiltros } from "../../hooks/useExistenciasFiltros";
 import { formatearDinero, VALORES_ORDEN_EXISTENCIAS } from "../../utils/existencias";
 import SkeletonTable from "../../../../shared/components/SkeletonTable";
@@ -28,6 +29,8 @@ function ExistenciasView() {
     const [colapsado, setColapsado] = useState(false);
     const [porPagina, setPorPagina] = useState(POR_PAGINA_INICIAL);
     const [descargando, setDescargando] = useState<"pdf" | "excel" | null>(null);
+    // Recibo cuyas salidas se muestran en la ventana (clic en el recibo de la tabla).
+    const [reciboAbierto, setReciboAbierto] = useState<string | null>(null);
 
     const { mostrarToast } = useToastContext();
     const [densidad, setDensidad] = useDensidadTabla("existencias");
@@ -209,6 +212,7 @@ function ExistenciasView() {
                                         densidad={densidad}
                                         orden={orden}
                                         onOrdenar={alternar}
+                                        onVerRecibo={setReciboAbierto}
                                     />
                                 )}
                             </div>
@@ -225,6 +229,10 @@ function ExistenciasView() {
                     )}
                 </div>
             </div>
+
+            {reciboAbierto && (
+                <SalidasReciboModal recibo={reciboAbierto} onCerrar={() => setReciboAbierto(null)} />
+            )}
         </>
     );
 }

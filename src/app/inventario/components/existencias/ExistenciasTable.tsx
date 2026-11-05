@@ -22,6 +22,8 @@ interface ExistenciasTableProps {
     /** Con ambos, los encabezados ordenan; las filas deben llegar ya ordenadas. */
     orden?: OrdenTabla<ColumnaExistencias> | null;
     onOrdenar?: (columna: ColumnaExistencias) => void;
+    /** Con esto, el recibo de ingreso es un enlace que muestra sus salidas. */
+    onVerRecibo?: (recibo: string) => void;
 }
 
 // Lo que identifica al lote (dónde está y qué es) se queda fijo al desplazar a
@@ -33,7 +35,7 @@ const FIJA_GRUPO = columnasFijas([`calc(${ANCHOS_FIJOS.join(" + ")})`])[0];
 const COLUMNAS = 15;
 
 function ExistenciasTable({
-    filas, totales, hayFiltros, densidad, mostrarTotales = true, alturaMaxima = "70vh", orden, onOrdenar,
+    filas, totales, hayFiltros, densidad, mostrarTotales = true, alturaMaxima = "70vh", orden, onOrdenar, onVerRecibo,
 }: ExistenciasTableProps) {
     const encabezado = (columna: ColumnaExistencias, texto: string, className?: string, style?: CSSProperties) => (
         <EncabezadoOrdenable columna={columna} orden={orden} onOrdenar={onOrdenar} className={className} style={style}>
@@ -88,7 +90,20 @@ function ExistenciasTable({
                                 </td>
                                 <td className="truncar inicio-grupo" title={fila.proveedorNombre}>{fila.proveedorNombre}</td>
                                 <td className="text-nowrap">{formatearFechaNumerica(new Date(fila.fecha + "T00:00:00"))}</td>
-                                <td className="text-nowrap">{fila.reciboIngreso}</td>
+                                <td className="text-nowrap">
+                                    {onVerRecibo && fila.reciboIngreso && fila.reciboIngreso !== "—" ? (
+                                        <a
+                                            href="#"
+                                            className="link-primary text-decoration-underline"
+                                            title={`Ver las salidas del recibo ${fila.reciboIngreso}`}
+                                            onClick={(e) => { e.preventDefault(); onVerRecibo(fila.reciboIngreso); }}
+                                        >
+                                            {fila.reciboIngreso}
+                                        </a>
+                                    ) : (
+                                        fila.reciboIngreso
+                                    )}
+                                </td>
                                 <td className="text-nowrap">{fila.factura}</td>
                                 <td className="num inicio-grupo">{fila.pesoPorCaja ? formatearPeso(Number(fila.pesoPorCaja)) : "—"}</td>
                                 <td className="num fw-semibold">{fila.cajasDisponibles.toLocaleString("es-MX")}</td>

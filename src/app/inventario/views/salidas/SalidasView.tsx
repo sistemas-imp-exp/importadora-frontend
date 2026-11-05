@@ -42,6 +42,8 @@ function SalidasView() {
     const [searchParams] = useSearchParams();
     const parametroBusqueda = searchParams.get("busqueda") ?? "";
     const [busqueda, setBusqueda] = useState(parametroBusqueda);
+    // La búsqueda con la que se cargó el listado (la tabla filtra líneas con ella).
+    const [busquedaCargada, setBusquedaCargada] = useState("");
     const [pagina, setPagina] = useState(1);
     // Llegar con otro folio estando ya en Salidas (p. ej. desde la campana).
     const [parametroPrevio, setParametroPrevio] = useState(parametroBusqueda);
@@ -76,6 +78,7 @@ function SalidasView() {
         try {
             const datos = await obtenerSalidas({ pagina, porPagina, busqueda });
             setSalidas(datos.results);
+            setBusquedaCargada(busqueda);
             setTotal(datos.count);
             setError(null);
         } catch (error) {
@@ -212,7 +215,7 @@ function SalidasView() {
                                 <BuscadorTabla
                                     valor={busqueda}
                                     onChange={buscar}
-                                    placeholder="Buscar por folio, cliente, nota o producto..."
+                                    placeholder="Buscar por folio, cliente, nota, producto o recibo..."
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
                                 <DensidadToggle valor={densidad} onChange={setDensidad} />
@@ -240,6 +243,7 @@ function SalidasView() {
                                 <SalidasTable
                                     salidas={salidas}
                                     camaras={camaras}
+                                    busqueda={busquedaCargada}
                                     densidad={densidad}
                                     onEditar={editable ? setSalidaEditando : undefined}
                                     onEliminar={editable ? setSalidaEliminar : undefined}

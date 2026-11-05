@@ -8,6 +8,8 @@ export interface FilaReporteCamara {
 
 export interface TipoReporteCamara {
     tipo: string;
+    /** Kilos de todo el tipo dentro de la talla. */
+    total: string;
     filas: FilaReporteCamara[];
 }
 
@@ -40,4 +42,10 @@ export interface FiltrosReporteCamaras {
     fecha: string;
     camaraId: string;
     empresaId: string;
+    // Varios valores a la vez; vacío = sin filtro. Presentación: "entero" | "colas" | "sin".
+    presentaciones: string[];
+    tallas: string[];
+    tipos: string[];
+    categorias: string[];
+    proveedorIds: string[];
 }

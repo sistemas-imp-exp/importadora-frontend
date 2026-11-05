@@ -9,11 +9,18 @@ function parametros(filtros: FiltrosReporteCamaras): URLSearchParams {
     if (filtros.fecha) params.set("fecha", filtros.fecha);
     if (filtros.camaraId) params.set("camara", filtros.camaraId);
     if (filtros.empresaId) params.set("empresa", filtros.empresaId);
+    // Repetidos (?talla=30-40&talla=40-50): el backend los lee con getlist.
+    filtros.presentaciones.forEach((v) => params.append("presentacion", v));
+    filtros.tallas.forEach((v) => params.append("talla", v));
+    filtros.tipos.forEach((v) => params.append("tipo", v));
+    filtros.categorias.forEach((v) => params.append("categoria", v));
+    filtros.proveedorIds.forEach((v) => params.append("proveedor", v));
     return params;
 }
 
-export async function obtenerReporteCamaras(filtros: FiltrosReporteCamaras): Promise<ReporteCamarasApi> {
-    const { data } = await api.get<ReporteCamarasApi>(URL, { params: parametros(filtros) });
+/** `signal` cancela la consulta si los filtros cambian antes de que responda. */
+export async function obtenerReporteCamaras(filtros: FiltrosReporteCamaras, signal?: AbortSignal): Promise<ReporteCamarasApi> {
+    const { data } = await api.get<ReporteCamarasApi>(URL, { params: parametros(filtros), signal });
     return data;
 }
 

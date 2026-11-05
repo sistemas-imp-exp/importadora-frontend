@@ -1,6 +1,7 @@
 import client from "../../../shared/api/client";
 import { descargarBlob } from "../../../shared/utils/descargarArchivo";
 import type { Deuda, DeudaRequest, Deudor, DeudorRequest, EstadoDeuda } from "../interfaces/deudas/Deuda";
+import type { FiltrosReporteDeudas, ReporteDeudas } from "../interfaces/deudas/ReporteDeudas";
 
 const URL_DEUDORES = "treasury/deudores/";
 const URL_DEUDAS = "treasury/deudas/";
@@ -64,4 +65,26 @@ export async function actualizarDeuda(id: number, deuda: DeudaRequest): Promise<
 export async function cancelarDeuda(id: number, motivo: string): Promise<Deuda> {
     const { data } = await client.post<Deuda>(`${URL_DEUDAS}${id}/cancelar/`, { motivo });
     return data;
+}
+
+function parametrosReporte(filtros: FiltrosReporteDeudas): URLSearchParams {
+    const params = new URLSearchParams({ solo_con_saldo: filtros.soloConSaldo ? "1" : "0" });
+    if (filtros.tipo) params.set("tipo", filtros.tipo);
+    if (filtros.divisaId) params.set("divisa", filtros.divisaId);
+    return params;
+}
+
+export async function obtenerReporteDeudas(filtros: FiltrosReporteDeudas): Promise<ReporteDeudas> {
+    const { data } = await client.get<ReporteDeudas>(`${URL_DEUDORES}reporte/`, { params: parametrosReporte(filtros) });
+    return data;
+}
+
+export async function descargarReporteDeudas(filtros: FiltrosReporteDeudas, formato: "pdf" | "excel"): Promise<void> {
+    const pdf = formato === "pdf";
+    await descargarBlob(
+        `${URL_DEUDORES}reporte/${formato}/`,
+        pdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        `reporte_deudas.${pdf ? "pdf" : "xlsx"}`,
+        parametrosReporte(filtros),
+    );
 }
