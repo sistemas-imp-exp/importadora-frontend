@@ -87,13 +87,14 @@ interface MovimientoCartera {
     motivo_cancelacion: string;
 }
 
-export type TipoPago = "T" | "E" | "A" | "AA";
+export type TipoPago = "T" | "E" | "A" | "AA" | "N";
 
 export const TIPOS_PAGO: { value: TipoPago; label: string; corto: string }[] = [
     { value: "T", label: "Transferencia", corto: "T" },
     { value: "E", label: "Efectivo", corto: "E" },
     { value: "A", label: "Efectivo a Tesorería", corto: "A" },
     { value: "AA", label: "Efectivo Arriaga / Mapastepec", corto: "AA" },
+    { value: "N", label: "Descuento de nómina", corto: "N" },
 ];
 
 export interface IngresoTesoreria {
