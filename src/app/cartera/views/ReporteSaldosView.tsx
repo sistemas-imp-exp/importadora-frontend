@@ -11,6 +11,7 @@ import { useToastContext } from "../../../shared/context/ToastProvider";
 import { obtenerMensajeError } from "../../../shared/utils/apiError";
 import { descargarReporteSaldos, obtenerReporteSaldos, type ReporteSaldos } from "../services/cartera.service";
 import { claseSaldo, dinero, fecha, rutaClienteCartera } from "../utils/cartera";
+import ControlMensualCard from "../components/ControlMensualCard";
 
 /** Igual que la hoja SALDO CLIENTES: saldo por empresa, conjunto, último pago y celular. */
 function ReporteSaldosView() {
@@ -83,6 +84,8 @@ function ReporteSaldosView() {
                 breadcrumbs={[{ label: "Inicio", to: "/" }, { label: "Cartera", to: "/cartera" }, { label: "Reportes" }, { label: "Saldos de clientes" }]}
             />
             <div className="container-fluid">
+                <ControlMensualCard />
+
                 <div className="card card-outline card-primary">
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">Vista previa</h3>

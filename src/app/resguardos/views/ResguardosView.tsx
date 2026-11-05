@@ -15,11 +15,14 @@ import { useDensidadTabla } from "../../../shared/hooks/useDensidadTabla";
 import { obtenerMensajeError } from "../../../shared/utils/apiError";
 import { formatearKg } from "../../../shared/utils/numeros";
 import ResguardosTabla from "../components/ResguardosTabla";
+import ResumenResguardosTabla from "../components/ResumenResguardosTabla";
+import type { ResumenResguardos } from "../interfaces/ResumenResguardos";
 import LigarEntregaModal from "../components/LigarEntregaModal";
 import RetiroResguardoModal from "../components/RetiroResguardoModal";
 import type { CrearRetiroRequest, LigarEntregaRequest, Resguardo, Retiro } from "../interfaces/Resguardo";
 import {
-    cancelarRetiro, ligarEntregas, obtenerClientesConResguardo, obtenerResguardos, registrarRetiro, type FiltrosResguardos,
+    cancelarRetiro, descargarResumenResguardos, ligarEntregas, obtenerClientesConResguardo, obtenerResguardos,
+    obtenerResumenResguardos, registrarRetiro, type FiltrosResguardos,
 } from "../services/resguardos.service";
 
 interface Props {
@@ -73,6 +76,35 @@ function ResguardosView({ area }: Props) {
     const [ligando, setLigando] = useState<Resguardo | null>(null);
     const [cancelando, setCancelando] = useState<Retiro | null>(null);
     const [procesando, setProcesando] = useState(false);
+    // Pestaña: control por nota (con retiros) o resumen por cliente (hoja RESUMEN RESG.).
+    const [vista, setVista] = useState<"control" | "resumen">("control");
+    const [resumen, setResumen] = useState<ResumenResguardos | null>(null);
+    const [errorResumen, setErrorResumen] = useState<string | null>(null);
+    const [descargando, setDescargando] = useState<"pdf" | "excel" | null>(null);
+
+    useEffect(() => {
+        if (vista !== "resumen") return;
+        let cancelado = false;
+        obtenerResumenResguardos(clienteId)
+            .then((datos) => {
+                if (cancelado) return;
+                setResumen(datos);
+                setErrorResumen(null);
+            })
+            .catch((err) => !cancelado && setErrorResumen(obtenerMensajeError(err)));
+        return () => { cancelado = true; };
+    }, [vista, clienteId, recarga]);
+
+    async function descargarResumen(formato: "pdf" | "excel") {
+        setDescargando(formato);
+        try {
+            await descargarResumenResguardos(clienteId, formato);
+        } catch (err) {
+            mostrarToast("Error al descargar", obtenerMensajeError(err), "danger");
+        } finally {
+            setDescargando(null);
+        }
+    }
 
     useEffect(() => {
         let cancelado = false;
@@ -179,7 +211,76 @@ function ResguardosView({ area }: Props) {
                     </span>
                 </div>
 
-                <div className="card card-outline card-primary">
+                <ul className="nav nav-tabs mb-0">
+                    <li className="nav-item">
+                        <button type="button" className={`nav-link ${vista === "control" ? "active" : ""}`}
+                            aria-current={vista === "control" ? "page" : undefined} onClick={() => setVista("control")}>
+                            <i className="bi bi-list-ul me-1" aria-hidden="true"></i>Control por nota
+                        </button>
+                    </li>
+                    <li className="nav-item">
+                        <button type="button" className={`nav-link ${vista === "resumen" ? "active" : ""}`}
+                            aria-current={vista === "resumen" ? "page" : undefined} onClick={() => setVista("resumen")}>
+                            <i className="bi bi-table me-1" aria-hidden="true"></i>Resumen por cliente
+                        </button>
+                    </li>
+                </ul>
+
+                {vista === "resumen" ? (
+                    <div className="card card-outline card-primary rounded-top-0">
+                        <div className="card-header d-flex flex-wrap gap-2 align-items-center">
+                            <h3 className="card-title mb-0 me-auto">
+                                Resumen de resguardos
+                                {resumen && (
+                                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal ms-2">
+                                        {formatearKg(resumen.kilos)} kg por entregar
+                                    </span>
+                                )}
+                            </h3>
+                            <div style={{ minWidth: "14rem" }}>
+                                <SearchableSelect
+                                    placeholder="Todos los clientes"
+                                    options={opcionesClientes}
+                                    value={clienteId}
+                                    onChange={(v) => setClienteId(v)}
+                                />
+                            </div>
+                            <div className="btn-group btn-group-sm" role="group" aria-label="Descargar resumen">
+                                <button type="button" className="btn btn-outline-success" disabled={descargando !== null}
+                                    onClick={() => descargarResumen("excel")}>
+                                    {descargando === "excel" ? (
+                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>
+                                    )}
+                                    Excel
+                                </button>
+                                <button type="button" className="btn btn-outline-danger" disabled={descargando !== null}
+                                    onClick={() => descargarResumen("pdf")}>
+                                    {descargando === "pdf" ? (
+                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>
+                                    )}
+                                    PDF
+                                </button>
+                            </div>
+                        </div>
+                        {errorResumen ? (
+                            <div className="card-body"><div className="alert alert-danger mb-0" role="alert">{errorResumen}</div></div>
+                        ) : !resumen ? (
+                            <div className="card-body"><SkeletonTable columnas={8} filas={5} /></div>
+                        ) : (
+                            <div className="card-body p-0"><ResumenResguardosTabla resumen={resumen} /></div>
+                        )}
+                        <div className="card-footer small text-body-secondary">
+                            <i className="bi bi-info-circle me-1" aria-hidden="true"></i>
+                            Kilos por entregar a hoy, por nota y producto. Total = kilos × precio de la venta. El proveedor es el de
+                            los lotes ya entregados o, si aún no hay entregas, el del control del área al cargar los resguardos.
+                        </div>
+                    </div>
+                ) : (
+                <div className="card card-outline card-primary rounded-top-0">
                     <div className="card-header d-flex flex-wrap gap-2 align-items-center">
                         <h3 className="card-title mb-0 me-auto">
                             Resguardos
@@ -232,6 +333,7 @@ function ResguardosView({ area }: Props) {
                         </>
                     )}
                 </div>
+                )}
             </div>
 
             {retirando && (

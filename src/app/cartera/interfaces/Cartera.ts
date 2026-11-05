@@ -22,6 +22,9 @@ export interface ClienteCartera {
     nombre: string;
     activo: boolean;
     celular: string;
+    // Opcionales; van en el encabezado del estado de cuenta.
+    domicilio: string;
+    rfc: string;
     pagare: boolean;
     notas: string;
     /** {empresa_id: saldo} */
@@ -38,6 +41,9 @@ export interface ClienteCarteraRequest {
     nombre: string;
     activo: boolean;
     celular: string;
+    // Opcionales; van en el encabezado del estado de cuenta.
+    domicilio: string;
+    rfc: string;
     pagare: boolean;
     notas: string;
 }
@@ -81,13 +87,14 @@ interface MovimientoCartera {
     motivo_cancelacion: string;
 }
 
-export type TipoPago = "T" | "E" | "A" | "AA";
+export type TipoPago = "T" | "E" | "A" | "AA" | "N";
 
 export const TIPOS_PAGO: { value: TipoPago; label: string; corto: string }[] = [
     { value: "T", label: "Transferencia", corto: "T" },
     { value: "E", label: "Efectivo", corto: "E" },
     { value: "A", label: "Efectivo a Tesorería", corto: "A" },
     { value: "AA", label: "Efectivo Arriaga / Mapastepec", corto: "AA" },
+    { value: "N", label: "Descuento de nómina", corto: "N" },
 ];
 
 export interface IngresoTesoreria {
@@ -109,6 +116,29 @@ export interface PagoCliente extends Omit<MovimientoCartera, "cliente"> {
     tipo_display: string;
     referencia: string;
     ingreso_tesoreria: (Omit<IngresoTesoreria, "monto"> & { cancelado: boolean }) | null;
+    /** Lo descontado a mano de cada nota; el resto va a lo más antiguo. */
+    aplicaciones: (AplicacionPago & { nota: string })[];
+}
+
+/** Parte de un pago aplicada a una nota; `salida_id` null = saldo al corte. */
+export interface AplicacionPago {
+    salida_id: number | null;
+    monto: string;
+}
+
+/** Nota a la que se puede aplicar un pago (saldo al corte o venta). */
+export interface NotaPendiente {
+    salida_id: number | null;
+    tipo: "inicial" | "venta";
+    nota: string;
+    folio: string;
+    fecha: string;
+    dias: number;
+    importe: string;
+    /** Lo que debe hoy (después de pagos, abonos y lo más antiguo primero). */
+    pendiente: string;
+    /** Lo máximo que se le puede aplicar: importe − lo aplicado a mano por otros pagos. */
+    disponible: string;
 }
 
 export interface PagoClienteRequest {
@@ -122,6 +152,8 @@ export interface PagoClienteRequest {
     ingreso_tesoreria_id: number | null;
     fecha?: string;
     monto?: number;
+    /** [] = todo a lo más antiguo. */
+    aplicaciones: AplicacionPago[];
 }
 
 export type Naturaleza = "C" | "A";
@@ -186,6 +218,9 @@ export interface LineaVenta {
     producto: string;
     lote: string;
     camara: string;
+    // Del lote de origen; vacíos en una venta en resguardo (sin lote).
+    proveedor: string;
+    factura: string;
     cajas: number;
     kilos: string;
     precio_kilo: string | null;

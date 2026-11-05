@@ -25,3 +25,7 @@ export function claseSaldo(valor: string | number): string {
 export function rutaClienteCartera(id: number): string {
     return `/cartera/clientes/${id}`;
 }
+
+/** Clave de una nota al aplicar un pago: la salida, o "corte" para el saldo al corte. */
+export const claveNota = (salidaId: number | null) => (salidaId === null ? "corte" : String(salidaId));
+export const salidaDeClave = (clave: string) => (clave === "corte" ? null : Number(clave));

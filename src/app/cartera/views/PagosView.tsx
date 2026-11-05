@@ -42,6 +42,24 @@ function claseAntiguedad(dias: number): string {
     return "bg-light text-body-secondary";
 }
 
+/** De qué notas se descontó el pago; lo no aplicado va a lo más antiguo. */
+function AplicadoA({ pago }: { pago: PagoCliente }) {
+    if (pago.aplicaciones.length === 0) return <span className="text-body-secondary">Lo más antiguo</span>;
+    const aplicado = pago.aplicaciones.reduce((acc, a) => acc + Number(a.monto), 0);
+    return (
+        <>
+            {pago.aplicaciones.map((a) => (
+                <div key={a.salida_id ?? "corte"} className="text-nowrap">
+                    {a.salida_id === null ? "Saldo al corte" : `Nota ${a.nota}`} <span className="text-body-secondary">{dinero(a.monto)}</span>
+                </div>
+            ))}
+            {Number(pago.monto) - aplicado > 0.004 && (
+                <div className="text-body-secondary">Resto {dinero(Number(pago.monto) - aplicado)} a lo más antiguo</div>
+            )}
+        </>
+    );
+}
+
 function PagosView() {
     const { puedeEditar } = useAuth();
     const editable = puedeEditar("CAR");
@@ -253,6 +271,7 @@ function PagosView() {
                                             <th>Empresa</th>
                                             <th>Tipo</th>
                                             <th className="num">Monto</th>
+                                            {!porIdentificar && <th>Aplicado a</th>}
                                             <th>Referencia</th>
                                             <th>Capturó</th>
                                             <th className="text-end">Acciones</th>
@@ -261,7 +280,7 @@ function PagosView() {
                                     <tbody>
                                         {filtrados.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="text-center text-body-secondary py-5">
+                                                <td colSpan={porIdentificar ? 8 : 9} className="text-center text-body-secondary py-5">
                                                     {porIdentificar ? "No hay pagos por identificar." : "No hay pagos con estos filtros."}
                                                 </td>
                                             </tr>
@@ -291,6 +310,7 @@ function PagosView() {
                                                         <span className="small ms-1 text-body-secondary">{p.tipo_display}</span>
                                                     </td>
                                                     <td className={`num fw-semibold ${tachado}`}>{dinero(p.monto)}</td>
+                                                    {!porIdentificar && <td className="small"><AplicadoA pago={p} /></td>}
                                                     <td className="small">
                                                         {p.ingreso_tesoreria && (
                                                             <span className="badge border bg-info-subtle text-info-emphasis border-info-subtle me-1" title={p.ingreso_tesoreria.concepto}>

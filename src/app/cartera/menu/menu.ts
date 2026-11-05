@@ -47,6 +47,11 @@ export const carteraMenu: SidebarMenuItem[] = [
                         to: "/cartera/reportes/saldos",
                         icon: "bi bi-table",
                     },
+                    {
+                        label: "Antigüedad de saldos",
+                        to: "/cartera/reportes/antiguedad",
+                        icon: "bi bi-hourglass-split",
+                    },
                 ],
             },
         ],

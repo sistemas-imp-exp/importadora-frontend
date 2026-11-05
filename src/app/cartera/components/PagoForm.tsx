@@ -5,7 +5,8 @@ import {
     TIPOS_PAGO, type ClienteCartera, type EmpresaCartera, type IngresoTesoreria, type PagoCliente,
     type PagoClienteRequest, type TipoPago,
 } from "../interfaces/Cartera";
-import { dinero, fecha } from "../utils/cartera";
+import { claveNota, dinero, fecha, salidaDeClave } from "../utils/cartera";
+import AplicarNotasPago from "./AplicarNotasPago";
 import BotonGuardar from "./BotonGuardar";
 import SelectorIngresoTesoreriaModal from "./SelectorIngresoTesoreriaModal";
 
@@ -37,8 +38,14 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
     const [referencia, setReferencia] = useState(pago?.referencia ?? "");
     const [notas, setNotas] = useState(pago?.notas ?? "");
     const [mostrarIngresos, setMostrarIngresos] = useState(false);
+    // {clave de nota: monto}; cambiar de cliente o empresa lo vacía.
+    const [aplicaciones, setAplicaciones] = useState<Record<string, string>>(
+        () => Object.fromEntries((pago?.aplicaciones ?? []).map((a) => [claveNota(a.salida_id), String(Number(a.monto))])),
+    );
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const montoPago = ingreso ? Number(ingreso.monto) : Number(monto) || 0;
 
     async function guardar(e: React.FormEvent) {
         e.preventDefault();
@@ -52,6 +59,9 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
             if (fechaPago > hoyISO()) return setError("La fecha no puede ser futura.");
             if (!(Number(monto) > 0)) return setError("El monto debe ser mayor que cero.");
         }
+        const partes = porIdentificar ? [] : Object.entries(aplicaciones).filter(([, v]) => Number(v) > 0);
+        const aplicado = partes.reduce((acc, [, v]) => acc + Number(v), 0);
+        if (aplicado - montoPago > 0.004) return setError("Lo aplicado a notas pasa del monto del pago.");
         setError(null);
         setGuardando(true);
         try {
@@ -63,6 +73,7 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
                 notas: notas.trim(),
                 ingreso_tesoreria_id: ingreso?.id ?? null,
                 ...(ingreso ? {} : { fecha: fechaPago, monto: Number(monto) }),
+                aplicaciones: partes.map(([clave, v]) => ({ salida_id: salidaDeClave(clave), monto: v })),
             });
         } catch {
             // El toast con el mensaje del servidor lo muestra la vista.
@@ -85,7 +96,10 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
                             id="pago-cliente"
                             options={clientes.map((c) => ({ value: c.id, label: c.nombre, disabled: !c.activo }))}
                             value={clienteId}
-                            onChange={setClienteId}
+                            onChange={(valor) => {
+                                setClienteId(valor);
+                                setAplicaciones({});
+                            }}
                             placeholder="Buscar cliente..."
                         />
                     )}
@@ -105,7 +119,10 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
                         id="pago-empresa"
                         className="form-select"
                         value={empresaId}
-                        onChange={(e) => setEmpresaId(e.target.value ? Number(e.target.value) : "")}
+                        onChange={(e) => {
+                            setEmpresaId(e.target.value ? Number(e.target.value) : "");
+                            setAplicaciones({});
+                        }}
                     >
                         {empresas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                     </select>
@@ -220,6 +237,20 @@ function PagoForm({ pago, clientes, empresas, clienteInicial, onGuardar, onCance
                     <label className="form-label" htmlFor="pago-notas">Notas</label>
                     <input id="pago-notas" className="form-control" value={notas} onChange={(e) => setNotas(e.target.value)} />
                 </div>
+
+                {!porIdentificar && clienteId && empresaId && (
+                    <div className="col-12">
+                        <AplicarNotasPago
+                            clienteId={clienteId}
+                            empresaId={empresaId}
+                            pagoId={pago?.id}
+                            fechaPago={ingreso?.fecha ?? fechaPago}
+                            montoPago={montoPago}
+                            valor={aplicaciones}
+                            onChange={setAplicaciones}
+                        />
+                    </div>
+                )}
             </div>
 
             {error && <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div>}
