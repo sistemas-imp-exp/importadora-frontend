@@ -212,7 +212,7 @@ function SalidasView() {
                                 <BuscadorTabla
                                     valor={busqueda}
                                     onChange={buscar}
-                                    placeholder="Buscar por folio, cliente, nota o producto..."
+                                    placeholder="Buscar por folio, cliente, nota, producto o recibo..."
                                 />
                                 <PorPaginaSelect valor={porPagina} onChange={(v) => { setPorPagina(v); setPagina(1); }} />
                                 <DensidadToggle valor={densidad} onChange={setDensidad} />
