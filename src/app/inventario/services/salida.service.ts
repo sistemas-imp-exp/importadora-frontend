@@ -32,3 +32,25 @@ export async function descargarSalidasExcel(busqueda: string): Promise<void> {
     if (busqueda.trim()) params.set("busqueda", busqueda.trim());
     await descargarBlob(`${URL}excel/`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "salidas.xlsx", params);
 }
+
+export interface SalidaDeRecibo {
+    id: number;
+    salida_id: number;
+    fecha: string;
+    folio_de_salida: string | null;
+    folio_retiro: string | null;
+    // null en un traslado a otra cámara.
+    cliente: string | null;
+    talla: string;
+    tipo: string;
+    camara: string;
+    cajas: number;
+    total_kilos: string;
+    notas: string;
+}
+
+/** Salidas que ha tenido un recibo de ingreso (ventas, retiros y traslados), una fila por línea. */
+export async function obtenerSalidasDeRecibo(recibo: string): Promise<{ recibo: string; total_kilos: string; lineas: SalidaDeRecibo[] }> {
+    const { data } = await api.get(`${URL}por-recibo/`, { params: { recibo } });
+    return data;
+}
