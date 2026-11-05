@@ -17,7 +17,7 @@ function FilasBloque({ bloque, mostrarRotulo }: { bloque: BloqueReporteCamara; m
         <>
             {mostrarRotulo && (
                 <tr className="reporte-rotulo">
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                         {bloque.etiqueta.toUpperCase()}
                         {bloque.presentacion === "" && (
                             <span
@@ -47,6 +47,9 @@ function FilasBloque({ bloque, mostrarRotulo }: { bloque: BloqueReporteCamara; m
                                 <td className="text-center">{peso(fila.peso_por_caja)}</td>
                                 <td className="num">{fila.cajas.toLocaleString("es-MX")}</td>
                                 <td className="num">{formatearKg((fila.kilos))}</td>
+                                {iFila === 0 && (
+                                    <td rowSpan={tipo.filas.length} className="num align-middle">{formatearKg(tipo.total)}</td>
+                                )}
                                 {primeraDeTalla && (
                                     <td rowSpan={filasTalla} className="num align-middle">{formatearKg((talla.existencia))}</td>
                                 )}
@@ -59,7 +62,7 @@ function FilasBloque({ bloque, mostrarRotulo }: { bloque: BloqueReporteCamara; m
                 <td colSpan={4}></td>
                 <td className="text-center">SUBTOTAL</td>
                 <td className="num">{formatearKg((bloque.subtotal))}</td>
-                <td></td>
+                <td colSpan={2}></td>
             </tr>
         </>
     );
@@ -76,7 +79,7 @@ function ReporteCamaraTabla({ camara, fecha, empresa }: ReporteCamaraTablaProps)
                         <th colSpan={2} className="text-start">EXISTENCIAS {camara.camara.nombre}</th>
                         <th colSpan={3} className="text-start fw-normal">{empresa ?? ""}</th>
                         <th className="text-center">{`${dia}/${mes}/${anio}`}</th>
-                        <th></th>
+                        <th colSpan={2}></th>
                     </tr>
                     <tr className="reporte-columnas">
                         <th>TALLA</th>
@@ -85,6 +88,7 @@ function ReporteCamaraTabla({ camara, fecha, empresa }: ReporteCamaraTablaProps)
                         <th>PESO MASTER</th>
                         <th>MASTER</th>
                         <th>KILOGRAMOS</th>
+                        <th>TOTAL TIPO</th>
                         <th>EXISTENCIA</th>
                     </tr>
                 </thead>
@@ -96,7 +100,7 @@ function ReporteCamaraTabla({ camara, fecha, empresa }: ReporteCamaraTablaProps)
                         <td colSpan={4}></td>
                         <td className="text-center">TOTAL</td>
                         <td className="num">{formatearKg((camara.total))}</td>
-                        <td></td>
+                        <td colSpan={2}></td>
                     </tr>
                 </tbody>
             </table>

@@ -39,6 +39,9 @@ const SIN_FILTROS_PRODUCTO = { presentaciones: [], tallas: [], tipos: [], catego
 // casillas seguidas hace una sola petición.
 const ESPERA_CONSULTA_MS = 500;
 
+// El backend suma FRIGARSA, NAVECAP, BASAL 4, BASAL 7, MEXIDELI y ARCOSA como una sola cámara.
+const RESUMEN_MEXICO = "mexico";
+
 type FiltrosGuardados = Omit<FiltrosReporteCamaras, "fecha">;
 
 /**
@@ -129,7 +132,8 @@ function ReportesInventarioView() {
                 setFiltros((actual) => {
                     const limpios = {
                         ...actual,
-                        camaraId: datosCamaras.some((c) => String(c.id) === actual.camaraId) ? actual.camaraId : "",
+                        camaraId: actual.camaraId === RESUMEN_MEXICO || datosCamaras.some((c) => String(c.id) === actual.camaraId)
+                            ? actual.camaraId : "",
                         empresaId: datosEmpresas.some((e) => String(e.id) === actual.empresaId) ? actual.empresaId : "",
                         tallas: actual.tallas.filter(existe(tallas)),
                         tipos: actual.tipos.filter(existe(tipos)),
@@ -259,6 +263,7 @@ function ReportesInventarioView() {
                                     onChange={(e) => cambiar({ camaraId: e.target.value })}
                                 >
                                     <option value="">Todas (una por página)</option>
+                                    <option value={RESUMEN_MEXICO}>Resumen cámaras de México</option>
                                     {camaras.map((c) => (
                                         <option key={c.id} value={c.id}>{c.nombre}</option>
                                     ))}

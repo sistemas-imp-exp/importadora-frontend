@@ -8,6 +8,8 @@ export interface FilaReporteCamara {
 
 export interface TipoReporteCamara {
     tipo: string;
+    /** Kilos de todo el tipo dentro de la talla. */
+    total: string;
     filas: FilaReporteCamara[];
 }
 
