@@ -17,6 +17,8 @@ export interface SalidaDetalleApi {
     // tabla ya no tiene que buscarlos recorriendo todas las entradas.
     lote_proveedor: string;
     proveedor_nombre: string;
+    // Recibo de ingreso (IMP) del lote; vacío sin lote (venta en resguardo).
+    recibo: string;
     // null sin lote (venta en resguardo).
     peso_por_caja: string | null;
     // Diferencia que Cartera encontró contra la nota en papel; se va sola al corregir la línea.

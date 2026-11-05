@@ -15,7 +15,7 @@ interface SalidasTableProps {
     onEliminar?: (salida: SalidaApi) => void;
 }
 
-const COLUMNAS = 16;
+const COLUMNAS = 17;
 
 function numero(valor: number | string): string {
     return formatearDinero(Number(valor));
@@ -50,7 +50,7 @@ function Marcas({ salida, d }: { salida: SalidaApi; d: SalidaDetalleApi }) {
 /**
  * Igual que la hoja SALIDA del inventario de cámaras del área: una fila por
  * línea con todos sus datos (fecha, talla, tipo, peso por caja, proveedor,
- * cámara, lote, folio, cliente, notas, cajas, kilos, precio, venta y factura),
+ * cámara, recibo y lote del proveedor, folio, cliente, notas, cajas, kilos, precio, venta y factura),
  * en el mismo orden y con renglones rayados. Sin desplegar.
  */
 function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: SalidasTableProps) {
@@ -75,7 +75,8 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                         <th>Peso por caja</th>
                         <th>Proveedor</th>
                         <th>Cámara</th>
-                        <th>Lote</th>
+                        <th title="Recibo de ingreso del lote del que salió">Recibo (lote)</th>
+                        <th>Lote proveedor</th>
                         <th>Folio de salida</th>
                         <th>Cliente</th>
                         <th>Notas</th>
@@ -113,6 +114,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                     <td className="text-nowrap">{d.peso_por_caja ? `${formatearKg(d.peso_por_caja)} KG` : "—"}</td>
                                     <td className="truncar" title={d.proveedor_nombre || undefined}>{d.proveedor_nombre || "—"}</td>
                                     <td className="text-nowrap">{nombreCamara(d.camara)}</td>
+                                    <td className="text-nowrap fw-semibold">{d.recibo || "—"}</td>
                                     <td className="text-nowrap">{d.lote_proveedor || "—"}</td>
                                     <td className="text-nowrap fw-semibold">
                                         {folio}
