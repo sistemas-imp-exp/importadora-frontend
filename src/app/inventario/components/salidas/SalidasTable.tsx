@@ -10,6 +10,9 @@ import { formatearKg, formatearPrecioKg } from "../../../../shared/utils/numeros
 interface SalidasTableProps {
     salidas: SalidaApi[];
     camaras: Camara[];
+    // Búsqueda con la que se cargaron las salidas: si no coincide con la salida
+    // (folio, cliente, nota), solo se muestran las líneas que coinciden.
+    busqueda?: string;
     densidad: DensidadTabla;
     onEditar?: (salida: SalidaApi) => void;
     onEliminar?: (salida: SalidaApi) => void;
@@ -19,6 +22,23 @@ const COLUMNAS = 17;
 
 function numero(valor: number | string): string {
     return formatearDinero(Number(valor));
+}
+
+/**
+ * Líneas a mostrar con la búsqueda del backend (SalidaViewSet): si coincide con
+ * la salida se ven todas; si coincidió por producto o recibo, solo esas líneas.
+ */
+function lineasVisibles(salida: SalidaApi, busqueda: string): SalidaDetalleApi[] {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return salida.detalles;
+    const contiene = (texto: string | null | undefined) => (texto ?? "").toLowerCase().includes(q);
+    if (contiene(salida.folio_de_salida) || contiene(salida.cliente?.nombre) || contiene(salida.notas)) {
+        return salida.detalles;
+    }
+    const coinciden = salida.detalles.filter((d) =>
+        contiene(d.recibo) || contiene(d.producto.talla) || contiene(d.producto.tipo));
+    // El recibo de origen de un traslado no viene en la línea: entonces se muestra todo.
+    return coinciden.length > 0 ? coinciden : salida.detalles;
 }
 
 /** Marcas de la salida que el Excel no tiene: resguardo, retiro y diferencia de Cartera. */
@@ -53,7 +73,7 @@ function Marcas({ salida, d }: { salida: SalidaApi; d: SalidaDetalleApi }) {
  * cámara, recibo y lote del proveedor, folio, cliente, notas, cajas, kilos, precio, venta y factura),
  * en el mismo orden y con renglones rayados. Sin desplegar.
  */
-function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: SalidasTableProps) {
+function SalidasTable({ salidas, camaras, busqueda = "", densidad, onEditar, onEliminar }: SalidasTableProps) {
     function nombreCamara(id: number | null): string {
         if (!id) return "—";
         return camaras.find((c) => c.id === id)?.nombre ?? "—";
@@ -106,7 +126,7 @@ function SalidasTable({ salidas, camaras, densidad, onEditar, onEliminar }: Sali
                                 ?? (conRetiros ? "Ya se entregó parte de su resguardo: cancela esos retiros en Resguardos." : undefined);
                             const fecha = formatearFechaNumerica(new Date(salida.fecha + "T00:00:00"));
                             const folio = salida.folio_de_salida ?? "Sin salida";
-                            return salida.detalles.map((d) => (
+                            return lineasVisibles(salida, busqueda).map((d) => (
                                 <tr key={d.id}>
                                     <td className="text-nowrap">{fecha}</td>
                                     <td className="text-nowrap">{d.producto.talla}</td>
